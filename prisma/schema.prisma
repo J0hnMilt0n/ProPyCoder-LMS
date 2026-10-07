@@ -1,0 +1,273 @@
+// LMS Database Schema for Software Training Institute
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  password  String
+  firstName String
+  lastName  String
+  avatar    String?
+  role      String     @default("STUDENT")
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  // Relations
+  enrollments   Enrollment[]
+  createdCourses Course[] @relation("instructor")
+  progress      Progress[]
+  quizAttempts  QuizAttempt[]
+  certificates  Certificate[]
+  notifications Notification[]
+  payments      Payment[]
+
+  @@index([email])
+  @@index([role])
+}
+
+// Course model
+model Course {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  category    String
+  level       String   @default("BEGINNER")
+  price       Float    @default(0)
+  image       String?
+  status      String   @default("DRAFT")
+  instructor  User     @relation("instructor", fields: [instructorId], references: [id], onDelete: Cascade)
+  instructorId String
+  duration    Int      // in hours
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  modules     Module[]
+  enrollments Enrollment[]
+  quizzes     Quiz[]
+  payments    Payment[]
+
+  @@index([instructorId])
+  @@index([category])
+  @@index([status])
+}
+
+// Module/Lesson model
+model Module {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  order       Int
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  lessons    Lesson[]
+  quizzes    Quiz[]
+
+  @@index([courseId])
+}
+
+// Lesson model (individual lessons within modules)
+model Lesson {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  order       Int
+  videoUrl    String?  // YouTube video URL
+  videoId     String?  // YouTube video ID (extracted from URL)
+  duration    Int?     // Duration in minutes
+  isFree      Boolean  @default(false) // Free preview lesson
+  module      Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  moduleId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  progress  Progress[]
+
+  @@index([moduleId])
+}
+
+// Enrollment model
+model Enrollment {
+  id          String   @id @default(cuid())
+  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId   String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId    String
+  status      String   @default("ACTIVE")
+  progress    Float    @default(0)
+  enrolledAt  DateTime @default(now())
+  completedAt DateTime?
+  payment     Payment? // Optional - can be null for free courses or manual enrollments
+  updatedAt   DateTime @updatedAt
+
+  @@unique([studentId, courseId])
+  @@index([studentId])
+  @@index([courseId])
+  @@index([status])
+}
+
+// Progress tracking (per lesson)
+model Progress {
+  id        String   @id @default(cuid())
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId  String
+  status    String   @default("STARTED")
+  completedAt DateTime?
+  watchedDuration Int @default(0) // Watched duration in seconds
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, lessonId])
+  @@index([studentId])
+  @@index([lessonId])
+}
+
+// Payment/Transaction model
+model Payment {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId        String
+  course          Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  amount          Float
+  currency        String   @default("USD")
+  status          String   @default("PENDING") // PENDING, COMPLETED, FAILED, REFUNDED
+  paymentMethod   String?  // STRIPE, PAYPAL, etc.
+  transactionId   String?  // External transaction ID
+  enrollmentId    String?  @unique // Link to enrollment created after payment
+  enrollment      Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([courseId])
+  @@index([status])
+}
+
+// Quiz model
+model Quiz {
+  id        String   @id @default(cuid())
+  title     String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId  String
+  module    Module?  @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  moduleId  String?
+  passingScore Float @default(70)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  questions    Question[]
+  attempts     QuizAttempt[]
+
+  @@index([courseId])
+  @@index([moduleId])
+}
+
+// Question model
+model Question {
+  id        String   @id @default(cuid())
+  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quizId    String
+  question  String
+  type      String   @default("MULTIPLE_CHOICE")
+  order     Int
+  createdAt DateTime @default(now())
+
+  // Relations
+  options   Option[]
+  answers   Answer[]
+
+  @@index([quizId])
+}
+
+// Option model
+model Option {
+  id        String   @id @default(cuid())
+  question  Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId String
+  text      String
+  isCorrect Boolean  @default(false)
+  order     Int
+
+  @@index([questionId])
+}
+
+// Quiz Attempt model
+model QuizAttempt {
+  id        String   @id @default(cuid())
+  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quizId    String
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+  score     Float
+  passed    Boolean
+  attemptNumber Int
+  startedAt DateTime @default(now())
+  completedAt DateTime?
+
+  // Relations
+  answers   Answer[]
+
+  @@index([quizId])
+  @@index([studentId])
+}
+
+// Answer model
+model Answer {
+  id        String   @id @default(cuid())
+  attempt   QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  attemptId String
+  question  Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId String
+  response  String
+
+  @@index([attemptId])
+  @@index([questionId])
+}
+
+// Certificate model
+model Certificate {
+  id        String   @id @default(cuid())
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+  course    String   // Course title
+  issueDate DateTime @default(now())
+  certificateNumber String @unique
+  credentials String   // JWT or validation token
+
+  @@index([studentId])
+}
+
+// Notification model
+model Notification {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  title     String
+  message   String
+  type      String   @default("INFO")
+  read      Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([read])
+}
