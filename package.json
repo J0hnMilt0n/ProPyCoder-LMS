@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate --schema=prisma/schema.postgresql.prisma && next build",
+    "build": "prisma generate && next build",
     "build:dev": "prisma generate --schema=prisma/schema.sqlite.prisma && next build",
     "build:prod": "prisma generate --schema=prisma/schema.postgresql.prisma && next build",
     "start": "next start",
