@@ -13,7 +13,9 @@ export function Providers({ children }: { children: ReactNode }) {
       <SessionProvider refetchOnWindowFocus={false}>
         <ConfirmProvider>
           {children}
-          <Toaster position="top-right" />
+          <Toaster position="top-right" containerStyle={{
+    top: 80,
+  }} />
           <LabPreloader />
         </ConfirmProvider>
       </SessionProvider>
