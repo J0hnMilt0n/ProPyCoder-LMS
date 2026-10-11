@@ -6706,3 +6706,7 @@ a.profile-cert-link:hover {
   flex-shrink: 0;
   overflow: hidden;
 }
+
+.Toastify__toast-container--top-right {
+  top: 80px;
+}
