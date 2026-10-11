@@ -111,9 +111,9 @@ export async function proxyPyCoderPage(request: NextRequest, pathname: string) {
     <style>
   .lab-window-controls{display:flex;align-items:center;gap:8px;height:30px;margin:0 12px 8px;padding:0 2px 8px;border-bottom:1px solid rgba(125,130,140,.2)}
   .lab-window-dot{display:block;width:11px;height:11px;border:1px solid rgba(0,0,0,.08);border-radius:50%;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
-  // .lab-window-dot.is-close{background:#ed6a5f}
-  // .lab-window-dot.is-minimize{background:#edbd4f}
-  // .lab-window-dot.is-maximize{background:#9298a2}
+  .lab-window-dot.is-close{background:#ed6a5f}
+  .lab-window-dot.is-minimize{background:#edbd4f}
+  .lab-window-dot.is-maximize{background:#9298a2}
   .lab-workspace{max-width:1120px!important;margin:0 auto!important;padding:10px 18px 24px!important;background:transparent!important;box-shadow:none!important;border-radius:0!important}
   .max-w-3xl{margin-top:0!important;padding:0 12px 18px!important;background:transparent!important;box-shadow:none!important;border-radius:0!important}
   @media(max-width:640px){.lab-workspace{padding:8px 12px 18px!important}.lab-window-controls{height:25px;margin:0 12px 5px;padding-bottom:6px}}
@@ -154,6 +154,61 @@ export async function proxyPyCoderPage(request: NextRequest, pathname: string) {
   });
 })();
 </script>
+
+<script>
+(function () {
+  function animateDots() {
+    const dots = document.querySelectorAll(".lab-window-dot");
+
+    const colors = [
+      "#FF1744", "#F50057", "#D500F9", "#651FFF",
+      "#2979FF", "#00B0FF", "#00E5FF", "#1DE9B6",
+      "#00E676", "#76FF03", "#C6FF00", "#FFEA00",
+      "#FFC400", "#FF9100", "#FF3D00", "#FF6D00",
+      "#FF4081", "#E040FB", "#7C4DFF", "#448AFF"
+    ];
+
+    if (dots.length === 0) return;
+
+    // Prevent duplicate timers.
+    if (window.dotColorInterval) {
+      clearInterval(window.dotColorInterval);
+    }
+
+    function changeColors() {
+      // Shuffle the palette to guarantee distinct colors.
+      const shuffled = [...colors].sort(() => Math.random() - 0.5);
+
+      dots.forEach(function (dot, index) {
+        dot.style.transition =
+          "background-color 900ms ease, box-shadow 900ms ease";
+
+        dot.style.setProperty(
+          "background-color",
+          shuffled[index % shuffled.length],
+          "important"
+        );
+
+        dot.style.boxShadow =
+          "0 0 7px " + shuffled[index % shuffled.length];
+      });
+    }
+
+    changeColors();
+
+    window.dotColorInterval = setInterval(changeColors, 1800);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", animateDots, {
+      once: true
+    });
+  } else {
+    animateDots();
+  }
+})();
+</script>
+
 `;
     html = html.replace(/<\/head>/i, `${themeBridge}</head>`);
 
