@@ -205,7 +205,7 @@ button {
   justify-content: center;
   width: 38px;
   height: 38px;
-  margin-left: 10px;
+  margin-left: 5px;
   border: 1px solid var(--line);
   border-radius: 50%;
   background: white;
@@ -244,7 +244,7 @@ button {
   justify-content: center;
   width: 40px;
   height: 40px;
-  margin-left: 10px;
+  margin-left: 5px;
   border: 1px solid var(--line);
   border-radius: 4px;
   background: white;
@@ -4063,13 +4063,13 @@ body:has(.lab-page) {
 @media (max-width: 768px) {
   .site-menu-toggle {
     display: inline-flex;
-    margin-left: 10px;
+    margin-left: 5px;
   }
   .site-lab-shortcut {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    margin-left: 10px;
+    margin-left: 5px;
     padding: 8px 13px;
     border: 1px solid #ecd9c8;
     border-radius: 999px;
@@ -4083,7 +4083,7 @@ body:has(.lab-page) {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    margin-left: 10px;
+    margin-left: 5px;
     /* padding: 8px 13px; */
     border: 1px solid #ecd9c8;
     border-radius: 999px;
@@ -4141,7 +4141,7 @@ body:has(.lab-page) {
     padding: 12px;
   }
   .site-user-chip {
-    margin-left: 10px;
+    margin-left: 5px;
   }
   .site-menu-toggle + .site-nav-links {
     order: 2;
