@@ -174,7 +174,7 @@ export default function AnnouncementsPage() {
                   style={{ margin: "0 auto", color: "#e95f32" }}
                 />
               </div>
-            ) : inbox.length === 0 ? (
+            ) : items.length === 0 ? (
               <div className="cert-empty">
                 <span className="cert-empty-icon" aria-hidden="true">
                   <Megaphone size={22} />
@@ -187,7 +187,8 @@ export default function AnnouncementsPage() {
               </div>
             ) : (
               <ul className="cert-list">
-                {inbox.map((item) => ( item.read?(
+                {status === "authenticated" ? (
+                inbox.map((item) => ( item.read?(
                   <li key={item.id} className="cert-item cursor-pointer" onClick={() => window.location.href = `${item?.link}`}>
                     <span className="cert-item-icon" aria-hidden="true">
                       <Megaphone size={18} />
@@ -212,7 +213,33 @@ export default function AnnouncementsPage() {
                       </span>
                     </span>
                   </li>):<></>
-                ))}
+                ))):(items.map((item) => (
+                  <li key={item.id} className="cert-item cursor-pointer" onClick={() => window.location.href = `${item?.link}`}>
+                    <span className="cert-item-icon" aria-hidden="true">
+                      <Megaphone size={18} />
+                    </span>
+                    <span className="cert-item-body">
+                      <strong>{item.title}</strong>
+                      <span className="cert-item-meta">{item.message}</span>
+                      <span className="cert-item-meta">
+                        {new Date(item.createdAt).toLocaleDateString()}
+                        {item.link ? (
+                          <>
+                            {" · "}
+                            <a
+                              href={item.link}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Open link <ArrowUpRight size={12} />
+                            </a>
+                          </>
+                        ) : null}
+                      </span>
+                    </span>
+                  </li>
+                )))
+              }
               </ul>
             )}
           </div>
