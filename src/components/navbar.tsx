@@ -70,7 +70,7 @@ export function Navbar() {
   return (
     <nav className="site-nav">
       <div className="site-nav-inner">
-        <Link href="/" className="site-brand" aria-label="ProPyCoder home">
+        <Link href="/" className="site-brand -ml-3" aria-label="ProPyCoder home">
           <BrandLogo />
           <span className="md:-ml-3 -ml-3">ProPyCoder</span>
         </Link>
