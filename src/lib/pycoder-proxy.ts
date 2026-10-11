@@ -153,6 +153,33 @@ export async function proxyPyCoderPage(request: NextRequest, pathname: string) {
     subtree: true,
   });
 })();
+
+(function () {
+  function updateClearButton() {
+    const languageLabel = document.getElementById("languageLabel");
+    const clearBtn = document.getElementById("clearEditor");
+
+    if (!languageLabel || !clearBtn) return;
+
+    // Move Clear beside "No errors"
+    if (languageLabel.nextElementSibling !== clearBtn) {
+      languageLabel.insertAdjacentElement("afterend", clearBtn);
+    }
+
+    // Symbol only
+    clearBtn.textContent = "🧹";
+    clearBtn.title = "Clear editor";
+    clearBtn.setAttribute("aria-label", "Clear editor");
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", updateClearButton, {
+      once: true
+    });
+  } else {
+    updateClearButton();
+  }
+})();
 </script>
 
 <script>
