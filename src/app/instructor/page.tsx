@@ -224,7 +224,7 @@ export default function InstructorPage() {
                     </div>
                     <div className="instructor-course-enrollments">
                       <strong>{course._count.enrollments}</strong>
-                      <span>learners</span>
+                      <span>learner{course._count.enrollments>1?"s":""}</span>
                     </div>
                     <span
                       className={`instructor-status ${course.status === "PUBLISHED" ? "is-live" : "is-draft"}`}
