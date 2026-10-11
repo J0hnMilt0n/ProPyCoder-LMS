@@ -281,7 +281,10 @@ export default function Dashboard() {
                     : undefined
                 }
               >
-                <BookOpen size={34} />
+                {
+                  !nextCourse.course.image
+                    ?(
+                <BookOpen size={34} />):<></> }
               </div>
               <div className="learning-continue-copy">
                 <span className="learning-course-kicker">
@@ -378,7 +381,10 @@ export default function Dashboard() {
                         : undefined
                     }
                   >
-                    <BookOpen size={22} />
+                    {
+                      !enrollment.course.image
+                        ?
+                    (<BookOpen size={22} />):<></>}
                   </div>
                   <div className="learning-course-details">
                     <span className="learning-course-kicker">

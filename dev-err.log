@@ -512,3 +512,2505 @@ Read more: https://nextjs.org/docs/app/api-reference/components/image#loading (f
     at async handleRequest (D:\ProPyCoder LMS\node_modules\next\dist\server\lib\router-server.js:452:24)
     at async requestHandlerImpl (D:\ProPyCoder LMS\node_modules\next\dist\server\lib\router-server.js:501:13)
     at async Server.requestListener (D:\ProPyCoder LMS\node_modules\next\dist\server\lib\start-server.js:225:13)
+[browser] Uncaught ReferenceError: ArrowLeft is not defined
+    at CourseDetailPage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/src_0i2h9l7._.js?id=%255Bproject%255D%252Fsrc%252Fapp%252Fcourses%252F%255Bid%255D%252Fpage.tsx+%255Bapp-client%255D+%2528ecmascript%2529:544:240)
+    at Object.react_stack_bottom_frame (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:15037:24)
+    at renderWithHooks (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:4620:24)
+    at updateFunctionComponent (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:6081:21)
+    at beginWork (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:6691:24)
+    at runWithFiberInDEV (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:965:74)
+    at performUnitOfWork (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9555:97)
+    at workLoopSync (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9449:40)
+    at renderRootSync (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9433:13)
+    at performWorkOnRoot (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9098:47)
+    at performSyncWorkOnRoot (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:10263:9)
+    at flushSyncWorkAcrossRoots_impl (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:10179:316)
+    at flushSyncWork$1 (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9230:86)
+    at Object.scheduleRefresh (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:299:13)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_0rpq4pf._.js:391:33)
+    at Set.forEach (<anonymous>)
+    at Object.performReactRefresh (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_0rpq4pf._.js:384:38)
+    at applyUpdate (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_0rpq4pf._.js:878:31)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_0rpq4pf._.js:886:13)
+    at ClientPageRoot (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_0-0.~kc._.js:6934:50)
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⨯ ./src/app/courses/[id]/page.tsx:11:3
+the name `ArrowLeft` is defined multiple times
+  [90m 9 |[0m [36mimport[0m {
+  [90m10 |[0m   [33mClock[0m,
+[31m[1m>[0m [90m11 |[0m   [33mArrowLeft[0m,
+  [90m   |[0m   [31m[1m^^^^^^^^^[0m
+  [90m12 |[0m   [33mUsers[0m,
+  [90m13 |[0m   [33mAward[0m,
+  [90m14 |[0m   [33mBookOpen[0m,
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+⨯ ./src/app/courses/[id]/page.tsx:11:3
+the name `ArrowLeft` is defined multiple times
+  [90m 9 |[0m [36mimport[0m {
+  [90m10 |[0m   [33mClock[0m,
+[31m[1m>[0m [90m11 |[0m   [33mArrowLeft[0m,
+  [90m   |[0m   [31m[1m^^^^^^^^^[0m
+  [90m12 |[0m   [33mUsers[0m,
+  [90m13 |[0m   [33mAward[0m,
+  [90m14 |[0m   [33mBookOpen[0m,
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+⨯ ./src/app/courses/[id]/page.tsx:11:3
+the name `ArrowLeft` is defined multiple times
+  [90m 9 |[0m [36mimport[0m {
+  [90m10 |[0m   [33mClock[0m,
+[31m[1m>[0m [90m11 |[0m   [33mArrowLeft[0m,
+  [90m   |[0m   [31m[1m^^^^^^^^^[0m
+  [90m12 |[0m   [33mUsers[0m,
+  [90m13 |[0m   [33mAward[0m,
+  [90m14 |[0m   [33mBookOpen[0m,
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+[browser] Uncaught Error: ./src/app/courses/[id]/page.tsx:11:3
+the name `ArrowLeft` is defined multiple times
+   9 | import {
+  10 |   Clock,
+> 11 |   ArrowLeft,
+     |   ^^^^^^^^^
+  12 |   Users,
+  13 |   Award,
+  14 |   BookOpen,
+
+Ecmascript file had an error
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./src/app/courses/[id]/page.tsx:11:3)
+    at <unknown> (Error: (./src/app/courses/[id]/page.tsx:11:3)
+⨯ ./src/app/courses/[id]/page.tsx:556:28
+Expected a semicolon
+  [90m554 |[0m                 course.image
+  [90m555 |[0m                   ? {
+[31m[1m>[0m [90m556 |[0m               <span>{course.category}</span>
+  [90m    |[0m                            [31m[1m^[0m
+  [90m557 |[0m               <[33mBookOpen[0m size={[35m44[0m} />
+  [90m558 |[0m               <strong>[33mLEARN[0m [33mBY[0m [33mBUILDING[0m</strong>
+  [90m559 |[0m             </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+
+./src/app/courses/[id]/page.tsx:556:15
+Expression expected
+  [90m554 |[0m                 course.image
+  [90m555 |[0m                   ? {
+[31m[1m>[0m [90m556 |[0m               <span>{course.category}</span>
+  [90m    |[0m               [31m[1m^[0m
+  [90m557 |[0m               <[33mBookOpen[0m size={[35m44[0m} />
+  [90m558 |[0m               <strong>[33mLEARN[0m [33mBY[0m [33mBUILDING[0m</strong>
+  [90m559 |[0m             </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+⨯ ./src/app/courses/[id]/page.tsx:556:28
+Expected a semicolon
+  [90m554 |[0m                 course.image
+  [90m555 |[0m                   ? {
+[31m[1m>[0m [90m556 |[0m               <span>{course.category}</span>
+  [90m    |[0m                            [31m[1m^[0m
+  [90m557 |[0m               <[33mBookOpen[0m size={[35m44[0m} />
+  [90m558 |[0m               <strong>[33mLEARN[0m [33mBY[0m [33mBUILDING[0m</strong>
+  [90m559 |[0m             </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+
+./src/app/courses/[id]/page.tsx:556:15
+Expression expected
+  [90m554 |[0m                 course.image
+  [90m555 |[0m                   ? {
+[31m[1m>[0m [90m556 |[0m               <span>{course.category}</span>
+  [90m    |[0m               [31m[1m^[0m
+  [90m557 |[0m               <[33mBookOpen[0m size={[35m44[0m} />
+  [90m558 |[0m               <strong>[33mLEARN[0m [33mBY[0m [33mBUILDING[0m</strong>
+  [90m559 |[0m             </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+[browser] Uncaught Error: ./src/app/courses/[id]/page.tsx:556:28
+Expected a semicolon
+  554 |                 course.image
+  555 |                   ? {
+> 556 |               <span>{course.category}</span>
+      |                            ^
+  557 |               <BookOpen size={44} />
+  558 |               <strong>LEARN BY BUILDING</strong>
+  559 |             </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./src/app/courses/[id]/page.tsx:556:28)
+    at <unknown> (Error: (./src/app/courses/[id]/page.tsx:556:28)
+[browser] ./src/app/courses/[id]/page.tsx:556:28
+Expected a semicolon
+  554 |                 course.image
+  555 |                   ? {
+> 556 |               <span>{course.category}</span>
+      |                            ^
+  557 |               <BookOpen size={44} />
+  558 |               <strong>LEARN BY BUILDING</strong>
+  559 |             </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:556:15
+Expression expected
+  554 |                 course.image
+  555 |                   ? {
+> 556 |               <span>{course.category}</span>
+      |               ^
+  557 |               <BookOpen size={44} />
+  558 |               <strong>LEARN BY BUILDING</strong>
+  559 |             </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:556:28
+Expected a semicolon
+  554 |                 course.image
+  555 |                   ? {
+> 556 |               <span>{course.category}</span>
+      |                            ^
+  557 |               <BookOpen size={44} />
+  558 |               <strong>LEARN BY BUILDING</strong>
+  559 |             </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:556:15
+Expression expected
+  554 |                 course.image
+  555 |                   ? {
+> 556 |               <span>{course.category}</span>
+      |               ^
+  557 |               <BookOpen size={44} />
+  558 |               <strong>LEARN BY BUILDING</strong>
+  559 |             </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] Uncaught Error: ./src/app/courses/[id]/page.tsx:556:28
+Expected a semicolon
+  554 |                 course.image
+  555 |                   ? {
+> 556 |               <span>{course.category}</span>
+      |                            ^
+  557 |               <BookOpen size={44} />
+  558 |               <strong>LEARN BY BUILDING</strong>
+  559 |             </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./src/app/courses/[id]/page.tsx:556:28)
+    at <unknown> (Error: (./src/app/courses/[id]/page.tsx:556:28)
+[browser] ./src/app/courses/[id]/page.tsx:556:28
+Expected a semicolon
+  554 |                 course.image
+  555 |                   ? {
+> 556 |               <span>{course.category}</span>
+      |                            ^
+  557 |               <BookOpen size={44} />
+  558 |               <strong>LEARN BY BUILDING</strong>
+  559 |             </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:556:15
+Expression expected
+  554 |                 course.image
+  555 |                   ? {
+> 556 |               <span>{course.category}</span>
+      |               ^
+  557 |               <BookOpen size={44} />
+  558 |               <strong>LEARN BY BUILDING</strong>
+  559 |             </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:556:28
+Expected a semicolon
+  554 |                 course.image
+  555 |                   ? {
+> 556 |               <span>{course.category}</span>
+      |                            ^
+  557 |               <BookOpen size={44} />
+  558 |               <strong>LEARN BY BUILDING</strong>
+  559 |             </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:556:15
+Expression expected
+  554 |                 course.image
+  555 |                   ? {
+> 556 |               <span>{course.category}</span>
+      |               ^
+  557 |               <BookOpen size={44} />
+  558 |               <strong>LEARN BY BUILDING</strong>
+  559 |             </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+⨯ ./src/app/courses/[id]/page.tsx:557:15
+Expression expected
+  [90m555 |[0m                 course.image
+  [90m556 |[0m                   ? {
+[31m[1m>[0m [90m557 |[0m               <[33mBookOpen[0m size={[35m44[0m} />
+  [90m    |[0m               [31m[1m^[0m
+  [90m558 |[0m               <strong>[33mLEARN[0m [33mBY[0m [33mBUILDING[0m</strong>
+  [90m559 |[0m             </div>
+  [90m560 |[0m
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+⨯ ./src/app/courses/[id]/page.tsx:557:15
+Expression expected
+  [90m555 |[0m                 course.image
+  [90m556 |[0m                   ? {
+[31m[1m>[0m [90m557 |[0m               <[33mBookOpen[0m size={[35m44[0m} />
+  [90m    |[0m               [31m[1m^[0m
+  [90m558 |[0m               <strong>[33mLEARN[0m [33mBY[0m [33mBUILDING[0m</strong>
+  [90m559 |[0m             </div>
+  [90m560 |[0m
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+[browser] Uncaught Error: ./src/app/courses/[id]/page.tsx:557:15
+Expression expected
+  555 |                 course.image
+  556 |                   ? {
+> 557 |               <BookOpen size={44} />
+      |               ^
+  558 |               <strong>LEARN BY BUILDING</strong>
+  559 |             </div>
+  560 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./src/app/courses/[id]/page.tsx:557:15)
+    at <unknown> (Error: (./src/app/courses/[id]/page.tsx:557:15)
+[browser] ./src/app/courses/[id]/page.tsx:557:15
+Expression expected
+  555 |                 course.image
+  556 |                   ? {
+> 557 |               <BookOpen size={44} />
+      |               ^
+  558 |               <strong>LEARN BY BUILDING</strong>
+  559 |             </div>
+  560 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:557:15
+Expression expected
+  555 |                 course.image
+  556 |                   ? {
+> 557 |               <BookOpen size={44} />
+      |               ^
+  558 |               <strong>LEARN BY BUILDING</strong>
+  559 |             </div>
+  560 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] Uncaught Error: ./src/app/courses/[id]/page.tsx:557:15
+Expression expected
+  555 |                 course.image
+  556 |                   ? {
+> 557 |               <BookOpen size={44} />
+      |               ^
+  558 |               <strong>LEARN BY BUILDING</strong>
+  559 |             </div>
+  560 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./src/app/courses/[id]/page.tsx:557:15)
+    at <unknown> (Error: (./src/app/courses/[id]/page.tsx:557:15)
+[browser] ./src/app/courses/[id]/page.tsx:557:15
+Expression expected
+  555 |                 course.image
+  556 |                   ? {
+> 557 |               <BookOpen size={44} />
+      |               ^
+  558 |               <strong>LEARN BY BUILDING</strong>
+  559 |             </div>
+  560 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+⨯ ./src/app/courses/[id]/page.tsx:539:18
+Expected a semicolon
+  [90m537 |[0m                 !course.image
+  [90m538 |[0m                   ? (
+[31m[1m>[0m [90m539 |[0m           {course.category}
+  [90m    |[0m                  [31m[1m^[0m
+  [90m540 |[0m         </div>
+  [90m541 |[0m         {[90m/* Course Header */[0m}
+  [90m542 |[0m         <div className=[32m"course-detail-grid"[0m>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+⨯ ./src/app/courses/[id]/page.tsx:539:18
+Expected a semicolon
+  [90m537 |[0m                 !course.image
+  [90m538 |[0m                   ? (
+[31m[1m>[0m [90m539 |[0m           {course.category}
+  [90m    |[0m                  [31m[1m^[0m
+  [90m540 |[0m         </div>
+  [90m541 |[0m         {[90m/* Course Header */[0m}
+  [90m542 |[0m         <div className=[32m"course-detail-grid"[0m>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+[browser] Uncaught Error: ./src/app/courses/[id]/page.tsx:539:18
+Expected a semicolon
+  537 |                 !course.image
+  538 |                   ? (
+> 539 |           {course.category}
+      |                  ^
+  540 |         </div>
+  541 |         {/* Course Header */}
+  542 |         <div className="course-detail-grid">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./src/app/courses/[id]/page.tsx:539:18)
+    at <unknown> (Error: (./src/app/courses/[id]/page.tsx:539:18)
+[browser] ./src/app/courses/[id]/page.tsx:539:18
+Expected a semicolon
+  537 |                 !course.image
+  538 |                   ? (
+> 539 |           {course.category}
+      |                  ^
+  540 |         </div>
+  541 |         {/* Course Header */}
+  542 |         <div className="course-detail-grid">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:539:18
+Expected a semicolon
+  537 |                 !course.image
+  538 |                   ? (
+> 539 |           {course.category}
+      |                  ^
+  540 |         </div>
+  541 |         {/* Course Header */}
+  542 |         <div className="course-detail-grid">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] Uncaught Error: ./src/app/courses/[id]/page.tsx:539:18
+Expected a semicolon
+  537 |                 !course.image
+  538 |                   ? (
+> 539 |           {course.category}
+      |                  ^
+  540 |         </div>
+  541 |         {/* Course Header */}
+  542 |         <div className="course-detail-grid">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./src/app/courses/[id]/page.tsx:539:18)
+    at <unknown> (Error: (./src/app/courses/[id]/page.tsx:539:18)
+[browser] ./src/app/courses/[id]/page.tsx:539:18
+Expected a semicolon
+  537 |                 !course.image
+  538 |                   ? (
+> 539 |           {course.category}
+      |                  ^
+  540 |         </div>
+  541 |         {/* Course Header */}
+  542 |         <div className="course-detail-grid">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:539:18
+Expected a semicolon
+  537 |                 !course.image
+  538 |                   ? (
+> 539 |           {course.category}
+      |                  ^
+  540 |         </div>
+  541 |         {/* Course Header */}
+  542 |         <div className="course-detail-grid">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:539:18
+Expected a semicolon
+  537 |                 !course.image
+  538 |                   ? (
+> 539 |           {course.category}
+      |                  ^
+  540 |         </div>
+  541 |         {/* Course Header */}
+  542 |         <div className="course-detail-grid">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:539:18
+Expected a semicolon
+  537 |                 !course.image
+  538 |                   ? (
+> 539 |           {course.category}):
+      |                  ^
+  540 |         </div>
+  541 |         {/* Course Header */}
+  542 |         <div className="course-detail-grid">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:539:18
+Expected a semicolon
+  537 |                 !course.image
+  538 |                   ? (
+> 539 |           {course.category}):()
+      |                  ^
+  540 |         </div>
+  541 |         {/* Course Header */}
+  542 |         <div className="course-detail-grid">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:539:18
+Expected a semicolon
+  537 |                 !course.image
+  538 |                   ? (
+> 539 |           {course.category}):(<)
+      |                  ^
+  540 |         </div>
+  541 |         {/* Course Header */}
+  542 |         <div className="course-detail-grid">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:539:18
+Expected a semicolon
+  537 |                 !course.image
+  538 |                   ? (
+> 539 |           {course.category}):(<></>)
+      |                  ^
+  540 |         </div>
+  541 |         {/* Course Header */}
+  542 |         <div className="course-detail-grid">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:539:18
+Expected a semicolon
+  537 |                 !course.image
+  538 |                   ? (
+> 539 |           {course.category}):(<></>)}
+      |                  ^
+  540 |         </div>
+  541 |         {/* Course Header */}
+  542 |         <div className="course-detail-grid">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:539:18
+Expected a semicolon
+  537 |                 !course.image
+  538 |                   ? (
+> 539 |           {course.category):(<></>)}
+      |                  ^
+  540 |         </div>
+  541 |         {/* Course Header */}
+  542 |         <div className="course-detail-grid">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+⨯ ./src/app/courses/[id]/page.tsx:556:49
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  [90m554 |[0m               
+  [90m555 |[0m                   ? (
+[31m[1m>[0m [90m556 |[0m               <[33mBookOpen[0m size={[35m44[0m} [35m/> ) :(<></[0m>) }
+  [90m    |[0m                                                 [31m[1m^[0m
+  [90m557 |[0m               <strong>[33mLEARN[0m [33mBY[0m [33mBUILDING[0m</strong>
+  [90m558 |[0m             </div>
+  [90m559 |[0m
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+⨯ ./src/app/courses/[id]/page.tsx:556:49
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  [90m554 |[0m               
+  [90m555 |[0m                   ? (
+[31m[1m>[0m [90m556 |[0m               <[33mBookOpen[0m size={[35m44[0m} [35m/> ) :(<></[0m>) }
+  [90m    |[0m                                                 [31m[1m^[0m
+  [90m557 |[0m               <strong>[33mLEARN[0m [33mBY[0m [33mBUILDING[0m</strong>
+  [90m558 |[0m             </div>
+  [90m559 |[0m
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+[browser] Uncaught Error: ./src/app/courses/[id]/page.tsx:556:49
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  554 |               
+  555 |                   ? (
+> 556 |               <BookOpen size={44} /> ) :(<></>) }
+      |                                                 ^
+  557 |               <strong>LEARN BY BUILDING</strong>
+  558 |             </div>
+  559 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./src/app/courses/[id]/page.tsx:556:49)
+    at <unknown> (Error: (./src/app/courses/[id]/page.tsx:556:49)
+[browser] ./src/app/courses/[id]/page.tsx:556:49
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  554 |               
+  555 |                   ? (
+> 556 |               <BookOpen size={44} /> ) :(<></>) }
+      |                                                 ^
+  557 |               <strong>LEARN BY BUILDING</strong>
+  558 |             </div>
+  559 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:556:49
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  554 |               
+  555 |                   ? (
+> 556 |               <BookOpen size={44} /> ) :(<></>) }
+      |                                                 ^
+  557 |               <strong>LEARN BY BUILDING</strong>
+  558 |             </div>
+  559 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] Uncaught Error: ./src/app/courses/[id]/page.tsx:556:49
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  554 |               
+  555 |                   ? (
+> 556 |               <BookOpen size={44} /> ) :(<></>) }
+      |                                                 ^
+  557 |               <strong>LEARN BY BUILDING</strong>
+  558 |             </div>
+  559 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./src/app/courses/[id]/page.tsx:556:49)
+    at <unknown> (Error: (./src/app/courses/[id]/page.tsx:556:49)
+[browser] ./src/app/courses/[id]/page.tsx:556:49
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  554 |               
+  555 |                   ? (
+> 556 |               <BookOpen size={44} /> ) :(<></>) }
+      |                                                 ^
+  557 |               <strong>LEARN BY BUILDING</strong>
+  558 |             </div>
+  559 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+⨯ ./src/app/courses/[id]/page.tsx:555:49
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  [90m553 |[0m               <span>{course.category}</span>
+  [90m554 |[0m               
+[31m[1m>[0m [90m555 |[0m               <[33mBookOpen[0m size={[35m44[0m} [35m/> ) :(<></[0m>) }
+  [90m    |[0m                                                 [31m[1m^[0m
+  [90m556 |[0m               <strong>[33mLEARN[0m [33mBY[0m [33mBUILDING[0m</strong>
+  [90m557 |[0m             </div>
+  [90m558 |[0m
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+⨯ ./src/app/courses/[id]/page.tsx:555:49
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  [90m553 |[0m               <span>{course.category}</span>
+  [90m554 |[0m               
+[31m[1m>[0m [90m555 |[0m               <[33mBookOpen[0m size={[35m44[0m} [35m/> ) :(<></[0m>) }
+  [90m    |[0m                                                 [31m[1m^[0m
+  [90m556 |[0m               <strong>[33mLEARN[0m [33mBY[0m [33mBUILDING[0m</strong>
+  [90m557 |[0m             </div>
+  [90m558 |[0m
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+[browser] Uncaught Error: ./src/app/courses/[id]/page.tsx:555:49
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  553 |               <span>{course.category}</span>
+  554 |               
+> 555 |               <BookOpen size={44} /> ) :(<></>) }
+      |                                                 ^
+  556 |               <strong>LEARN BY BUILDING</strong>
+  557 |             </div>
+  558 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./src/app/courses/[id]/page.tsx:555:49)
+    at <unknown> (Error: (./src/app/courses/[id]/page.tsx:555:49)
+[browser] ./src/app/courses/[id]/page.tsx:555:49
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  553 |               <span>{course.category}</span>
+  554 |               
+> 555 |               <BookOpen size={44} /> ) :(<></>) }
+      |                                                 ^
+  556 |               <strong>LEARN BY BUILDING</strong>
+  557 |             </div>
+  558 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:555:49
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  553 |               <span>{course.category}</span>
+  554 |               
+> 555 |               <BookOpen size={44} /> ) :(<></>) }
+      |                                                 ^
+  556 |               <strong>LEARN BY BUILDING</strong>
+  557 |             </div>
+  558 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] Uncaught Error: ./src/app/courses/[id]/page.tsx:555:49
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  553 |               <span>{course.category}</span>
+  554 |               
+> 555 |               <BookOpen size={44} /> ) :(<></>) }
+      |                                                 ^
+  556 |               <strong>LEARN BY BUILDING</strong>
+  557 |             </div>
+  558 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./src/app/courses/[id]/page.tsx:555:49)
+    at <unknown> (Error: (./src/app/courses/[id]/page.tsx:555:49)
+[browser] ./src/app/courses/[id]/page.tsx:555:49
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  553 |               <span>{course.category}</span>
+  554 |               
+> 555 |               <BookOpen size={44} /> ) :(<></>) }
+      |                                                 ^
+  556 |               <strong>LEARN BY BUILDING</strong>
+  557 |             </div>
+  558 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:555:49
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  553 |               <span>{course.category}</span>
+  554 |               
+> 555 |               <BookOpen size={44} /> ) :(<></>) }
+      |                                                 ^
+  556 |               <strong>LEARN BY BUILDING</strong>
+  557 |             </div>
+  558 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:555:49
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  553 |               <span>{course.category}</span>
+  554 |               
+> 555 |               <BookOpen size={44} /> ) :(<></>) }
+      |                                                 ^
+  556 |               <strong>LEARN BY BUILDING</strong>
+  557 |             </div>
+  558 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:558:25
+Expected '</', got 'ident'
+  556 |               <span>{course.category}</span>
+  557 |               
+> 558 |               <BookOpen size={44} /> ) :(<></>) }
+      |                         ^^^^
+  559 |               <strong>LEARN BY BUILDING</strong>
+  560 |             </div>
+  561 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:559:25
+Expected '</', got 'ident'
+  557 |               <span>{course.category}</span>
+  558 |               
+> 559 |               <BookOpen size={44} /> ) :(<></>) }
+      |                         ^^^^
+  560 |               <strong>LEARN BY BUILDING</strong>
+  561 |             </div>
+  562 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:556:21
+Expression expected
+  554 |                 !course.image
+  555 |                   ? (
+> 556 |                     <
+      |                     ^
+  557 |               <span>{course.category}</span>
+  558 |               
+  559 |               <BookOpen size={44} /> ) :(<></>) }
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:557:28
+Expected a semicolon
+  555 |                   ? (
+  556 |                     <></>
+> 557 |               <span>{course.category}</span>
+      |                            ^
+  558 |               
+  559 |               <BookOpen size={44} /> ) :(<></>) }
+  560 |               <strong>LEARN BY BUILDING</strong>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:559:49
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  557 |               <span>{course.category}</span>
+  558 |               
+> 559 |               <BookOpen size={44} /> ) :(<></>) }
+      |                                                 ^
+  560 |               <strong>LEARN BY BUILDING</strong>
+  561 |             </div>
+  562 |
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+⨯ ./src/app/courses/[id]/page.tsx:560:29
+Expected '</', got 'ident'
+  [90m558 |[0m               
+  [90m559 |[0m               <[33mBookOpen[0m size={[35m44[0m} [35m/> </[0m>) 
+[31m[1m>[0m [90m560 |[0m               <strong>[33mLEARN[0m [33mBY[0m [33mBUILDING[0m</strong>
+  [90m    |[0m                             [31m[1m^^[0m
+  [90m561 |[0m             </div>
+  [90m562 |[0m
+  [90m563 |[0m             <div className=[32m"course-overview-card"[0m>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+⨯ ./src/app/courses/[id]/page.tsx:560:29
+Expected '</', got 'ident'
+  [90m558 |[0m               
+  [90m559 |[0m               <[33mBookOpen[0m size={[35m44[0m} [35m/> </[0m>) 
+[31m[1m>[0m [90m560 |[0m               <strong>[33mLEARN[0m [33mBY[0m [33mBUILDING[0m</strong>
+  [90m    |[0m                             [31m[1m^^[0m
+  [90m561 |[0m             </div>
+  [90m562 |[0m
+  [90m563 |[0m             <div className=[32m"course-overview-card"[0m>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+[browser] Uncaught Error: ./src/app/courses/[id]/page.tsx:560:29
+Expected '</', got 'ident'
+  558 |               
+  559 |               <BookOpen size={44} /> </>) 
+> 560 |               <strong>LEARN BY BUILDING</strong>
+      |                             ^^
+  561 |             </div>
+  562 |
+  563 |             <div className="course-overview-card">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./src/app/courses/[id]/page.tsx:560:29)
+    at <unknown> (Error: (./src/app/courses/[id]/page.tsx:560:29)
+[browser] ./src/app/courses/[id]/page.tsx:560:29
+Expected '</', got 'ident'
+  558 |               
+  559 |               <BookOpen size={44} /> </>) 
+> 560 |               <strong>LEARN BY BUILDING</strong>
+      |                             ^^
+  561 |             </div>
+  562 |
+  563 |             <div className="course-overview-card">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:560:29
+Expected '</', got 'ident'
+  558 |               
+  559 |               <BookOpen size={44} /> </>) 
+> 560 |               <strong>LEARN BY BUILDING</strong>
+      |                             ^^
+  561 |             </div>
+  562 |
+  563 |             <div className="course-overview-card">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] Uncaught Error: ./src/app/courses/[id]/page.tsx:560:29
+Expected '</', got 'ident'
+  558 |               
+  559 |               <BookOpen size={44} /> </>) 
+> 560 |               <strong>LEARN BY BUILDING</strong>
+      |                             ^^
+  561 |             </div>
+  562 |
+  563 |             <div className="course-overview-card">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./src/app/courses/[id]/page.tsx:560:29)
+    at <unknown> (Error: (./src/app/courses/[id]/page.tsx:560:29)
+[browser] ./src/app/courses/[id]/page.tsx:560:29
+Expected '</', got 'ident'
+  558 |               
+  559 |               <BookOpen size={44} /> </>) 
+> 560 |               <strong>LEARN BY BUILDING</strong>
+      |                             ^^
+  561 |             </div>
+  562 |
+  563 |             <div className="course-overview-card">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+⨯ ./src/app/courses/[id]/page.tsx:561:15
+Expected '</', got 'ident'
+  [90m559 |[0m               <[33mBookOpen[0m size={[35m44[0m} /> 
+  [90m560 |[0m               <strong>[33mLEARN[0m [33mBY[0m [33mBUILDING[0m</strong>
+[31m[1m>[0m [90m561 |[0m             </div>
+  [90m    |[0m               [31m[1m^^^[0m
+  [90m562 |[0m
+  [90m563 |[0m             <div className=[32m"course-overview-card"[0m>
+  [90m564 |[0m               <span className=[32m"inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-f...[0m
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+⨯ ./src/app/courses/[id]/page.tsx:561:15
+Expected '</', got 'ident'
+  [90m559 |[0m               <[33mBookOpen[0m size={[35m44[0m} /> 
+  [90m560 |[0m               <strong>[33mLEARN[0m [33mBY[0m [33mBUILDING[0m</strong>
+[31m[1m>[0m [90m561 |[0m             </div>
+  [90m    |[0m               [31m[1m^^^[0m
+  [90m562 |[0m
+  [90m563 |[0m             <div className=[32m"course-overview-card"[0m>
+  [90m564 |[0m               <span className=[32m"inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-f...[0m
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+[browser] Uncaught Error: ./src/app/courses/[id]/page.tsx:561:15
+Expected '</', got 'ident'
+  559 |               <BookOpen size={44} /> 
+  560 |               <strong>LEARN BY BUILDING</strong>
+> 561 |             </div>
+      |               ^^^
+  562 |
+  563 |             <div className="course-overview-card">
+  564 |               <span className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-f...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./src/app/courses/[id]/page.tsx:561:15)
+    at <unknown> (Error: (./src/app/courses/[id]/page.tsx:561:15)
+[browser] ./src/app/courses/[id]/page.tsx:561:15
+Expected '</', got 'ident'
+  559 |               <BookOpen size={44} /> 
+  560 |               <strong>LEARN BY BUILDING</strong>
+> 561 |             </div>
+      |               ^^^
+  562 |
+  563 |             <div className="course-overview-card">
+  564 |               <span className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-f...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:561:15
+Expected '</', got 'ident'
+  559 |               <BookOpen size={44} /> 
+  560 |               <strong>LEARN BY BUILDING</strong>
+> 561 |             </div>
+      |               ^^^
+  562 |
+  563 |             <div className="course-overview-card">
+  564 |               <span className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-f...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] Uncaught Error: ./src/app/courses/[id]/page.tsx:561:15
+Expected '</', got 'ident'
+  559 |               <BookOpen size={44} /> 
+  560 |               <strong>LEARN BY BUILDING</strong>
+> 561 |             </div>
+      |               ^^^
+  562 |
+  563 |             <div className="course-overview-card">
+  564 |               <span className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-f...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./src/app/courses/[id]/page.tsx:561:15)
+    at <unknown> (Error: (./src/app/courses/[id]/page.tsx:561:15)
+[browser] ./src/app/courses/[id]/page.tsx:561:15
+Expected '</', got 'ident'
+  559 |               <BookOpen size={44} /> 
+  560 |               <strong>LEARN BY BUILDING</strong>
+> 561 |             </div>
+      |               ^^^
+  562 |
+  563 |             <div className="course-overview-card">
+  564 |               <span className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-f...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:561:15
+Expected '</', got 'ident'
+  559 |               <BookOpen size={44} /> 
+  560 |               <strong>LEARN BY BUILDING</strong>
+> 561 |             </div>
+      |               ^^^
+  562 |
+  563 |             <div className="course-overview-card">
+  564 |               <span className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-f...
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/page.tsx:219:25
+Expected '</', got 'ident'
+  217 |                     {course.category}
+  218 |                   </span>
+> 219 |                   <span className="catalog-art-index">0{index + 1}</span>
+      |                         ^^^^^^^^^
+  220 |                   <div className="catalog-art-glyph">
+  221 |                     <BookOpen size={39} strokeWidth={1.3} />
+  222 |                   </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/page.tsx [Client Component Browser]
+    ./src/app/courses/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/page.tsx [Client Component SSR]
+    ./src/app/courses/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] ./src/app/courses/page.tsx:216:25
+Expected '</', got 'ident'
+  214 |                 !course.image
+  215 |                   ? ( <></>
+> 216 |                   <span className="catalog-art-category">
+      |                         ^^^^^^^^^
+  217 |                     {course.category}
+  218 |                   </span>
+  219 |                   <span className="catalog-art-index">0{index + 1}</span>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/page.tsx [Client Component Browser]
+    ./src/app/courses/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/page.tsx [Client Component SSR]
+    ./src/app/courses/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] ./src/app/courses/page.tsx:223:19
+Expected '</', got 'ident'
+  221 |                     <BookOpen size={39} strokeWidth={1.3} />
+  222 |                   </div>
+> 223 |                 </Link>
+      |                   ^^^^
+  224 |                 <div className="catalog-card-body">
+  225 |                   <div className="catalog-card-tags">
+  226 |                     <span>{course.level.toLowerCase()}</span>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/page.tsx [Client Component Browser]
+    ./src/app/courses/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/page.tsx [Client Component SSR]
+    ./src/app/courses/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] ./src/app/courses/page.tsx:223:19
+Expected '</', got 'ident'
+  221 |                     <BookOpen size={39} strokeWidth={1.3} />
+  222 |                   </div> 
+> 223 |                 </Link>
+      |                   ^^^^
+  224 |                 <div className="catalog-card-body">
+  225 |                   <div className="catalog-card-tags">
+  226 |                     <span>{course.level.toLowerCase()}</span>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/page.tsx [Client Component Browser]
+    ./src/app/courses/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/page.tsx [Client Component SSR]
+    ./src/app/courses/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] ./src/app/courses/page.tsx:219:25
+Expected '</', got 'ident'
+  217 |                     {course.category}
+  218 |                   </span>
+> 219 |                   <span className="catalog-art-index">0{index + 1}</span>
+      |                         ^^^^^^^^^
+  220 |                   <div className="catalog-art-glyph">
+  221 |                     <BookOpen size={39} strokeWidth={1.3} />
+  222 |                   </div>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/page.tsx [Client Component Browser]
+    ./src/app/courses/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/page.tsx [Client Component SSR]
+    ./src/app/courses/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] ./src/app/courses/page.tsx:216:25
+Expected '</', got 'ident'
+  214 |                 !course.image
+  215 |                   ? ( <></>
+> 216 |                   <span className="catalog-art-category">
+      |                         ^^^^^^^^^
+  217 |                     {course.category}
+  218 |                   </span>
+  219 |                   <span className="catalog-art-index">0{index + 1}</span>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/page.tsx [Client Component Browser]
+    ./src/app/courses/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/page.tsx [Client Component SSR]
+    ./src/app/courses/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] ./src/app/courses/page.tsx:223:19
+Expected '</', got 'ident'
+  221 |                     <BookOpen size={39} strokeWidth={1.3} />
+  222 |                   </div>
+> 223 |                 </Link>
+      |                   ^^^^
+  224 |                 <div className="catalog-card-body">
+  225 |                   <div className="catalog-card-tags">
+  226 |                     <span>{course.level.toLowerCase()}</span>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/page.tsx [Client Component Browser]
+    ./src/app/courses/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/page.tsx [Client Component SSR]
+    ./src/app/courses/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] ./src/app/courses/page.tsx:223:19
+Expected '</', got 'ident'
+  221 |                     <BookOpen size={39} strokeWidth={1.3} />
+  222 |                   </div> 
+> 223 |                 </Link>
+      |                   ^^^^
+  224 |                 <div className="catalog-card-body">
+  225 |                   <div className="catalog-card-tags">
+  226 |                     <span>{course.level.toLowerCase()}</span>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/page.tsx [Client Component Browser]
+    ./src/app/courses/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/page.tsx [Client Component SSR]
+    ./src/app/courses/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] Uncaught Error: ./src/app/dashboard/page.tsx:277:19
+Expected '</', got 'ident'
+  275 |                 className="learning-continue-art"
+  276 |                 style=
+> 277 |                   nextCourse.course.image
+      |                   ^^^^^^^^^^
+  278 |                     ? {
+  279 |                         backgroundImage: `linear-gradient(0deg, rgba(24, 24, 27, .35), rg...
+  280 |                       }
+
+Parsing ecmascript source code failed
+
+
+    at <unknown> (Error: ./src/app/dashboard/page.tsx:277:19)
+    at <unknown> (Error: (./src/app/dashboard/page.tsx:277:19)
+[browser] ./src/app/dashboard/page.tsx:277:19
+Expected '</', got 'ident'
+  275 |                 className="learning-continue-art"
+  276 |                 style=
+> 277 |                   nextCourse.course.image
+      |                   ^^^^^^^^^^
+  278 |                     ? {
+  279 |                         backgroundImage: `linear-gradient(0deg, rgba(24, 24, 27, .35), rg...
+  280 |                       }
+
+Parsing ecmascript source code failed 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] Uncaught Error: ./src/app/dashboard/page.tsx:277:19
+Expected '</', got 'ident'
+  275 |                 className="learning-continue-art"
+  276 |                 style=
+> 277 |                   nextCourse.course.image
+      |                   ^^^^^^^^^^
+  278 |                     ? {
+  279 |                         backgroundImage: `linear-gradient(0deg, rgba(24, 24, 27, .35), rg...
+  280 |                       }
+
+Parsing ecmascript source code failed
+
+
+    at <unknown> (Error: ./src/app/dashboard/page.tsx:277:19)
+    at <unknown> (Error: (./src/app/dashboard/page.tsx:277:19)
+[browser] ./src/app/dashboard/page.tsx:277:19
+Expected '</', got 'ident'
+  275 |                 className="learning-continue-art"
+  276 |                 style=
+> 277 |                   nextCourse.course.image
+      |                   ^^^^^^^^^^
+  278 |                     ? {
+  279 |                         backgroundImage: `linear-gradient(0deg, rgba(24, 24, 27, .35), rg...
+  280 |                       }
+
+Parsing ecmascript source code failed 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/dashboard/page.tsx:276:18
+Expected '</', got 'ident'
+  274 |               <div
+  275 |                 className="learning-continue-art"
+> 276 |                { style=
+      |                  ^^^^^
+  277 |                   nextCourse.course.image
+  278 |                     ? {
+  279 |                         backgroundImage: `linear-gradient(0deg, rgba(24, 24, 27, .35), rg...
+
+Parsing ecmascript source code failed 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/dashboard/page.tsx:288:16
+Unterminated regexp literal
+  286 |                     ?
+  287 |                 <BookOpen size={34} />
+> 288 |               </div>
+      |                ^^^^^
+  289 |               <div className="learning-continue-copy">
+  290 |                 <span className="learning-course-kicker">
+  291 |                   {nextCourse.status === "COMPLETED"
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/dashboard/page.tsx [Client Component Browser]
+    ./src/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/dashboard/page.tsx [Client Component SSR]
+    ./src/app/dashboard/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] ./src/app/dashboard/page.tsx:288:16
+Unterminated regexp literal
+  286 |                     ?(
+  287 |                 <BookOpen size={34} />
+> 288 |               </div>
+      |                ^^^^^
+  289 |               <div className="learning-continue-copy">
+  290 |                 <span className="learning-course-kicker">
+  291 |                   {nextCourse.status === "COMPLETED"
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/dashboard/page.tsx [Client Component Browser]
+    ./src/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/dashboard/page.tsx [Client Component SSR]
+    ./src/app/dashboard/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] ./src/app/dashboard/page.tsx:288:16
+Unterminated regexp literal
+  286 |                     ?(
+  287 |                 <BookOpen size={34} />)
+> 288 |               </div>
+      |                ^^^^^
+  289 |               <div className="learning-continue-copy">
+  290 |                 <span className="learning-course-kicker">
+  291 |                   {nextCourse.status === "COMPLETED"
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/dashboard/page.tsx [Client Component Browser]
+    ./src/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/dashboard/page.tsx [Client Component SSR]
+    ./src/app/dashboard/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] ./src/app/dashboard/page.tsx:287:52
+Expected '</', got ')'
+  285 |                   nextCourse.course.image
+  286 |                     ?(
+> 287 |                 <BookOpen size={34} />)</>) :(<></>) }
+      |                                                    ^
+  288 |               </div>
+  289 |               <div className="learning-continue-copy">
+  290 |                 <span className="learning-course-kicker">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/dashboard/page.tsx [Client Component Browser]
+    ./src/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/dashboard/page.tsx [Client Component SSR]
+    ./src/app/dashboard/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+⨯ ./src/app/courses/[id]/page.tsx:560:63
+Expected '</', got '}'
+  [90m558 |[0m               
+  [90m559 |[0m               <[33mBookOpen[0m size={[35m44[0m} /> 
+[31m[1m>[0m [90m560 |[0m               <strong>[33mLEARN[0m [33mBY[0m [33mBUILDING[0m<[35m/strong> </[0m>) :(<></> }
+  [90m    |[0m                                                               [31m[1m^[0m
+  [90m561 |[0m             </div>
+  [90m562 |[0m
+  [90m563 |[0m             <div className=[32m"course-overview-card"[0m>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+⨯ ./src/app/courses/[id]/page.tsx:560:63
+Expected '</', got '}'
+  [90m558 |[0m               
+  [90m559 |[0m               <[33mBookOpen[0m size={[35m44[0m} /> 
+[31m[1m>[0m [90m560 |[0m               <strong>[33mLEARN[0m [33mBY[0m [33mBUILDING[0m<[35m/strong> </[0m>) :(<></> }
+  [90m    |[0m                                                               [31m[1m^[0m
+  [90m561 |[0m             </div>
+  [90m562 |[0m
+  [90m563 |[0m             <div className=[32m"course-overview-card"[0m>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+[browser] Uncaught Error: ./src/app/courses/[id]/page.tsx:560:63
+Expected '</', got '}'
+  558 |               
+  559 |               <BookOpen size={44} /> 
+> 560 |               <strong>LEARN BY BUILDING</strong> </>) :(<></> }
+      |                                                               ^
+  561 |             </div>
+  562 |
+  563 |             <div className="course-overview-card">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./src/app/courses/[id]/page.tsx:560:63)
+    at <unknown> (Error: (./src/app/courses/[id]/page.tsx:560:63)
+[browser] Uncaught Error: ./src/app/courses/[id]/page.tsx:560:63
+Expected '</', got '}'
+  558 |               
+  559 |               <BookOpen size={44} /> 
+> 560 |               <strong>LEARN BY BUILDING</strong> </>) :(<></> }
+      |                                                               ^
+  561 |             </div>
+  562 |
+  563 |             <div className="course-overview-card">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./src/app/courses/[id]/page.tsx:560:63)
+    at <unknown> (Error: (./src/app/courses/[id]/page.tsx:560:63)
+[browser] ./src/app/dashboard/page.tsx:287:46
+Expected '</', got ')'
+  285 |                   !nextCourse.course.image
+  286 |                     ?(
+> 287 |                 <BookOpen size={34} />):<></>) }
+      |                                              ^
+  288 |               </div>
+  289 |               <div className="learning-continue-copy">
+  290 |                 <span className="learning-course-kicker">
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/dashboard/page.tsx [Client Component Browser]
+    ./src/app/dashboard/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/dashboard/page.tsx [Client Component SSR]
+    ./src/app/dashboard/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] ./src/components/navbar.tsx:74:23
+Expected '</', got 'ident'
+  72 |             Certificates
+  73 |           </Link>
+> 74 |                 <Link href="/admin" onClick={() => setIsOpen(false)}>
+     |                       ^^^^
+  75 |                   Admin workspace
+  76 |                 </Link>
+  77 |               )}
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Server Component:
+    ./src/components/navbar.tsx
+    ./src/app/not-found.tsx
+
+  Client Component Browser:
+    ./src/components/navbar.tsx [Client Component Browser]
+    ./src/app/auth/login/page.tsx [Client Component Browser]
+    ./src/app/auth/login/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/navbar.tsx [Client Component SSR]
+    ./src/app/auth/login/page.tsx [Client Component SSR]
+    ./src/app/auth/login/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] ./src/components/navbar.tsx:77:16
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  75 |                   Admin workspace
+  76 |                 </Link>
+> 77 |               )}
+     |                ^
+  78 |               {user.role === "INSTRUCTOR" && (
+  79 |                 <Link href="/instructor" onClick={() => setIsOpen(false)}>
+  80 |                   My courses
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Server Component:
+    ./src/components/navbar.tsx
+    ./src/app/not-found.tsx
+
+  Client Component Browser:
+    ./src/components/navbar.tsx [Client Component Browser]
+    ./src/app/auth/login/page.tsx [Client Component Browser]
+    ./src/app/auth/login/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/navbar.tsx [Client Component SSR]
+    ./src/app/auth/login/page.tsx [Client Component SSR]
+    ./src/app/auth/login/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] ./src/components/navbar.tsx:77:16
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  75 |                   Admin workspace
+  76 |                 </Link><></>
+> 77 |               )}
+     |                ^
+  78 |               {user.role === "INSTRUCTOR" && (
+  79 |                 <Link href="/instructor" onClick={() => setIsOpen(false)}>
+  80 |                   My courses
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Server Component:
+    ./src/components/navbar.tsx
+    ./src/app/not-found.tsx
+
+  Client Component Browser:
+    ./src/components/navbar.tsx [Client Component Browser]
+    ./src/app/auth/login/page.tsx [Client Component Browser]
+    ./src/app/auth/login/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/navbar.tsx [Client Component SSR]
+    ./src/app/auth/login/page.tsx [Client Component SSR]
+    ./src/app/auth/login/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] ./src/components/navbar.tsx:76:26
+Unexpected token. Did you mean `{'>'}` or `&gt;`?
+  74 |                 <Link href="/admin" onClick={() => setIsOpen(false)}>
+  75 |                   Admin workspace
+> 76 |                 </Link><>>
+     |                          ^
+  77 |               )}
+  78 |               {user.role === "INSTRUCTOR" && (
+  79 |                 <Link href="/instructor" onClick={() => setIsOpen(false)}>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Server Component:
+    ./src/components/navbar.tsx
+    ./src/app/not-found.tsx
+
+  Client Component Browser:
+    ./src/components/navbar.tsx [Client Component Browser]
+    ./src/app/auth/login/page.tsx [Client Component Browser]
+    ./src/app/auth/login/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/navbar.tsx [Client Component SSR]
+    ./src/app/auth/login/page.tsx [Client Component SSR]
+    ./src/app/auth/login/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] ./src/components/navbar.tsx:112:12
+Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+  110 |               </Link>
+  111 |             </>
+> 112 |           )}
+      |            ^
+  113 |         </div>
+  114 |         {user && (
+  115 |           <Link
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Server Component:
+    ./src/components/navbar.tsx
+    ./src/app/not-found.tsx
+
+  Client Component Browser:
+    ./src/components/navbar.tsx [Client Component Browser]
+    ./src/app/auth/login/page.tsx [Client Component Browser]
+    ./src/app/auth/login/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/navbar.tsx [Client Component SSR]
+    ./src/app/auth/login/page.tsx [Client Component SSR]
+    ./src/app/auth/login/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] In HTML, <a> cannot be a descendant of <a>.
+This will cause a hydration error.
+
+  ...
+    <LoadingBoundary name="/" loading={null}>
+      <HTTPAccessFallbackBoundary notFound={{...}} forbidden={undefined} unauthorized={undefined}>
+        <HTTPAccessFallbackErrorBoundary pathname="/" notFound={{...}} forbidden={undefined} unauthorized={undefined} ...>
+          <RedirectBoundary>
+            <RedirectErrorBoundary router={{...}}>
+              <InnerLayoutRouter url="/" tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+                <SegmentViewNode type="page" pagePath="page.tsx">
+                  <SegmentTrieNode>
+                  <Home>
+                    <main className="site-home">
+                      <Navbar>
+                        <nav className="site-nav">
+                          <div className="site-nav-i...">
+                            <LinkComponent>
+                            <div>
+                            <LinkComponent className="site-user-..." href="/profile" title="Your profile">
+>                             <a
+>                               className="site-user-chip"
+>                               title="Your profile"
+>                               ref={function}
+>                               onClick={function onClick}
+>                               onMouseEnter={function onMouseEnter}
+>                               onTouchStart={function onTouchStart}
+>                               href="/profile"
+>                             >
+                                <LinkComponent href="/pycoder" onClick={function onClick}>
+>                                 <a
+>                                   ref={function}
+>                                   onClick={function onClick}
+>                                   onMouseEnter={function onMouseEnter}
+>                                   onTouchStart={function onTouchStart}
+>                                   href="/pycoder"
+>                                 >
+                                ...
+                            ...
+                      ...
+                ...
+              ...
+ 
+    at validateDOMNesting (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:1963:372)
+    at completeWork (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:6925:25)
+    at runWithFiberInDEV (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:965:74)
+    at completeUnitOfWork (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9622:23)
+    at performUnitOfWork (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9557:28)
+    at workLoopSync (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9449:40)
+    at renderRootSync (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9433:13)
+    at performWorkOnRoot (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9061:186)
+    at performSyncWorkOnRoot (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:10263:9)
+    at flushSyncWorkAcrossRoots_impl (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:10179:316)
+    at flushSyncWork$1 (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9230:86)
+    at Object.scheduleRefresh (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:299:13)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_0rpq4pf._.js:391:33)
+    at Set.forEach (<anonymous>)
+    at Object.performReactRefresh (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_0rpq4pf._.js:384:38)
+    at applyUpdate (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_0rpq4pf._.js:878:31)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_0rpq4pf._.js:886:13) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:1963:372)
+[browser] <a> cannot contain a nested <a>.
+See this log for the ancestor stack trace. 
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:1965:21)
+    at runWithFiberInDEV (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:965:74)
+    at validateDOMNesting (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:1964:178)
+    at completeWork (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:6925:25)
+    at runWithFiberInDEV (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:965:74)
+    at completeUnitOfWork (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9622:23)
+    at performUnitOfWork (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9557:28)
+    at workLoopSync (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9449:40)
+    at renderRootSync (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9433:13)
+    at performWorkOnRoot (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9061:186)
+    at performSyncWorkOnRoot (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:10263:9)
+    at flushSyncWorkAcrossRoots_impl (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:10179:316)
+    at flushSyncWork$1 (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:9230:86)
+    at Object.scheduleRefresh (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:299:13)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_0rpq4pf._.js:391:33)
+    at Set.forEach (<anonymous>)
+    at Object.performReactRefresh (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_0rpq4pf._.js:384:38)
+    at applyUpdate (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_0rpq4pf._.js:878:31)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_0rpq4pf._.js:886:13) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_058-ah~._.js:1965:21)

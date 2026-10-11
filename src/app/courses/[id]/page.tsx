@@ -557,7 +557,7 @@ export default function CourseDetailPage({ params }: Props) {
               <span>{course.category}</span>
               
               <BookOpen size={44} /> 
-              <strong>LEARN BY BUILDING</strong> </>) :(<></>) }
+              <strong>LEARN BY BUILDING</strong> </>) :<></> }
             </div>
 
             <div className="course-overview-card">

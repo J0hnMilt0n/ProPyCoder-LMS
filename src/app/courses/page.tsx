@@ -219,7 +219,7 @@ export default function CoursesPage() {
                   <span className="catalog-art-index">0{index + 1}</span>
                   <div className="catalog-art-glyph">
                     <BookOpen size={39} strokeWidth={1.3} />
-                  </div> </>) :(<></>) }
+                  </div> </>) :<></> }
                 </Link>
                 <div className="catalog-card-body">
                   <div className="catalog-card-tags">
