@@ -16,6 +16,10 @@ export const metadata: Metadata = {
   title: "ProPyCoder | Learn by building",
   description:
     "Project-led software courses, practical coding labs, and a learning dashboard built for your next skill.",
+    icons: {
+    icon: "/propycoder-logo.png",
+    shortcut: "/propycoder-logo.png",
+    apple: "/propycoder-logo.png"}
 };
 
 export default function RootLayout({
