@@ -107,23 +107,54 @@ export async function proxyPyCoderPage(request: NextRequest, pathname: string) {
           : `href=${quote}/${quote} target=${quote}_top${quote}`,
     );
 
-    const themeBridge = `<style>
+    const themeBridge = `
+    <style>
   .lab-window-controls{display:flex;align-items:center;gap:8px;height:30px;margin:0 12px 8px;padding:0 2px 8px;border-bottom:1px solid rgba(125,130,140,.2)}
   .lab-window-dot{display:block;width:11px;height:11px;border:1px solid rgba(0,0,0,.08);border-radius:50%;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
-  .lab-window-dot.is-close{background:#ed6a5f}
-  .lab-window-dot.is-minimize{background:#edbd4f}
-  .lab-window-dot.is-maximize{background:#9298a2}
+  // .lab-window-dot.is-close{background:#ed6a5f}
+  // .lab-window-dot.is-minimize{background:#edbd4f}
+  // .lab-window-dot.is-maximize{background:#9298a2}
   .lab-workspace{max-width:1120px!important;margin:0 auto!important;padding:10px 18px 24px!important;background:transparent!important;box-shadow:none!important;border-radius:0!important}
   .max-w-3xl{margin-top:0!important;padding:0 12px 18px!important;background:transparent!important;box-shadow:none!important;border-radius:0!important}
   @media(max-width:640px){.lab-workspace{padding:8px 12px 18px!important}.lab-window-controls{height:25px;margin:0 12px 5px;padding-bottom:6px}}
-  </style><style>
- button[id="runCode"],  div[class="flex items-center space-x-3"] {
+  </style>
+  <style>
+ button[id="runCode"], label[id="languageLabel"],  div[class="flex items-center space-x-3"] {
   display: none !important;
 }
-  .mobile-menu-btn{
-    margin-top: 43px!important;
+  // .mobile-menu-btn{
+  //   margin-top: 43px!important;
+  // }
+</style><script>
+(function () {
+  function removeCenterAlignment() {
+    const element = document.getElementById("langSymbol");
+    if (!element) return;
+
+    element.parentElement?.classList.remove("items-center");
+    element.parentElement?.classList.add("gap-3");
+    element.parentElement?.parentElement?.classList.remove("items-center");
   }
-</style>`;
+
+  if (document.readyState === "loading") {
+    document.addEventListener(
+      "DOMContentLoaded",
+      removeCenterAlignment,
+      { once: true }
+    );
+  } else {
+    removeCenterAlignment();
+  }
+
+  // Handle elements added or replaced dynamically.
+  const observer = new MutationObserver(removeCenterAlignment);
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+  });
+})();
+</script>
+`;
     html = html.replace(/<\/head>/i, `${themeBridge}</head>`);
 
     return new NextResponse(html, {
