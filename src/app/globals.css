@@ -6696,3 +6696,13 @@ a.profile-cert-link:hover {
 .certificate-medal svg {
   display: block;
 }
+
+/* Fixed certificate dimensions */
+.certificate-frame {
+  width: 760px;  
+  aspect-ratio: auto;
+  box-sizing: border-box;
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
+}
