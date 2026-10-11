@@ -72,7 +72,7 @@ export function Navbar() {
       <div className="site-nav-inner">
         <Link href="/" className="site-brand -ml-3" aria-label="ProPyCoder home">
           <BrandLogo />
-          <span className="md:-ml-3 -ml-3">ProPyCoder</span>
+          <span className="md:-ml-3 -ml-3 mr-2">ProPyCoder</span>
         </Link>
         <div className={`site-nav-links ${isOpen ? "is-open" : ""}`}>
           <Link

@@ -203,8 +203,8 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  /* width: 40px !important; */
+  /* height: 38px; */
   margin-left: 5px;
   border: 1px solid var(--line);
   border-radius: 50%;
@@ -4070,7 +4070,7 @@ body:has(.lab-page) {
     align-items: center;
     gap: 5px;
     margin-left: 5px;
-    padding: 8px 13px;
+    padding: 8px;
     border: 1px solid #ecd9c8;
     border-radius: 999px;
     background: #fff4ec;
@@ -4084,12 +4084,12 @@ body:has(.lab-page) {
     align-items: center;
     gap: 5px;
     margin-left: 5px;
-    /* padding: 8px 13px; */
+    padding: 8px;
     border: 1px solid #ecd9c8;
-    border-radius: 999px;
+    border-radius: 100%;
     background: #fff4ec;
     color: #a74623;
-    font-size: 12.5px;
+    font-size: 11.5px;
     font-weight: 700;
     white-space: nowrap;
   }
