@@ -1,13 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
-
-// Helper function to extract YouTube video ID from URL
-function extractYouTubeId(url: string): string | null {
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-  const match = url.match(regExp);
-  return match && match[2].length === 11 ? match[2] : null;
-}
+import { extractYouTubeId } from "@/lib/youtube";
 
 // GET lessons for a course (only accessible to enrolled users or for free previews)
 export async function GET(request: NextRequest) {
@@ -27,7 +21,7 @@ export async function GET(request: NextRequest) {
     const modules = await prisma.module.findMany({
       where: { courseId },
       include: {
-        lessons: true,
+        lessons: { orderBy: { order: "asc" } },
       },
       orderBy: { order: "asc" },
     });
@@ -86,19 +80,19 @@ export async function POST(request: NextRequest) {
     const { title, description, moduleId, order, videoUrl, duration, isFree } = body;
 
     // Verify instructor owns the course (through module)
-    const module = await prisma.module.findUnique({
+    const moduleRecord = await prisma.module.findUnique({
       where: { id: moduleId },
       include: { course: true },
     });
 
-    if (!module) {
+    if (!moduleRecord) {
       return NextResponse.json(
         { error: "Module not found" },
         { status: 404 }
       );
     }
 
-    if (module.course.instructorId !== session.user.id) {
+    if (moduleRecord.course.instructorId !== session.user.id) {
       return NextResponse.json(
         { error: "You can only add lessons to your own courses" },
         { status: 403 }

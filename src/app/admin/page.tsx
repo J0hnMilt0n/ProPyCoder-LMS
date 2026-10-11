@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -15,12 +15,22 @@ import {
   GraduationCap,
   LayoutDashboard,
   LoaderCircle,
+  Megaphone,
+  Plus,
   RefreshCw,
   Search,
+  Send,
   ShieldCheck,
+  UserCog,
   Users,
+  Video,
+  X,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { CourseContentManager } from "@/components/course-content-manager";
+import { LiveClassManager } from "@/components/live-class-manager";
+import { ImageUploadField } from "@/components/image-upload-field";
+import { useConfirm } from "@/components/confirm-dialog";
 
 type AdminOverview = {
   metrics: {
@@ -42,8 +52,10 @@ type AdminOverview = {
     firstName: string;
     lastName: string;
     email: string;
+    avatar: string | null;
     createdAt: string;
     isActive: boolean;
+    role: string;
   }[];
   recentCourses: {
     id: string;
@@ -62,15 +74,91 @@ type AdminOverview = {
     student: { firstName: string; lastName: string; email: string };
     course: { id: string; title: string };
   }[];
+  instructors: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    avatar: string | null;
+    createdAt: string;
+    isActive: boolean;
+    role: string;
+    _count: { createdCourses: number };
+  }[];
+  recentAnnouncements: {
+    id: string;
+    title: string;
+    message: string;
+    link: string | null;
+    createdAt: string;
+    recipients: number;
+  }[];
 };
 
-type View = "overview" | "courses" | "students" | "enrollments";
+type View =
+  | "overview"
+  | "courses"
+  | "students"
+  | "instructors"
+  | "enrollments"
+  | "live"
+  | "announcements";
 const viewLabels: Record<View, string> = {
   overview: "Overview",
   courses: "Courses",
   students: "Students",
+  instructors: "Instructors",
   enrollments: "Enrollments",
+  live: "Live classes",
+  announcements: "Announcements",
 };
+const viewIcons: Record<View, typeof Users> = {
+  overview: LayoutDashboard,
+  courses: BookOpen,
+  students: Users,
+  instructors: UserCog,
+  enrollments: GraduationCap,
+  live: Video,
+  announcements: Megaphone,
+};
+
+type CourseForm = {
+  title: string;
+  description: string;
+  category: string;
+  level: string;
+  price: string;
+  duration: string;
+  image: string;
+  status: string;
+  instructorId: string;
+};
+
+const EMPTY_COURSE_FORM: CourseForm = {
+  title: "",
+  description: "",
+  category: "Python",
+  level: "BEGINNER",
+  price: "0",
+  duration: "1",
+  image: "",
+  status: "DRAFT",
+  instructorId: "",
+};
+
+const COURSE_CATEGORIES = [
+  "Python",
+  "Web Development",
+  "Mobile Development",
+  "Data Science",
+  "DevOps",
+  "Cloud Computing",
+];
+
+type CourseModalState =
+  | { mode: "create" }
+  | { mode: "edit"; courseId: string }
+  | null;
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -80,7 +168,24 @@ export default function AdminPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [view, setView] = useState<View>("overview");
   const [search, setSearch] = useState("");
+  const [courseModal, setCourseModal] = useState<CourseModalState>(null);
+  const [courseForm, setCourseForm] = useState<CourseForm>(EMPTY_COURSE_FORM);
+  const [isSavingCourse, setIsSavingCourse] = useState(false);
+  const [isLoadingCourse, setIsLoadingCourse] = useState(false);
+  const [announcementOpen, setAnnouncementOpen] = useState(false);
+  const [announceForm, setAnnounceForm] = useState({
+    title: "",
+    message: "",
+    link: "",
+    audience: "ALL",
+  });
+  const [isSendingAnnouncement, setIsSendingAnnouncement] = useState(false);
+  const [contentCourse, setContentCourse] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
 
+  const confirm = useConfirm();
   const loadOverview = useCallback(async (refresh = false) => {
     if (refresh) setIsRefreshing(true);
     else setIsLoading(true);
@@ -120,9 +225,23 @@ export default function AdminPage() {
           .toLowerCase()
           .includes(query),
       );
+    if (view === "instructors")
+      return overview.instructors.filter(
+        (instructor) =>
+          instructor.role === "INSTRUCTOR" &&
+          `${instructor.firstName} ${instructor.lastName} ${instructor.email}`
+            .toLowerCase()
+            .includes(query),
+      );
     if (view === "enrollments")
       return overview.recentEnrollments.filter((enrollment) =>
         `${enrollment.student.firstName} ${enrollment.student.lastName} ${enrollment.course.title}`
+          .toLowerCase()
+          .includes(query),
+      );
+    if (view === "announcements")
+      return overview.recentAnnouncements.filter((announcement) =>
+        `${announcement.title} ${announcement.message}`
           .toLowerCase()
           .includes(query),
       );
@@ -142,6 +261,19 @@ export default function AdminPage() {
               new Date(user.createdAt).toLocaleDateString(),
             ]),
           ]
+        : view === "instructors"
+          ? [
+              ["Name", "Email", "Courses", "Status", "Joined"],
+              ...(filteredItems as AdminOverview["instructors"]).map(
+                (instructor) => [
+                  `${instructor.firstName} ${instructor.lastName}`,
+                  instructor.email,
+                  String(instructor._count.createdCourses),
+                  instructor.isActive ? "Active" : "Inactive",
+                  new Date(instructor.createdAt).toLocaleDateString(),
+                ],
+              ),
+            ]
         : view === "enrollments"
           ? [
               ["Student", "Email", "Course", "Status", "Enrolled"],
@@ -155,7 +287,19 @@ export default function AdminPage() {
                 ],
               ),
             ]
-          : [
+          : view === "announcements"
+            ? [
+                ["Title", "Message", "Recipients", "Sent"],
+                ...(filteredItems as AdminOverview["recentAnnouncements"]).map(
+                  (announcement) => [
+                    announcement.title,
+                    announcement.message.replaceAll("\n", " "),
+                    String(announcement.recipients),
+                    new Date(announcement.createdAt).toLocaleDateString(),
+                  ],
+                ),
+              ]
+            : [
               ["Course", "Category", "Instructor", "Status", "Students"],
               ...(filteredItems as AdminOverview["recentCourses"]).map(
                 (course) => [
@@ -184,9 +328,10 @@ export default function AdminPage() {
 
   async function updateStudentStatus(userId: string, isActive: boolean) {
     if (
-      !window.confirm(
-        `${isActive ? "Deactivate" : "Reactivate"} this student account?`,
-      )
+      !await confirm({
+        title: "Confirm action",
+        message: `${isActive ? "Deactivate" : "Reactivate"} this student account?`,
+      })
     )
       return;
     try {
@@ -218,6 +363,245 @@ export default function AdminPage() {
       await loadOverview(true);
     } catch {
       toast.error("Could not update this course");
+    }
+  }
+
+  function openCreateCourse() {
+    setCourseForm({
+      ...EMPTY_COURSE_FORM,
+      instructorId: session?.user?.id ?? overview?.instructors[0]?.id ?? "",
+    });
+    setCourseModal({ mode: "create" });
+  }
+
+  async function openEditCourse(courseId: string) {
+    setCourseForm(EMPTY_COURSE_FORM);
+    setIsLoadingCourse(true);
+    setCourseModal({ mode: "edit", courseId });
+    try {
+      const response = await fetch(`/api/admin/courses/${courseId}`, {
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("Course load failed");
+      const course = (await response.json()) as {
+        title: string;
+        description: string;
+        category: string;
+        level: string;
+        price: number;
+        duration: number;
+        image: string | null;
+        status: string;
+        instructorId: string;
+      };
+      setCourseForm({
+        title: course.title,
+        description: course.description,
+        category: course.category,
+        level: course.level,
+        price: String(course.price),
+        duration: String(course.duration),
+        image: course.image ?? "",
+        status: course.status,
+        instructorId: course.instructorId,
+      });
+    } catch {
+      toast.error("Could not load this course");
+      setCourseModal(null);
+    } finally {
+      setIsLoadingCourse(false);
+    }
+  }
+
+  async function saveCourse(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!courseModal) return;
+    const courseId = courseModal.mode === "edit" ? courseModal.courseId : null;
+    const editing = courseId !== null;
+    setIsSavingCourse(true);
+    try {
+      const payload = {
+        title: courseForm.title.trim(),
+        description: courseForm.description.trim(),
+        category: courseForm.category.trim(),
+        level: courseForm.level,
+        price: Number(courseForm.price),
+        duration: Number(courseForm.duration),
+        image: courseForm.image.trim(),
+        status: courseForm.status,
+        instructorId: courseForm.instructorId,
+      };
+      const response = await fetch(
+        editing ? `/api/admin/courses/${courseId}` : "/api/admin/courses",
+        {
+          method: editing ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(data?.error ?? "Course save failed");
+      }
+      toast.success(editing ? "Course updated" : "Course created");
+      setCourseModal(null);
+      await loadOverview(true);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not save the course",
+      );
+    } finally {
+      setIsSavingCourse(false);
+    }
+  }
+
+  async function deleteCourse(course: AdminOverview["recentCourses"][number]) {
+    if (
+      !await confirm({
+        title: "Delete course",
+        message: `Delete "${course.title}"? Its modules, lessons, quizzes and enrollments will be removed too.`,
+      })
+    )
+      return;
+    try {
+      const response = await fetch(`/api/admin/courses/${course.id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Course deletion failed");
+      toast.success("Course deleted");
+      await loadOverview(true);
+    } catch {
+      toast.error("Could not delete this course");
+    }
+  }
+
+  async function updateUserRole(
+    user: AdminOverview["recentUsers"][number],
+    role: "STUDENT" | "INSTRUCTOR",
+  ) {
+    const name = `${user.firstName} ${user.lastName}`;
+    if (
+      !await confirm({
+        title: "Confirm role change",
+        message: role === "INSTRUCTOR"
+          ? `Promote ${name} to instructor? They will be able to create and manage courses.`
+          : `Demote ${name} back to student?`,
+      })
+    )
+      return;
+    try {
+      const response = await fetch(`/api/admin/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role }),
+      });
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(data?.error ?? "Role update failed");
+      }
+      toast.success(
+        role === "INSTRUCTOR"
+          ? `${name} is now an instructor`
+          : `${name} is now a student`,
+      );
+      await loadOverview(true);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not update this role",
+      );
+    }
+  }
+
+  async function removeEnrollment(
+    enrollment: AdminOverview["recentEnrollments"][number],
+  ) {
+    const name = `${enrollment.student.firstName} ${enrollment.student.lastName}`;
+    if (
+      !await confirm({
+        title: "Remove enrollment",
+        message: `Remove ${name} from "${enrollment.course.title}"? Their progress in this course will no longer count.`,
+      })
+    )
+      return;
+    try {
+      const response = await fetch(`/api/admin/enrollments/${enrollment.id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Enrollment removal failed");
+      toast.success(`${name} removed from the course`);
+      await loadOverview(true);
+    } catch {
+      toast.error("Could not remove this enrollment");
+    }
+  }
+
+  async function sendAnnouncement(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSendingAnnouncement(true);
+    try {
+      const response = await fetch("/api/admin/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: announceForm.title.trim(),
+          message: announceForm.message.trim(),
+          link: announceForm.link.trim(),
+          audience: announceForm.audience,
+        }),
+      });
+      const data = (await response.json().catch(() => null)) as {
+        sent?: number;
+        error?: string;
+      } | null;
+      if (!response.ok) throw new Error(data?.error ?? "Sending failed");
+      toast.success(
+        `Announcement sent to ${data?.sent ?? 0} ${
+          data?.sent === 1 ? "person" : "people"
+        }`,
+      );
+      setAnnouncementOpen(false);
+      setAnnounceForm({ title: "", message: "", link: "", audience: "ALL" });
+      await loadOverview(true);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not send the announcement",
+      );
+    } finally {
+      setIsSendingAnnouncement(false);
+    }
+  }
+
+  async function updateInstructorStatus(user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    isActive: boolean;
+  }) {
+    const name = `${user.firstName} ${user.lastName}`;
+    if (
+      !await confirm({
+        title: "Confirm action",
+        message: `${user.isActive ? "Deactivate" : "Reactivate"} ${name}'s instructor account?`,
+      })
+    )
+      return;
+    try {
+      const response = await fetch(`/api/admin/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !user.isActive }),
+      });
+      if (!response.ok) throw new Error("Instructor update failed");
+      toast.success(`Account ${user.isActive ? "deactivated" : "reactivated"}`);
+      await loadOverview(true);
+    } catch {
+      toast.error("Could not update this instructor account");
     }
   }
 
@@ -278,6 +662,11 @@ export default function AdminPage() {
     },
   ];
 
+  const assignableInstructors = overview.instructors.filter(
+    (instructor) =>
+      instructor.isActive || instructor.id === courseForm.instructorId,
+  );
+
   return (
     <div className="admin-app">
       <Navbar />
@@ -285,14 +674,7 @@ export default function AdminPage() {
         <aside className="admin-sidebar" aria-label="Admin navigation">
           <div className="admin-sidebar-label">WORKSPACE</div>
           {(Object.keys(viewLabels) as View[]).map((item) => {
-            const Icon =
-              item === "overview"
-                ? LayoutDashboard
-                : item === "courses"
-                  ? BookOpen
-                  : item === "students"
-                    ? Users
-                    : GraduationCap;
+            const Icon = viewIcons[item];
             return (
               <button
                 key={item}
@@ -394,6 +776,34 @@ export default function AdminPage() {
                     </div>
                     <ArrowUpRight size={18} />
                   </div>
+                  <button
+                    type="button"
+                    className="admin-shortcut admin-shortcut-button"
+                    onClick={openCreateCourse}
+                  >
+                    <span className="admin-shortcut-icon">
+                      <Plus size={17} />
+                    </span>
+                    <span>
+                      <strong>Create a course</strong>
+                      <small>Add new content to the catalog</small>
+                    </span>
+                    <ArrowUpRight size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-shortcut admin-shortcut-button"
+                    onClick={() => setAnnouncementOpen(true)}
+                  >
+                    <span className="admin-shortcut-icon">
+                      <Megaphone size={17} />
+                    </span>
+                    <span>
+                      <strong>Send an announcement</strong>
+                      <small>Notify every learner at once</small>
+                    </span>
+                    <ArrowUpRight size={16} />
+                  </button>
                   <Link href="/courses" className="admin-shortcut">
                     <span className="admin-shortcut-icon">
                       <BookOpen size={17} />
@@ -437,9 +847,20 @@ export default function AdminPage() {
                 </div>
                 <EnrollmentTable
                   items={overview.recentEnrollments.slice(0, 5)}
+                  onRemove={removeEnrollment}
                 />
               </section>
             </>
+          ) : view === "live" ? (
+            <section className="admin-panel admin-live-panel">
+              <LiveClassManager
+                mode="admin"
+                courses={overview.recentCourses.map((course) => ({
+                  id: course.id,
+                  title: course.title,
+                }))}
+              />
+            </section>
           ) : (
             <section className="admin-panel admin-management-panel">
               <div className="admin-management-heading">
@@ -451,17 +872,41 @@ export default function AdminPage() {
                       ? `${metrics.totalCourses} courses · ${metrics.publishedCourses} published`
                       : view === "students"
                         ? `${metrics.activeStudents} active students · ${metrics.instructorCount} instructors`
-                        : `${metrics.enrollmentCount} total enrollments`}
+                        : view === "instructors"
+                          ? `${overview.instructors.filter((entry) => entry.role === "INSTRUCTOR").length} instructors · ${metrics.instructorCount} active`
+                          : view === "announcements"
+                          ? `${overview.recentAnnouncements.length} announcements sent`
+                          : `${metrics.enrollmentCount} total enrollments`}
                   </p>
                 </div>
-                <button
-                  className="admin-button"
-                  onClick={exportCsv}
-                  title="Export visible records"
-                >
-                  <ArrowDownToLine size={16} />
-                  <span>Export CSV</span>
-                </button>
+                <div className="admin-management-actions">
+                  {view === "courses" && (
+                    <button
+                      className="admin-button admin-button-primary"
+                      onClick={openCreateCourse}
+                    >
+                      <Plus size={16} />
+                      <span>Add course</span>
+                    </button>
+                  )}
+                  {view === "announcements" && (
+                    <button
+                      className="admin-button admin-button-primary"
+                      onClick={() => setAnnouncementOpen(true)}
+                    >
+                      <Send size={16} />
+                      <span>New announcement</span>
+                    </button>
+                  )}
+                  <button
+                    className="admin-button"
+                    onClick={exportCsv}
+                    title="Export visible records"
+                  >
+                    <ArrowDownToLine size={16} />
+                    <span>Export CSV</span>
+                  </button>
+                </div>
               </div>
               <label className="admin-search">
                 <Search size={17} />
@@ -475,15 +920,30 @@ export default function AdminPage() {
                 <CourseTable
                   items={filteredItems as AdminOverview["recentCourses"]}
                   onToggle={updateCourseStatus}
+                  onEdit={openEditCourse}
+                  onDelete={deleteCourse}
+                  onContent={setContentCourse}
                 />
               ) : view === "students" ? (
                 <StudentTable
                   items={filteredItems as AdminOverview["recentUsers"]}
                   onToggle={updateStudentStatus}
+                  onPromote={updateUserRole}
                 />
-              ) : (
+              ) : view === "instructors" ? (
+                <InstructorTable
+                  items={filteredItems as AdminOverview["instructors"]}
+                  onToggle={updateInstructorStatus}
+                  onDemote={updateUserRole}
+                />
+              ) : view === "enrollments" ? (
                 <EnrollmentTable
                   items={filteredItems as AdminOverview["recentEnrollments"]}
+                  onRemove={removeEnrollment}
+                />
+              ) : (
+                <AnnouncementTable
+                  items={filteredItems as AdminOverview["recentAnnouncements"]}
                 />
               )}
               {filteredItems.length === 0 && (
@@ -492,10 +952,422 @@ export default function AdminPage() {
                 </div>
               )}
               <div className="admin-table-foot">
-                Showing up to {view === "enrollments" ? 20 : 50} latest records.
+                Showing up to{" "}
+                {view === "enrollments"
+                  ? 20
+                  : view === "announcements"
+                    ? 25
+                    : 50}{" "}
+                latest records.
                 Dashboard data is read directly from your LMS database.
               </div>
             </section>
+          )}
+          {courseModal && (
+            <div
+              className="admin-modal-backdrop"
+              onMouseDown={(event) => {
+                if (
+                  event.target === event.currentTarget &&
+                  !isSavingCourse &&
+                  !isLoadingCourse
+                )
+                  setCourseModal(null);
+              }}
+            >
+              <div
+                className="admin-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-label={
+                  courseModal.mode === "edit" ? "Edit course" : "Create course"
+                }
+              >
+                <div className="admin-modal-head">
+                  <div>
+                    <div className="admin-eyebrow">
+                      {courseModal.mode === "edit"
+                        ? "EDIT COURSE"
+                        : "NEW COURSE"}
+                    </div>
+                    <h2>
+                      {courseModal.mode === "edit"
+                        ? "Update course details"
+                        : "Create a course"}
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    className="admin-modal-close"
+                    aria-label="Close"
+                    onClick={() => setCourseModal(null)}
+                    disabled={isSavingCourse}
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+                {isLoadingCourse ? (
+                  <div className="admin-modal-loading">
+                    <LoaderCircle size={22} className="admin-spin" />
+                    <span>Loading course...</span>
+                  </div>
+                ) : (
+                  <form
+                    className="instructor-form admin-modal-form"
+                    onSubmit={saveCourse}
+                  >
+                    <label>
+                      Course title
+                      <input
+                        value={courseForm.title}
+                        minLength={4}
+                        maxLength={120}
+                        required
+                        onChange={(event) =>
+                          setCourseForm({
+                            ...courseForm,
+                            title: event.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Description
+                      <textarea
+                        value={courseForm.description}
+                        minLength={20}
+                        maxLength={5000}
+                        required
+                        placeholder="What will learners be able to make?"
+                        onChange={(event) =>
+                          setCourseForm({
+                            ...courseForm,
+                            description: event.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                    <div className="instructor-form-row">
+                      <label>
+                        Category
+                        <input
+                          list="admin-course-categories"
+                          value={courseForm.category}
+                          minLength={2}
+                          maxLength={60}
+                          required
+                          onChange={(event) =>
+                            setCourseForm({
+                              ...courseForm,
+                              category: event.target.value,
+                            })
+                          }
+                        />
+                        <datalist id="admin-course-categories">
+                          {COURSE_CATEGORIES.map((category) => (
+                            <option key={category} value={category} />
+                          ))}
+                        </datalist>
+                      </label>
+                      <label>
+                        Level
+                        <select
+                          value={courseForm.level}
+                          onChange={(event) =>
+                            setCourseForm({
+                              ...courseForm,
+                              level: event.target.value,
+                            })
+                          }
+                        >
+                          <option value="BEGINNER">Beginner</option>
+                          <option value="INTERMEDIATE">Intermediate</option>
+                          <option value="ADVANCED">Advanced</option>
+                        </select>
+                      </label>
+                    </div>
+                    <div className="instructor-form-row">
+                      <label>
+                        Price (USD)
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          required
+                          value={courseForm.price}
+                          onChange={(event) =>
+                            setCourseForm({
+                              ...courseForm,
+                              price: event.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                      <label>
+                        Duration (hours)
+                        <input
+                          type="number"
+                          min="1"
+                          max="1000"
+                          step="1"
+                          required
+                          value={courseForm.duration}
+                          onChange={(event) =>
+                            setCourseForm({
+                              ...courseForm,
+                              duration: event.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+                    <div className="instructor-form-row">
+                      <label>
+                        Instructor
+                        <select
+                          value={courseForm.instructorId}
+                          required
+                          onChange={(event) =>
+                            setCourseForm({
+                              ...courseForm,
+                              instructorId: event.target.value,
+                            })
+                          }
+                        >
+                          {assignableInstructors.map((instructor) => (
+                            <option key={instructor.id} value={instructor.id}>
+                              {instructor.firstName} {instructor.lastName}
+                              {instructor.role === "ADMIN"
+                                ? " (Admin)"
+                                : instructor.isActive
+                                  ? ""
+                                  : " (Deactivated)"}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Status
+                        <select
+                          value={courseForm.status}
+                          onChange={(event) =>
+                            setCourseForm({
+                              ...courseForm,
+                              status: event.target.value,
+                            })
+                          }
+                        >
+                          <option value="DRAFT">Draft</option>
+                          <option value="PUBLISHED">Published</option>
+                        </select>
+                      </label>
+                    </div>
+                    <ImageUploadField
+                      value={courseForm.image}
+                      onChange={(image) =>
+                        setCourseForm({ ...courseForm, image })
+                      }
+                    />
+                    <div className="admin-modal-actions">
+                      <button
+                        type="button"
+                        className="admin-button"
+                        onClick={() => setCourseModal(null)}
+                        disabled={isSavingCourse}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="admin-button admin-button-primary"
+                        disabled={isSavingCourse || !courseForm.instructorId}
+                      >
+                        {isSavingCourse ? (
+                          <LoaderCircle size={15} className="admin-spin" />
+                        ) : courseModal.mode === "edit" ? (
+                          <Check size={15} />
+                        ) : (
+                          <Plus size={15} />
+                        )}
+                        <span>
+                          {isSavingCourse
+                            ? "Saving..."
+                            : courseModal.mode === "edit"
+                              ? "Save changes"
+                              : "Create course"}
+                        </span>
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            </div>
+          )}
+          {announcementOpen && (
+            <div
+              className="admin-modal-backdrop"
+              onMouseDown={(event) => {
+                if (
+                  event.target === event.currentTarget &&
+                  !isSendingAnnouncement
+                )
+                  setAnnouncementOpen(false);
+              }}
+            >
+              <div
+                className="admin-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Send an announcement"
+              >
+                <div className="admin-modal-head">
+                  <div>
+                    <div className="admin-eyebrow">NEW ANNOUNCEMENT</div>
+                    <h2>Send an announcement</h2>
+                  </div>
+                  <button
+                    type="button"
+                    className="admin-modal-close"
+                    aria-label="Close"
+                    onClick={() => setAnnouncementOpen(false)}
+                    disabled={isSendingAnnouncement}
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+                <form
+                  className="instructor-form admin-modal-form"
+                  onSubmit={sendAnnouncement}
+                >
+                  <label>
+                    Title
+                    <input
+                      value={announceForm.title}
+                      minLength={3}
+                      maxLength={120}
+                      required
+                      placeholder="New course launch!"
+                      onChange={(event) =>
+                        setAnnounceForm({
+                          ...announceForm,
+                          title: event.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Message
+                    <textarea
+                      value={announceForm.message}
+                      minLength={10}
+                      maxLength={1000}
+                      required
+                      placeholder="Tell your learners what is new..."
+                      onChange={(event) =>
+                        setAnnounceForm({
+                          ...announceForm,
+                          message: event.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                  <div className="instructor-form-row">
+                    <label>
+                      Audience
+                      <select
+                        value={announceForm.audience}
+                        onChange={(event) =>
+                          setAnnounceForm({
+                            ...announceForm,
+                            audience: event.target.value,
+                          })
+                        }
+                      >
+                        <option value="ALL">Everyone</option>
+                        <option value="STUDENT">Students only</option>
+                        <option value="INSTRUCTOR">Instructors only</option>
+                      </select>
+                    </label>
+                    <label>
+                      Link{" "}
+                      <span className="instructor-optional">Optional</span>
+                      <input
+                        type="url"
+                        value={announceForm.link}
+                        placeholder="https://..."
+                        onChange={(event) =>
+                          setAnnounceForm({
+                            ...announceForm,
+                            link: event.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                  <div className="admin-modal-actions">
+                    <button
+                      type="button"
+                      className="admin-button"
+                      onClick={() => setAnnouncementOpen(false)}
+                      disabled={isSendingAnnouncement}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="admin-button admin-button-primary"
+                      disabled={isSendingAnnouncement}
+                    >
+                      {isSendingAnnouncement ? (
+                        <LoaderCircle size={15} className="admin-spin" />
+                      ) : (
+                        <Send size={15} />
+                      )}
+                      <span>
+                        {isSendingAnnouncement ? "Sending..." : "Send now"}
+                      </span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+          {contentCourse && (
+            <div
+              className="admin-modal-backdrop"
+              onMouseDown={(event) => {
+                if (event.target === event.currentTarget)
+                  setContentCourse(null);
+              }}
+            >
+              <div
+                className="admin-modal admin-modal-wide"
+                role="dialog"
+                aria-modal="true"
+                aria-label={`Course content: ${contentCourse.title}`}
+              >
+                <div className="admin-modal-head">
+                  <div>
+                    <div className="admin-eyebrow">COURSE CONTENT</div>
+                    <h2>{contentCourse.title}</h2>
+                  </div>
+                  <button
+                    type="button"
+                    className="admin-modal-close"
+                    aria-label="Close"
+                    onClick={() => setContentCourse(null)}
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+                <div className="admin-modal-scroll">
+                  <CourseContentManager
+                    courseId={contentCourse.id}
+                    onChanged={() => void loadOverview(true)}
+                  />
+                </div>
+              </div>
+            </div>
           )}
           <footer className="admin-footer">
             <span>ProPyCoder Learning Platform</span>
@@ -525,9 +1397,15 @@ function LoadingView() {
 function CourseTable({
   items,
   onToggle,
+  onEdit,
+  onDelete,
+  onContent,
 }: {
   items: AdminOverview["recentCourses"];
   onToggle: (id: string, status: string) => void;
+  onEdit: (id: string) => void;
+  onDelete: (course: AdminOverview["recentCourses"][number]) => void;
+  onContent: (course: { id: string; title: string }) => void;
 }) {
   return (
     <div className="admin-table-scroll">
@@ -562,12 +1440,32 @@ function CourseTable({
                 </span>
               </td>
               <td>
-                <button
-                  className="admin-row-action"
-                  onClick={() => onToggle(course.id, course.status)}
-                >
-                  {course.status === "PUBLISHED" ? "Unpublish" : "Publish"}
-                </button>
+                <div className="admin-row-actions">
+                  <button
+                    className="admin-row-action"
+                    onClick={() => onContent(course)}
+                  >
+                    Content
+                  </button>
+                  <button
+                    className="admin-row-action"
+                    onClick={() => onToggle(course.id, course.status)}
+                  >
+                    {course.status === "PUBLISHED" ? "Unpublish" : "Publish"}
+                  </button>
+                  <button
+                    className="admin-row-action"
+                    onClick={() => onEdit(course.id)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="admin-row-action is-danger"
+                    onClick={() => onDelete(course)}
+                  >
+                    Delete
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
@@ -580,9 +1478,14 @@ function CourseTable({
 function StudentTable({
   items,
   onToggle,
+  onPromote,
 }: {
   items: AdminOverview["recentUsers"];
   onToggle: (id: string, isActive: boolean) => void;
+  onPromote: (
+    user: AdminOverview["recentUsers"][number],
+    role: "STUDENT" | "INSTRUCTOR",
+  ) => void;
 }) {
   return (
     <div className="admin-table-scroll">
@@ -601,8 +1504,15 @@ function StudentTable({
             <tr key={user.id}>
               <td>
                 <span className="admin-avatar">
-                  {user.firstName[0]}
-                  {user.lastName[0]}
+                  {user.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={user.avatar} alt="" />
+                  ) : (
+                    <>
+                      {user.firstName[0]}
+                      {user.lastName[0]}
+                    </>
+                  )}
                 </span>
                 <strong>
                   {user.firstName} {user.lastName}
@@ -618,12 +1528,20 @@ function StudentTable({
                 </span>
               </td>
               <td>
-                <button
-                  className="admin-row-action"
-                  onClick={() => onToggle(user.id, user.isActive)}
-                >
-                  {user.isActive ? "Deactivate" : "Reactivate"}
-                </button>
+                <div className="admin-row-actions">
+                  <button
+                    className="admin-row-action"
+                    onClick={() => onToggle(user.id, user.isActive)}
+                  >
+                    {user.isActive ? "Deactivate" : "Reactivate"}
+                  </button>
+                  <button
+                    className="admin-row-action"
+                    onClick={() => onPromote(user, "INSTRUCTOR")}
+                  >
+                    Make instructor
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
@@ -635,8 +1553,10 @@ function StudentTable({
 
 function EnrollmentTable({
   items,
+  onRemove,
 }: {
   items: AdminOverview["recentEnrollments"];
+  onRemove: (enrollment: AdminOverview["recentEnrollments"][number]) => void;
 }) {
   return (
     <div className="admin-table-scroll">
@@ -647,6 +1567,7 @@ function EnrollmentTable({
             <th>Course</th>
             <th>Enrolled</th>
             <th>Status</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody>
@@ -673,6 +1594,147 @@ function EnrollmentTable({
                 >
                   {enrollment.status.toLowerCase()}
                 </span>
+              </td>
+              <td>
+                <div className="admin-row-actions">
+                  <button
+                    className="admin-row-action is-danger"
+                    onClick={() => onRemove(enrollment)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function AnnouncementTable({
+  items,
+}: {
+  items: AdminOverview["recentAnnouncements"];
+}) {
+  return (
+    <div className="admin-table-scroll">
+      <table className="admin-table">
+        <thead>
+          <tr>
+            <th>Announcement</th>
+            <th>Recipients</th>
+            <th>Sent</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((announcement) => (
+            <tr key={announcement.id}>
+              <td>
+                <strong>{announcement.title}</strong>
+                <small className="admin-announcement-message">
+                  {announcement.message}
+                </small>
+                {announcement.link && (
+                  <a
+                    href={announcement.link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="admin-course-link"
+                  >
+                    {announcement.link}
+                  </a>
+                )}
+              </td>
+              <td>
+                <span className="admin-pill is-muted">
+                  {announcement.recipients.toLocaleString()} notified
+                </span>
+              </td>
+              <td>{new Date(announcement.createdAt).toLocaleDateString()}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function InstructorTable({
+  items,
+  onToggle,
+  onDemote,
+}: {
+  items: AdminOverview["instructors"];
+  onToggle: (user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    isActive: boolean;
+  }) => void;
+  onDemote: (
+    user: AdminOverview["recentUsers"][number],
+    role: "STUDENT" | "INSTRUCTOR",
+  ) => void;
+}) {
+  return (
+    <div className="admin-table-scroll">
+      <table className="admin-table">
+        <thead>
+          <tr>
+            <th>Instructor</th>
+            <th>Email</th>
+            <th>Courses</th>
+            <th>Joined</th>
+            <th>Account</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((instructor) => (
+            <tr key={instructor.id}>
+              <td>
+                <span className="admin-avatar">
+                  {instructor.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={instructor.avatar} alt="" />
+                  ) : (
+                    <>
+                      {instructor.firstName[0]}
+                      {instructor.lastName[0]}
+                    </>
+                  )}
+                </span>
+                <strong>
+                  {instructor.firstName} {instructor.lastName}
+                </strong>
+              </td>
+              <td>{instructor.email}</td>
+              <td>{instructor._count.createdCourses}</td>
+              <td>{new Date(instructor.createdAt).toLocaleDateString()}</td>
+              <td>
+                <span
+                  className={`admin-pill ${instructor.isActive ? "is-good" : "is-muted"}`}
+                >
+                  {instructor.isActive ? "Active" : "Inactive"}
+                </span>
+              </td>
+              <td>
+                <div className="admin-row-actions">
+                  <button
+                    className="admin-row-action"
+                    onClick={() => onToggle(instructor)}
+                  >
+                    {instructor.isActive ? "Deactivate" : "Reactivate"}
+                  </button>
+                  <button
+                    className="admin-row-action"
+                    onClick={() => onDemote(instructor, "STUDENT")}
+                  >
+                    Make student
+                  </button>
+                </div>
               </td>
             </tr>
           ))}

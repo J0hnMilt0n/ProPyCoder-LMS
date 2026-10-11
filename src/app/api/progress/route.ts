@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
+import { issueCertificateForCourse } from "@/lib/certificates";
 
 // GET progress for a course
 export async function GET(request: NextRequest) {
@@ -146,7 +147,16 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(progress);
+    // Issue the certificate the moment the course is fully completed.
+    let certificateId: string | null = null;
+    if (enrollmentProgress === 100) {
+      certificateId = await issueCertificateForCourse(
+        session.user.id,
+        lesson.module.courseId,
+      );
+    }
+
+    return NextResponse.json({ ...progress, certificateId });
   } catch (error) {
     console.error("Progress update error:", error);
     return NextResponse.json(

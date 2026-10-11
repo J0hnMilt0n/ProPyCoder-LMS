@@ -28,6 +28,8 @@ export async function GET() {
       recentUsers,
       recentCourses,
       recentEnrollments,
+      instructors,
+      rawAnnouncements,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { role: "STUDENT", isActive: true } }),
@@ -50,8 +52,10 @@ export async function GET() {
           firstName: true,
           lastName: true,
           email: true,
+          avatar: true,
           createdAt: true,
           isActive: true,
+          role: true,
         },
         orderBy: { createdAt: "desc" },
         take: 50,
@@ -81,7 +85,55 @@ export async function GET() {
         orderBy: { enrolledAt: "desc" },
         take: 20,
       }),
+      prisma.user.findMany({
+        where: { role: { in: ["INSTRUCTOR", "ADMIN"] } },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          avatar: true,
+          createdAt: true,
+          isActive: true,
+          role: true,
+          _count: { select: { createdCourses: true } },
+        },
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      }),
+      prisma.notification.findMany({
+        where: { type: "ANNOUNCEMENT" },
+        select: {
+          id: true,
+          title: true,
+          message: true,
+          link: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+        take: 300,
+      }),
     ]);
+
+    // One announcement creates one notification per recipient — group them back
+    // into a single row per message so the admin sees unique announcements.
+    const announcementGroups = new Map<
+      string,
+      {
+        id: string;
+        title: string;
+        message: string;
+        link: string | null;
+        createdAt: Date;
+        recipients: number;
+      }
+    >();
+    for (const notification of rawAnnouncements) {
+      const key = `${notification.title}|||${notification.message}`;
+      const existing = announcementGroups.get(key);
+      if (existing) existing.recipients += 1;
+      else announcementGroups.set(key, { ...notification, recipients: 1 });
+    }
+    const recentAnnouncements = [...announcementGroups.values()].slice(0, 25);
 
     return NextResponse.json({
       metrics: {
@@ -103,6 +155,8 @@ export async function GET() {
       recentUsers,
       recentCourses,
       recentEnrollments,
+      instructors,
+      recentAnnouncements,
     });
   } catch (error) {
     console.error("Admin overview error:", error);

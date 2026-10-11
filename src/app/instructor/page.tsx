@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -13,8 +13,12 @@ import {
   LoaderCircle,
   Plus,
   Users,
+  X,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { CourseContentManager } from "@/components/course-content-manager";
+import { LiveClassManager } from "@/components/live-class-manager";
+import { ImageUploadField } from "@/components/image-upload-field";
 
 interface InstructorCourse {
   id: string;
@@ -44,9 +48,13 @@ export default function InstructorPage() {
   const [form, setForm] = useState(emptyForm);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [contentCourse, setContentCourse] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
 
-  const loadCourses = useCallback(async () => {
-    setIsLoading(true);
+  const loadCourses = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) setIsLoading(true);
     try {
       const response = await fetch("/api/instructor/courses", {
         cache: "no-store",
@@ -61,12 +69,15 @@ export default function InstructorPage() {
     }
   }, []);
 
+  const role = session?.user?.role;
+  const loadCoursesRef = useRef(loadCourses);
+  loadCoursesRef.current = loadCourses;
+
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/auth/login");
-    if (session?.user && session.user.role !== "INSTRUCTOR")
-      router.replace("/dashboard");
-    if (session?.user?.role === "INSTRUCTOR") void loadCourses();
-  }, [status, session, router, loadCourses]);
+    if (role && role !== "INSTRUCTOR") router.replace("/dashboard");
+    if (role === "INSTRUCTOR") void loadCoursesRef.current();
+  }, [status, role, router]);
 
   async function createCourse(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -137,13 +148,24 @@ export default function InstructorPage() {
             </p>
           </div>
           <span className="instructor-account">
-            <span>
-              {session.user.name
-                ?.split(" ")
-                .map((part) => part[0])
-                .join("")
-                .slice(0, 2)}
-            </span>
+            {session.user.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                className="instructor-account-avatar"
+                src={session.user.image}
+                alt=""
+                width={34}
+                height={34}
+              />
+            ) : (
+              <span>
+                {session.user.name
+                  ?.split(" ")
+                  .map((part) => part[0])
+                  .join("")
+                  .slice(0, 2)}
+              </span>
+            )}
             {session.user.name}
           </span>
         </header>
@@ -209,6 +231,16 @@ export default function InstructorPage() {
                     >
                       {course.status.toLowerCase()}
                     </span>
+                    <button
+                      type="button"
+                      className="instructor-content-button"
+                      onClick={() =>
+                        setContentCourse({ id: course.id, title: course.title })
+                      }
+                    >
+                      <BookOpen size={15} />
+                      Manage content
+                    </button>
                     <Link
                       href={`/courses/${course.id}`}
                       aria-label={`Open ${course.title}`}
@@ -321,18 +353,10 @@ export default function InstructorPage() {
                   />
                 </label>
               </div>
-              <label>
-                Cover image URL{" "}
-                <span className="instructor-optional">Optional</span>
-                <input
-                  type="url"
-                  value={form.image}
-                  onChange={(event) =>
-                    setForm({ ...form, image: event.target.value })
-                  }
-                  placeholder="https://..."
-                />
-              </label>
+              <ImageUploadField
+                value={form.image}
+                onChange={(image) => setForm({ ...form, image })}
+              />
               <button className="instructor-submit" disabled={isSaving}>
                 {isSaving ? (
                   <LoaderCircle size={15} className="admin-spin" />
@@ -348,7 +372,52 @@ export default function InstructorPage() {
             </p>
           </section>
         </div>
+        <section className="instructor-live">
+          <LiveClassManager
+            mode="instructor"
+            courses={courses.map((course) => ({
+              id: course.id,
+              title: course.title,
+            }))}
+          />
+        </section>
       </div>
+      {contentCourse && (
+        <div
+          className="admin-modal-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setContentCourse(null);
+          }}
+        >
+          <div
+            className="admin-modal admin-modal-wide"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Course content: ${contentCourse.title}`}
+          >
+            <div className="admin-modal-head">
+              <div>
+                <div className="admin-eyebrow">COURSE CONTENT</div>
+                <h2>{contentCourse.title}</h2>
+              </div>
+              <button
+                type="button"
+                className="admin-modal-close"
+                aria-label="Close"
+                onClick={() => setContentCourse(null)}
+              >
+                <X size={15} />
+              </button>
+            </div>
+            <div className="admin-modal-scroll">
+              <CourseContentManager
+                courseId={contentCourse.id}
+                onChanged={() => void loadCourses({ silent: true })}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

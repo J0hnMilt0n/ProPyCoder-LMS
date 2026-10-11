@@ -1,6 +1,16 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { z } from "zod";
+
+const updateInput = z
+  .object({
+    isActive: z.boolean().optional(),
+    role: z.enum(["STUDENT", "INSTRUCTOR"]).optional(),
+  })
+  .refine((data) => data.isActive !== undefined || data.role !== undefined, {
+    message: "Provide isActive or role",
+  });
 
 export async function PATCH(
   request: Request,
@@ -13,17 +23,17 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    if (id === session.user.id) {
+    const parsed = updateInput.safeParse(await request.json());
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "You cannot deactivate your own account" },
+        { error: "Provide a valid isActive flag or role" },
         { status: 400 },
       );
     }
 
-    const body = (await request.json()) as { isActive?: unknown };
-    if (typeof body.isActive !== "boolean") {
+    if (id === session.user.id) {
       return NextResponse.json(
-        { error: "isActive must be a boolean" },
+        { error: "You cannot change your own account" },
         { status: 400 },
       );
     }
@@ -32,14 +42,19 @@ export async function PATCH(
       where: { id },
       select: { id: true, role: true },
     });
-    if (!target || target.role !== "STUDENT") {
-      return NextResponse.json({ error: "Student not found" }, { status: 404 });
+    if (!target || target.role === "ADMIN") {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     const user = await prisma.user.update({
       where: { id },
-      data: { isActive: body.isActive },
-      select: { id: true, isActive: true },
+      data: {
+        ...(parsed.data.isActive !== undefined
+          ? { isActive: parsed.data.isActive }
+          : {}),
+        ...(parsed.data.role !== undefined ? { role: parsed.data.role } : {}),
+      },
+      select: { id: true, isActive: true, role: true },
     });
 
     return NextResponse.json(user);

@@ -12,9 +12,15 @@ import {
   Clock3,
   GraduationCap,
   LoaderCircle,
+  Radio,
   Search,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import {
+  PROVIDER_LABELS,
+  STATUS_LABELS,
+  effectiveStatus,
+} from "@/lib/live-classes";
 
 interface Enrollment {
   id: string;
@@ -30,6 +36,19 @@ interface Enrollment {
   status: string;
 }
 
+interface LiveClassItem {
+  id: string;
+  title: string;
+  description: string | null;
+  provider: string;
+  meetingUrl: string;
+  startsAt: string;
+  endsAt: string;
+  status: "SCHEDULED" | "LIVE" | "ENDED" | "CANCELLED";
+  storedStatus: string;
+  course?: { id: string; title: string };
+}
+
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -37,6 +56,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [search, setSearch] = useState("");
+  const [liveClasses, setLiveClasses] = useState<LiveClassItem[]>([]);
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/auth/login");
@@ -71,6 +91,26 @@ export default function Dashboard() {
     return () => controller.abort();
   }, [session?.user?.id]);
 
+  // Live classes across my enrolled courses.
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const response = await fetch("/api/live-classes?scope=mine", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+        const result = await response.json();
+        if (!controller.signal.aborted) setLiveClasses(result.data ?? []);
+      } catch {
+        // Non-critical — the dashboard still works without the schedule.
+      }
+    })();
+    return () => controller.abort();
+  }, [session?.user?.id]);
+
   if (status === "loading" || isLoading) {
     return (
       <div className="learning-page">
@@ -101,6 +141,17 @@ export default function Dashboard() {
       <section className="learning-shell">
         <header className="learning-welcome">
           <div>
+            {session.user.image ? (
+              <span className="learning-welcome-avatar">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={session.user.image}
+                  alt=""
+                  width={48}
+                  height={48}
+                />
+              </span>
+            ) : null}
             <div className="learning-eyebrow">YOUR LEARNING SPACE</div>
             <h1>
               Welcome back,{" "}
@@ -145,6 +196,74 @@ export default function Dashboard() {
             </div>
           </article>
         </div>
+
+        {liveClasses.length > 0 && (
+          <section className="learning-live">
+            <div className="learning-section-label">
+              UPCOMING LIVE CLASSES
+            </div>
+            <div className="learning-live-list">
+              {liveClasses.map((item) => {
+                const status = effectiveStatus({
+                  status: item.storedStatus,
+                  startsAt: item.startsAt,
+                  endsAt: item.endsAt,
+                });
+                const start = new Date(item.startsAt);
+                const end = new Date(item.endsAt);
+                return (
+                  <article
+                    key={item.id}
+                    className={`learning-live-row is-${status.toLowerCase()}`}
+                  >
+                    <div className="live-row-date">
+                      <span>
+                        {start.toLocaleDateString(undefined, {
+                          month: "short",
+                        })}
+                      </span>
+                      <strong>{start.getDate()}</strong>
+                    </div>
+                    <div className="learning-live-copy">
+                      <strong>{item.title}</strong>
+                      <span>
+                        {item.course?.title ?? "Course"} ·{" "}
+                        {start.toLocaleDateString(undefined, {
+                          weekday: "short",
+                        })}{" "}
+                        {start.toLocaleTimeString(undefined, {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                        {" – "}
+                        {end.toLocaleTimeString(undefined, {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                        {" · "}
+                        {PROVIDER_LABELS[item.provider] ?? item.provider}
+                      </span>
+                    </div>
+                    <span className={`live-pill is-${status.toLowerCase()}`}>
+                      {status === "LIVE" && <span className="live-pill-dot" />}
+                      {STATUS_LABELS[status]}
+                    </span>
+                    {(status === "SCHEDULED" || status === "LIVE") && (
+                      <a
+                        className="learning-live-join"
+                        href={item.meetingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Radio size={15} /> Join
+                      </a>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {nextCourse && (
           <section className="learning-continue">

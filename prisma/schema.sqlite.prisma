@@ -30,6 +30,7 @@ model User {
   certificates  Certificate[]
   notifications Notification[]
   payments      Payment[]
+  instructedClasses LiveClass[] @relation("LiveClassInstructor")
 
   @@index([email])
   @@index([role])
@@ -56,6 +57,7 @@ model Course {
   enrollments Enrollment[]
   quizzes     Quiz[]
   payments    Payment[]
+  liveClasses LiveClass[]
 
   @@index([instructorId])
   @@index([category])
@@ -270,4 +272,28 @@ model Notification {
 
   @@index([userId])
   @@index([read])
+}
+
+// Live class (online session) model
+model LiveClass {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  provider     String   @default("GOOGLE_MEET") // GOOGLE_MEET, ZOOM, TEAMS, OTHER
+  meetingUrl   String
+  meetingId    String?
+  passcode     String?
+  startsAt     DateTime
+  endsAt       DateTime
+  status       String   @default("SCHEDULED") // SCHEDULED, LIVE, ENDED, CANCELLED
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId     String
+  instructor   User     @relation("LiveClassInstructor", fields: [instructorId], references: [id], onDelete: Cascade)
+  instructorId String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([courseId])
+  @@index([instructorId])
+  @@index([startsAt])
 }

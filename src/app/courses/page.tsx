@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { ArrowLeft, ArrowRight, BookOpen, Search, Users } from "lucide-react";
 import toast from "react-hot-toast";
+import { InstructorAvatar } from "@/components/instructor-avatar";
 
 interface Course {
   id: string;
@@ -209,14 +210,16 @@ export default function CoursesPage() {
                       : undefined
                   }
                   aria-label={`View ${course.title}`}
-                >
+                >{
+                !course.image
+                  ? ( <>
                   <span className="catalog-art-category">
                     {course.category}
                   </span>
                   <span className="catalog-art-index">0{index + 1}</span>
                   <div className="catalog-art-glyph">
                     <BookOpen size={39} strokeWidth={1.3} />
-                  </div>
+                  </div> </>) :(<></>) }
                 </Link>
                 <div className="catalog-card-body">
                   <div className="catalog-card-tags">
@@ -233,10 +236,12 @@ export default function CoursesPage() {
                   </Link>
                   <p>{course.description}</p>
                   <div className="catalog-instructor">
-                    <span className="catalog-instructor-avatar">
-                      {course.instructor.firstName[0]}
-                      {course.instructor.lastName[0]}
-                    </span>
+                    <InstructorAvatar
+                      className="catalog-instructor-avatar"
+                      avatar={course.instructor.avatar}
+                      firstName={course.instructor.firstName}
+                      lastName={course.instructor.lastName}
+                    />
                     <span>
                       {course.instructor.firstName} {course.instructor.lastName}
                     </span>

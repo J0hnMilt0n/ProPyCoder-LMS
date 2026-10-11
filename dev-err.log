@@ -1,0 +1,514 @@
+[31m[auth][error][0m JWTSessionError: Read more at https://errors.authjs.dev#jwtsessionerror
+[31m[auth][cause][0m: JWEInvalid: Invalid Compact JWE
+    at compactDecrypt (D:\ProPyCoder LMS\.next\dev\server\chunks\node_modules_jose_dist_webapi_0tf8be1._.js:3425:15)
+    at jwtDecrypt (D:\ProPyCoder LMS\.next\dev\server\chunks\node_modules_jose_dist_webapi_0tf8be1._.js:3461:217)
+    at Object.decode (D:\ProPyCoder LMS\.next\dev\server\chunks\node_modules_@auth_core_09h2y9.._.js:905:204)
+    at Module.session (D:\ProPyCoder LMS\.next\dev\server\chunks\node_modules_@auth_core_09h2y9.._.js:4546:39)
+    at AuthInternal (D:\ProPyCoder LMS\.next\dev\server\chunks\node_modules_@auth_core_09h2y9.._.js:5131:198)
+    at async Auth (D:\ProPyCoder LMS\.next\dev\server\chunks\node_modules_@auth_core_09h2y9.._.js:5370:34)
+    at async AppRouteRouteModule.do (D:\ProPyCoder LMS\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:40732)
+    at async AppRouteRouteModule.handle (D:\ProPyCoder LMS\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:47861)
+    at async responseGenerator (D:\ProPyCoder LMS\.next\dev\server\chunks\node_modules_next_0fkt7xl._.js:18289:38)
+    at async AppRouteRouteModule.handleResponse (D:\ProPyCoder LMS\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:1:227216)
+    at async handleResponse (D:\ProPyCoder LMS\.next\dev\server\chunks\node_modules_next_0fkt7xl._.js:18352:32)
+    at async Module.handler (D:\ProPyCoder LMS\.next\dev\server\chunks\node_modules_next_0fkt7xl._.js:18406:13)
+    at async DevServer.renderToResponseWithComponentsImpl (D:\ProPyCoder LMS\node_modules\next\dist\server\base-server.js:1454:9)
+    at async DevServer.renderPageComponent (D:\ProPyCoder LMS\node_modules\next\dist\server\base-server.js:1506:24)
+    at async DevServer.renderToResponseImpl (D:\ProPyCoder LMS\node_modules\next\dist\server\base-server.js:1556:32)
+    at async DevServer.pipeImpl (D:\ProPyCoder LMS\node_modules\next\dist\server\base-server.js:1043:25)
+    at async NextNodeServer.handleCatchallRenderRequest (D:\ProPyCoder LMS\node_modules\next\dist\server\next-server.js:338:17)
+    at async DevServer.handleRequestImpl (D:\ProPyCoder LMS\node_modules\next\dist\server\base-server.js:934:17)
+    at async D:\ProPyCoder LMS\node_modules\next\dist\server\dev\next-dev-server.js:394:20
+    at async Span.traceAsyncFn (D:\ProPyCoder LMS\node_modules\next\dist\trace\trace.js:164:20)
+    at async DevServer.handleRequest (D:\ProPyCoder LMS\node_modules\next\dist\server\dev\next-dev-server.js:390:24)
+    at async invokeRender (D:\ProPyCoder LMS\node_modules\next\dist\server\lib\router-server.js:253:21)
+    at async handleRequest (D:\ProPyCoder LMS\node_modules\next\dist\server\lib\router-server.js:452:24)
+    at async requestHandlerImpl (D:\ProPyCoder LMS\node_modules\next\dist\server\lib\router-server.js:501:13)
+    at async Server.requestListener (D:\ProPyCoder LMS\node_modules\next\dist\server\lib\start-server.js:225:13)
+[31m[auth][details][0m: {}
+[browser] ./src/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: D:\ProPyCoder LMS\src\app\globals.css:5809:5: Unknown word ma
+    [at error (turbopack:///[project]/node_modules/postcss/lib/input.js:135:16)]
+    [at unknownWord (turbopack:///[project]/node_modules/postcss/lib/parser.js:595:22)]
+    [at other (turbopack:///[project]/node_modules/postcss/lib/parser.js:437:12)]
+    [at parse (turbopack:///[project]/node_modules/postcss/lib/parser.js:472:16)]
+    [at parser (turbopack:///[project]/node_modules/postcss/lib/parse.js:11:12)]
+    [at new LazyResult (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:165:16)]
+    [at process (turbopack:///[project]/node_modules/postcss/lib/processor.js:53:14)]
+    [at transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:51)]
+    [at run (turbopack:///[turbopack-node]/child_process/evaluate.ts:89:29)]
+    [at run (turbopack:///[turbopack-node]/child_process/evaluate.ts:112:11)]
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] ./src/app/globals.css:6432:17
+Parsing CSS source code failed
+  6430 |     display: block;
+  6431 |     position: relative;
+> 6432 |     top: -100px !;
+       |                 ^
+  6433 |     font-size: 16px;
+  6434 |     font-weight: 750;
+  6435 |     color: var(--ink);
+
+Unexpected token Delim('!')
+
+Generated code of PostCSS transform of file content of src/app/globals.css:
+./src/app/globals.css:6432:17
+  6430 |     display: block;
+  6431 |     position: relative;
+> 6432 |     top: -100px !;
+       |                 ^
+  6433 |     font-size: 16px;
+  6434 |     font-weight: 750;
+  6435 |     color: var(--ink);
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] ClientFetchError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON. Read more at https://errors.authjs.dev#autherror
+    at fetchData (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_0-0.~kc._.js:514:22)
+    at async getSession (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_0-0.~kc._.js:681:21)
+    at async SessionProvider.useEffect [as _getSession] (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_0-0.~kc._.js:843:47) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_0-0.~kc._.js:514:16)
+[browser] ./src/components/navbar.tsx:88:17
+Expected '</', got 'ident'
+  86 |               </Link>
+  87 |               <button
+> 88 |                 className="site-signout"
+     |                 ^^^^^^^^^
+  89 |                 onClick={() => signOut({ callbackUrl: "/" })}
+  90 |               >
+  91 |                 <LogOut size={15} /> Sign out
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Server Component:
+    ./src/components/navbar.tsx
+    ./src/app/not-found.tsx
+
+  Client Component Browser:
+    ./src/components/navbar.tsx [Client Component Browser]
+    ./src/app/auth/login/page.tsx [Client Component Browser]
+    ./src/app/auth/login/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/navbar.tsx [Client Component SSR]
+    ./src/app/auth/login/page.tsx [Client Component SSR]
+    ./src/app/auth/login/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+⨯ ./src/app/courses/[id]/page.tsx:764:33
+Expected '</', got 'jsx text'
+  [90m762 |[0m                              <p>
+  [90m763 |[0m                               {[33mPROVIDER_LABELS[0m[item.provider] ?? item.provider}
+[31m[1m>[0m [90m764 |[0m                           </div>
+  [90m    |[0m                                 [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[31m[1m>[0m [90m765 |[0m                           <div className=[32m"course-live-copy"[0m>
+  [90m    |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m766 |[0m                             <div>
+  [90m767 |[0m                               <h4>{item.title}</h4>
+  [90m768 |[0m                               <span
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+⨯ ./src/app/courses/[id]/page.tsx:764:33
+Expected '</', got 'jsx text'
+  [90m762 |[0m                              <p>
+  [90m763 |[0m                               {[33mPROVIDER_LABELS[0m[item.provider] ?? item.provider}
+[31m[1m>[0m [90m764 |[0m                           </div>
+  [90m    |[0m                                 [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[31m[1m>[0m [90m765 |[0m                           <div className=[32m"course-live-copy"[0m>
+  [90m    |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m766 |[0m                             <div>
+  [90m767 |[0m                               <h4>{item.title}</h4>
+  [90m768 |[0m                               <span
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+[browser] Uncaught Error: ./src/app/courses/[id]/page.tsx:764:33
+Expected '</', got 'jsx text'
+  762 |                              <p>
+  763 |                               {PROVIDER_LABELS[item.provider] ?? item.provider}
+> 764 |                           </div>
+      |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 765 |                           <div className="course-live-copy">
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  766 |                             <div>
+  767 |                               <h4>{item.title}</h4>
+  768 |                               <span
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+
+    at <unknown> (Error: ./src/app/courses/[id]/page.tsx:764:33)
+    at <unknown> (Error: (./src/app/courses/[id]/page.tsx:764:33)
+[browser] ./src/app/courses/[id]/page.tsx:764:33
+Expected '</', got 'jsx text'
+  762 |                              <p>
+  763 |                               {PROVIDER_LABELS[item.provider] ?? item.provider}
+> 764 |                           </div>
+      |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 765 |                           <div className="course-live-copy">
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  766 |                             <div>
+  767 |                               <h4>{item.title}</h4>
+  768 |                               <span
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:764:33
+Expected '</', got 'jsx text'
+  762 |                              <p>
+  763 |                               {PROVIDER_LABELS[item.provider] ?? item.provider}
+> 764 |                           </div>
+      |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 765 |                           <div className="course-live-copy">
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  766 |                             <div>
+  767 |                               <h4>{item.title}</h4>
+  768 |                               <span
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:765:33
+Expected '</', got 'jsx text'
+  763 |                               {PROVIDER_LABELS[item.provider] ?? item.provider}
+  764 |                               
+> 765 |                           </div>
+      |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 766 |                           <div className="course-live-copy">
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  767 |                             <div>
+  768 |                               <h4>{item.title}</h4>
+  769 |                               <span
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/courses/[id]/page.tsx:765:33
+Expected '</', got 'jsx text'
+  763 |                               {PROVIDER_LABELS[item.provider] ?? item.provider}
+  764 |                               
+> 765 |                           </div>
+      |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 766 |                           <div className="course-live-copy">
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  767 |                             <div>
+  768 |                               <h4>{item.title}</h4>
+  769 |                               <span
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/[id]/page.tsx [Client Component Browser]
+    ./src/app/courses/[id]/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/[id]/page.tsx [Client Component SSR]
+    ./src/app/courses/[id]/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2834:28)
+    at <unknown> (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2679:13)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2324:17) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0pe1dg-._.js:2773:21)
+[browser] ./src/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: D:\ProPyCoder LMS\src\app\globals.css:6281:3: Unknown word mar
+    [at error (turbopack:///[project]/node_modules/postcss/lib/input.js:135:16)]
+    [at unknownWord (turbopack:///[project]/node_modules/postcss/lib/parser.js:595:22)]
+    [at other (turbopack:///[project]/node_modules/postcss/lib/parser.js:437:12)]
+    [at parse (turbopack:///[project]/node_modules/postcss/lib/parser.js:472:16)]
+    [at parser (turbopack:///[project]/node_modules/postcss/lib/parse.js:11:12)]
+    [at new LazyResult (turbopack:///[project]/node_modules/postcss/lib/lazy-result.js:165:16)]
+    [at process (turbopack:///[project]/node_modules/postcss/lib/processor.js:53:14)]
+    [at transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:51)]
+    [at run (turbopack:///[turbopack-node]/child_process/evaluate.ts:89:29)]
+    [at run (turbopack:///[turbopack-node]/child_process/evaluate.ts:112:11)]
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] Image with src "/propycoder-logo.png" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_115brz8._.js:2431:13)
+⨯ ./src/app/courses/page.tsx:9:1
+Module not found: Can't resolve '@/components/instructor-avatar'
+  [90m 7 |[0m [36mimport[0m { [33mArrowLeft[0m, [33mArrowRight[0m, [33mBookOpen[0m, [33mSearch[0m, [33mUsers[0m } [36mfrom[0m [32m"lucide-react"[0m;
+  [90m 8 |[0m [36mimport[0m toast [36mfrom[0m [32m"react-hot-toast"[0m;
+[31m[1m>[0m [90m 9 |[0m [36mimport[0m { [33mInstructorAvatar[0m } [36mfrom[0m [32m"@/components/instructor-avatar"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m10 |[0m
+  [90m11 |[0m [36minterface[0m [33mCourse[0m {
+  [90m12 |[0m   id: string;
+
+Import map: aliased to relative './src/components/instructor-avatar' inside of [project]/
+
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/page.tsx [Client Component Browser]
+    ./src/app/courses/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/page.tsx [Client Component SSR]
+    ./src/app/courses/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./src/app/courses/page.tsx:9:1
+Module not found: Can't resolve '@/components/instructor-avatar'
+  [90m 7 |[0m [36mimport[0m { [33mArrowLeft[0m, [33mArrowRight[0m, [33mBookOpen[0m, [33mSearch[0m, [33mUsers[0m } [36mfrom[0m [32m"lucide-react"[0m;
+  [90m 8 |[0m [36mimport[0m toast [36mfrom[0m [32m"react-hot-toast"[0m;
+[31m[1m>[0m [90m 9 |[0m [36mimport[0m { [33mInstructorAvatar[0m } [36mfrom[0m [32m"@/components/instructor-avatar"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m10 |[0m
+  [90m11 |[0m [36minterface[0m [33mCourse[0m {
+  [90m12 |[0m   id: string;
+
+Import map: aliased to relative './src/components/instructor-avatar' inside of [project]/
+
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/page.tsx [Client Component Browser]
+    ./src/app/courses/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/page.tsx [Client Component SSR]
+    ./src/app/courses/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./src/app/courses/page.tsx:9:1
+Module not found: Can't resolve '@/components/instructor-avatar'
+  [90m 7 |[0m [36mimport[0m { [33mArrowLeft[0m, [33mArrowRight[0m, [33mBookOpen[0m, [33mSearch[0m, [33mUsers[0m } [36mfrom[0m [32m"lucide-react"[0m;
+  [90m 8 |[0m [36mimport[0m toast [36mfrom[0m [32m"react-hot-toast"[0m;
+[31m[1m>[0m [90m 9 |[0m [36mimport[0m { [33mInstructorAvatar[0m } [36mfrom[0m [32m"@/components/instructor-avatar"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m10 |[0m
+  [90m11 |[0m [36minterface[0m [33mCourse[0m {
+  [90m12 |[0m   id: string;
+
+Import map: aliased to relative './src/components/instructor-avatar' inside of [project]/
+
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/page.tsx [Client Component Browser]
+    ./src/app/courses/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/page.tsx [Client Component SSR]
+    ./src/app/courses/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./src/app/courses/page.tsx:9:1
+Module not found: Can't resolve '@/components/instructor-avatar'
+  [90m 7 |[0m [36mimport[0m { [33mArrowLeft[0m, [33mArrowRight[0m, [33mBookOpen[0m, [33mSearch[0m, [33mUsers[0m } [36mfrom[0m [32m"lucide-react"[0m;
+  [90m 8 |[0m [36mimport[0m toast [36mfrom[0m [32m"react-hot-toast"[0m;
+[31m[1m>[0m [90m 9 |[0m [36mimport[0m { [33mInstructorAvatar[0m } [36mfrom[0m [32m"@/components/instructor-avatar"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m10 |[0m
+  [90m11 |[0m [36minterface[0m [33mCourse[0m {
+  [90m12 |[0m   id: string;
+
+Import map: aliased to relative './src/components/instructor-avatar' inside of [project]/
+
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/page.tsx [Client Component Browser]
+    ./src/app/courses/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/page.tsx [Client Component SSR]
+    ./src/app/courses/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+[browser] ./src/app/courses/page.tsx:9:1
+Module not found: Can't resolve '@/components/instructor-avatar'
+   7 | import { ArrowLeft, ArrowRight, BookOpen, Search, Users } from "lucide-react";
+   8 | import toast from "react-hot-toast";
+>  9 | import { InstructorAvatar } from "@/components/instructor-avatar";
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  10 |
+  11 | interface Course {
+  12 |   id: string;
+
+Import map: aliased to relative './src/components/instructor-avatar' inside of [project]/
+
+Import traces:
+  Client Component Browser:
+    ./src/app/courses/page.tsx [Client Component Browser]
+    ./src/app/courses/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/app/courses/page.tsx [Client Component SSR]
+    ./src/app/courses/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] ./src/components/navbar.tsx:83:28
+Expected '</', got '='
+  81 |                 </Link>
+  82 |               )}
+> 83 |               {user.role +== "INSTRUCTOR" && (
+     |                            ^
+  84 |               <Link href="/dashboard" onClick={() => setIsOpen(false)}>
+  85 |                 My learning
+  86 |               </Link>
+
+Parsing ecmascript source code failed
+
+Import traces:
+  Server Component:
+    ./src/components/navbar.tsx
+    ./src/app/not-found.tsx
+
+  Client Component Browser:
+    ./src/components/navbar.tsx [Client Component Browser]
+    ./src/app/auth/login/page.tsx [Client Component Browser]
+    ./src/app/auth/login/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./src/components/navbar.tsx [Client Component SSR]
+    ./src/app/auth/login/page.tsx [Client Component SSR]
+    ./src/app/auth/login/page.tsx [Server Component] 
+    at handleErrors (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+    at processMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13891:21)
+    at WebSocket.handleMessage (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13335:52) (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_client_0fhqo1d._.js:13828:21)
+[browser] Image with src "/propycoder-logo.png" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading (file://D:/ProPyCoder LMS/.next/dev/static/chunks/node_modules_next_dist_115brz8._.js:2431:13)
+[31m[auth][error][0m InvalidProvider: Callback for provider type (credentials) is not supported. Read more at https://errors.authjs.dev#invalidprovider
+    at Module.callback (D:\ProPyCoder LMS\.next\dev\server\chunks\node_modules_@auth_core_09h2y9.._.js:4485:15)
+    at AuthInternal (D:\ProPyCoder LMS\.next\dev\server\chunks\node_modules_@auth_core_09h2y9.._.js:5123:209)
+    at async Auth (D:\ProPyCoder LMS\.next\dev\server\chunks\node_modules_@auth_core_09h2y9.._.js:5370:34)
+    at async AppRouteRouteModule.do (D:\ProPyCoder LMS\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:40732)
+    at async AppRouteRouteModule.handle (D:\ProPyCoder LMS\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:47861)
+    at async responseGenerator (D:\ProPyCoder LMS\.next\dev\server\chunks\node_modules_next_0fkt7xl._.js:18289:38)
+    at async AppRouteRouteModule.handleResponse (D:\ProPyCoder LMS\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:1:227216)
+    at async handleResponse (D:\ProPyCoder LMS\.next\dev\server\chunks\node_modules_next_0fkt7xl._.js:18352:32)
+    at async Module.handler (D:\ProPyCoder LMS\.next\dev\server\chunks\node_modules_next_0fkt7xl._.js:18406:13)
+    at async DevServer.renderToResponseWithComponentsImpl (D:\ProPyCoder LMS\node_modules\next\dist\server\base-server.js:1454:9)
+    at async DevServer.renderPageComponent (D:\ProPyCoder LMS\node_modules\next\dist\server\base-server.js:1506:24)
+    at async DevServer.renderToResponseImpl (D:\ProPyCoder LMS\node_modules\next\dist\server\base-server.js:1556:32)
+    at async DevServer.pipeImpl (D:\ProPyCoder LMS\node_modules\next\dist\server\base-server.js:1043:25)
+    at async NextNodeServer.handleCatchallRenderRequest (D:\ProPyCoder LMS\node_modules\next\dist\server\next-server.js:338:17)
+    at async DevServer.handleRequestImpl (D:\ProPyCoder LMS\node_modules\next\dist\server\base-server.js:934:17)
+    at async D:\ProPyCoder LMS\node_modules\next\dist\server\dev\next-dev-server.js:394:20
+    at async Span.traceAsyncFn (D:\ProPyCoder LMS\node_modules\next\dist\trace\trace.js:164:20)
+    at async DevServer.handleRequest (D:\ProPyCoder LMS\node_modules\next\dist\server\dev\next-dev-server.js:390:24)
+    at async invokeRender (D:\ProPyCoder LMS\node_modules\next\dist\server\lib\router-server.js:253:21)
+    at async handleRequest (D:\ProPyCoder LMS\node_modules\next\dist\server\lib\router-server.js:452:24)
+    at async requestHandlerImpl (D:\ProPyCoder LMS\node_modules\next\dist\server\lib\router-server.js:501:13)
+    at async Server.requestListener (D:\ProPyCoder LMS\node_modules\next\dist\server\lib\start-server.js:225:13)
+[31m[auth][error][0m InvalidProvider: Callback for provider type (credentials) is not supported. Read more at https://errors.authjs.dev#invalidprovider
+    at Module.callback (D:\ProPyCoder LMS\.next\dev\server\chunks\node_modules_@auth_core_09h2y9.._.js:4485:15)
+    at AuthInternal (D:\ProPyCoder LMS\.next\dev\server\chunks\node_modules_@auth_core_09h2y9.._.js:5123:209)
+    at async Auth (D:\ProPyCoder LMS\.next\dev\server\chunks\node_modules_@auth_core_09h2y9.._.js:5370:34)
+    at async AppRouteRouteModule.do (D:\ProPyCoder LMS\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:40732)
+    at async AppRouteRouteModule.handle (D:\ProPyCoder LMS\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:5:47861)
+    at async responseGenerator (D:\ProPyCoder LMS\.next\dev\server\chunks\node_modules_next_0fkt7xl._.js:18289:38)
+    at async AppRouteRouteModule.handleResponse (D:\ProPyCoder LMS\node_modules\next\dist\compiled\next-server\app-route-turbo.runtime.dev.js:1:227216)
+    at async handleResponse (D:\ProPyCoder LMS\.next\dev\server\chunks\node_modules_next_0fkt7xl._.js:18352:32)
+    at async Module.handler (D:\ProPyCoder LMS\.next\dev\server\chunks\node_modules_next_0fkt7xl._.js:18406:13)
+    at async DevServer.renderToResponseWithComponentsImpl (D:\ProPyCoder LMS\node_modules\next\dist\server\base-server.js:1454:9)
+    at async DevServer.renderPageComponent (D:\ProPyCoder LMS\node_modules\next\dist\server\base-server.js:1506:24)
+    at async DevServer.renderToResponseImpl (D:\ProPyCoder LMS\node_modules\next\dist\server\base-server.js:1556:32)
+    at async DevServer.pipeImpl (D:\ProPyCoder LMS\node_modules\next\dist\server\base-server.js:1043:25)
+    at async NextNodeServer.handleCatchallRenderRequest (D:\ProPyCoder LMS\node_modules\next\dist\server\next-server.js:338:17)
+    at async DevServer.handleRequestImpl (D:\ProPyCoder LMS\node_modules\next\dist\server\base-server.js:934:17)
+    at async D:\ProPyCoder LMS\node_modules\next\dist\server\dev\next-dev-server.js:394:20
+    at async Span.traceAsyncFn (D:\ProPyCoder LMS\node_modules\next\dist\trace\trace.js:164:20)
+    at async DevServer.handleRequest (D:\ProPyCoder LMS\node_modules\next\dist\server\dev\next-dev-server.js:390:24)
+    at async invokeRender (D:\ProPyCoder LMS\node_modules\next\dist\server\lib\router-server.js:253:21)
+    at async handleRequest (D:\ProPyCoder LMS\node_modules\next\dist\server\lib\router-server.js:452:24)
+    at async requestHandlerImpl (D:\ProPyCoder LMS\node_modules\next\dist\server\lib\router-server.js:501:13)
+    at async Server.requestListener (D:\ProPyCoder LMS\node_modules\next\dist\server\lib\start-server.js:225:13)

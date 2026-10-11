@@ -20,7 +20,7 @@ export function Navbar() {
   const { data: session } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const user = session?.user;
-  const { theme, toggleTheme } = useTheme();
+  // const { theme, toggleTheme } = useTheme();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -55,6 +55,9 @@ export function Navbar() {
           <Link href="/pycoder" onClick={() => setIsOpen(false)}>
             PyCoder <span className="nav-new">LAB</span>
           </Link>
+          <Link href="/certificates" onClick={() => setIsOpen(false)}>
+            Certificates
+          </Link>
           {/* <button
             className="theme-switch"
             type="button"
@@ -77,9 +80,11 @@ export function Navbar() {
                   My courses
                 </Link>
               )}
+              {user.role === "STUDENT" && (
               <Link href="/dashboard" onClick={() => setIsOpen(false)}>
                 My learning
               </Link>
+              )}
               <button
                 className="site-signout"
                 onClick={() => signOut({ callbackUrl: "/" })}
@@ -109,16 +114,27 @@ export function Navbar() {
         {user && (
           <Link
             className="site-user-chip"
-            href={user.role === "ADMIN" ? "/admin" : "/dashboard"}
-            title="Open your workspace"
+            href="/profile"
+            title="Your profile"
           >
-            <span>
-              {user.name
-                ?.split(" ")
-                .map((part) => part[0])
-                .join("")
-                .slice(0, 2) ?? "P"}
-            </span>
+            {user.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                className="site-user-avatar"
+                src={user.image}
+                alt={user.name ?? "Your avatar"}
+                width={26}
+                height={26}
+              />
+            ) : (
+              <span>
+                {user.name
+                  ?.split(" ")
+                  .map((part) => part[0])
+                  .join("")
+                  .slice(0, 2) ?? "P"}
+              </span>
+            )}
             <ChevronDown size={13} />
           </Link>
         )}

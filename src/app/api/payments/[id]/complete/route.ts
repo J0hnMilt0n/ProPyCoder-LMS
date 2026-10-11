@@ -60,7 +60,7 @@ export async function POST(request: NextRequest, { params }: Props) {
 
     const { id } = await params;
     const body = await request.json();
-    const { transactionId } = body;
+    const { transactionId, paymentMethod } = body;
 
     const payment = await prisma.payment.findUnique({
       where: { id },
@@ -101,6 +101,11 @@ export async function POST(request: NextRequest, { params }: Props) {
         data: {
           status: "COMPLETED",
           transactionId: transactionId || `TXN_${Date.now()}`,
+          // Record how the buyer paid (CARD / UPI / NETBANKING from checkout).
+          paymentMethod:
+            typeof paymentMethod === "string" && paymentMethod.trim()
+              ? paymentMethod.trim()
+              : payment.paymentMethod ?? "CARD",
         },
       });
 

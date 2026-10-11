@@ -14,7 +14,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
 
-    const where: any = { userId: session.user.id };
+    const where: { userId: string; status?: string } = {
+      userId: session.user.id,
+    };
     if (status) where.status = status;
 
     const payments = await prisma.payment.findMany({
@@ -131,8 +133,10 @@ export async function POST(request: NextRequest) {
       courseId,
       amount: payment.amount,
       status: payment.status,
-      // In production, you would return a checkout URL from Stripe/PayPal
-      checkoutUrl: `/api/payments/${payment.id}/complete`,
+      // Send the buyer to the checkout UI page, which loads this payment and
+      // collects card details before calling POST .../complete to enroll them.
+      // In production, you would return a hosted gateway URL (Stripe/PayPal).
+      checkoutUrl: `/checkout/${payment.id}`,
     });
   } catch (error) {
     console.error("Payment creation error:", error);

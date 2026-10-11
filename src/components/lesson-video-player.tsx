@@ -90,9 +90,16 @@ export function LessonVideoPlayer({
   // (covers refresh, closing the tab, and navigating to another lesson).
   useEffect(() => {
     const persist = () => saveProgress();
+    const onVisibilityChange = () => {
+      // Save the instant the tab is hidden (e.g. switching to the lab) —
+      // more reliable than relying on unmount alone with route caching.
+      if (document.visibilityState === "hidden") persist();
+    };
     window.addEventListener("pagehide", persist);
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       window.removeEventListener("pagehide", persist);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       saveProgress();
     };
   }, [saveProgress]);
