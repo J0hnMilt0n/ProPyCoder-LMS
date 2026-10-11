@@ -119,7 +119,7 @@ export async function proxyPyCoderPage(request: NextRequest, pathname: string) {
   @media(max-width:640px){.lab-workspace{padding:8px 12px 18px!important}.lab-window-controls{height:25px;margin:0 12px 5px;padding-bottom:6px}}
   </style>
   <style>
- button[id="runCode"], label[id="languageLabel"],  div[class="flex items-center space-x-3"] {
+ button[id="runCode"], label[id="languageLabel"],  div[class="flex items-center space-x-3"], span[id="langSymbol"] {
   display: none !important;
 }
   // .mobile-menu-btn{
