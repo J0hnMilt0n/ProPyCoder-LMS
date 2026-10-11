@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
         userId: session.user.id,
         courseId,
         amount: course.price,
-        currency: "USD",
+        currency: "INR",
         status: "PENDING",
         paymentMethod,
       },

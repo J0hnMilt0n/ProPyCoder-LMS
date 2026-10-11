@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
+import { formatINR } from "@/lib/currency";
 import {
   CreditCard,
   Landmark,
@@ -357,7 +358,7 @@ export default function CheckoutPage({ params }: Props) {
                 </>
               ) : (
                 <>
-                  <Lock className="h-4 w-4" /> Pay ${payment.amount.toFixed(2)}
+                  <Lock className="h-4 w-4" /> Pay {formatINR(payment.amount, 2)}
                 </>
               )}
             </button>
@@ -404,7 +405,7 @@ export default function CheckoutPage({ params }: Props) {
             <dl className="space-y-2 border-t border-gray-100 pt-4 text-sm">
               <div className="flex justify-between text-gray-600">
                 <dt>Course price</dt>
-                <dd>{payment.amount.toFixed(2)} {payment.currency}</dd>
+                <dd>{formatINR(payment.amount, 2)}</dd>
               </div>
               <div className="flex justify-between text-gray-600">
                 <dt>Lifetime access</dt>
@@ -412,7 +413,7 @@ export default function CheckoutPage({ params }: Props) {
               </div>
               <div className="flex justify-between font-semibold text-gray-900 text-base pt-2 border-t border-gray-100">
                 <dt>Total due today</dt>
-                <dd>{payment.amount.toFixed(2)} {payment.currency}</dd>
+                <dd>{formatINR(payment.amount, 2)}</dd>
               </div>
             </dl>
 

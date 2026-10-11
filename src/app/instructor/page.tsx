@@ -326,7 +326,7 @@ export default function InstructorPage() {
               </div>
               <div className="instructor-form-row">
                 <label>
-                  Price (USD)
+                  Price (₹)
                   <input
                     type="number"
                     min="0"

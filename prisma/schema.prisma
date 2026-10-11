@@ -149,7 +149,7 @@ model Payment {
   courseId        String
   course          Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   amount          Float
-  currency        String   @default("USD")
+  currency        String   @default("INR")
   status          String   @default("PENDING") // PENDING, COMPLETED, FAILED, REFUNDED
   paymentMethod   String?  // STRIPE, PAYPAL, etc.
   transactionId   String?  // External transaction ID
@@ -256,6 +256,23 @@ model Certificate {
   credentials String   // JWT or validation token
 
   @@index([studentId])
+}
+
+// Announcement model — a single public broadcast (visible to everyone,
+// registered or not). Per-user Notification rows stay as the inbox copy
+// for logged-in recipients.
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  link      String?
+  audience  String   @default("ALL") // ALL, STUDENT, INSTRUCTOR
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([published])
+  @@index([createdAt])
 }
 
 // Notification model

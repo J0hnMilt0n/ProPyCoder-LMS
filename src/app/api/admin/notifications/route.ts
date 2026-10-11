@@ -35,19 +35,29 @@ export async function POST(request: NextRequest) {
       select: { id: true },
     });
 
-    if (users.length > 0) {
-      await prisma.notification.createMany({
-        data: users.map((user) => ({
-          userId: user.id,
-          title,
-          message,
-          link: link || null,
-          type: "ANNOUNCEMENT",
-        })),
-      });
-    }
+    // One public broadcast row (visible to everyone, registered or not)
+    // plus a personal inbox copy for each matching logged-in-able user.
+    const [announcement] = await Promise.all([
+      prisma.announcement.create({
+        data: { title, message, link: link || null, audience },
+      }),
+      users.length > 0
+        ? prisma.notification.createMany({
+            data: users.map((user) => ({
+              userId: user.id,
+              title,
+              message,
+              link: link || null,
+              type: "ANNOUNCEMENT",
+            })),
+          })
+        : Promise.resolve(null),
+    ]);
 
-    return NextResponse.json({ sent: users.length }, { status: 201 });
+    return NextResponse.json(
+      { sent: users.length, announcementId: announcement.id },
+      { status: 201 },
+    );
   } catch (error) {
     console.error("Admin announcement error:", error);
     return NextResponse.json(

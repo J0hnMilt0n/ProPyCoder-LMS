@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
+import { formatINR } from "@/lib/currency";
 import {
   Clock,
   ArrowLeft,
@@ -621,7 +622,7 @@ export default function CourseDetailPage({ params }: Props) {
                 <div className="mb-6">
                   {course.price > 0 ? (
                     <div className="text-3xl font-bold text-gray-900 mb-2">
-                      ${course.price}
+                      {formatINR(course.price)}
                     </div>
                   ) : (
                     <div className="text-2xl font-bold text-sky-600 mb-2">

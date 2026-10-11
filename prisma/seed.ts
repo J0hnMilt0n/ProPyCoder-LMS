@@ -57,7 +57,7 @@ async function main() {
         "Learn the fundamentals of web development including HTML, CSS, and JavaScript.",
       category: "Web Development",
       level: "BEGINNER",
-      price: 99.99,
+      price: 1999,
       status: "PUBLISHED",
       instructorId: instructor.id,
       duration: 40,

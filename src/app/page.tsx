@@ -12,6 +12,7 @@ import {
 import { Navbar } from "@/components/navbar";
 import { BrandLogo } from "@/components/brand-logo";
 import { prisma } from "@/lib/prisma";
+import { formatINR } from "@/lib/currency";
 
 export const dynamic = "force-dynamic";
 
@@ -165,6 +166,8 @@ export default async function Home() {
                       : undefined
                   }
                 >
+                  {!course.image
+                      ? (<>
                   <span>{course.category}</span>
                   <div className="home-course-art-mark">
                     {index === 0 ? (
@@ -177,7 +180,7 @@ export default async function Home() {
                   </div>
                   <span className="home-course-level">
                     {course.level.toLowerCase()}
-                  </span>
+                  </span></>):<></>}
                 </div>
                 <div className="home-course-copy">
                   <h3>{course.title}</h3>
@@ -188,12 +191,12 @@ export default async function Home() {
                     </span>
                     <span>
                       {course.duration} hours <i /> {course._count.enrollments}{" "}
-                      learners
+                      learner{course._count.enrollments>1?"s":""}
                     </span>
                   </div>
                   <div className="home-course-bottom">
                     <strong>
-                      {course.price ? `$${course.price.toFixed(0)}` : "Free"}
+                      {course.price ? formatINR(course.price) : "Free"}
                     </strong>
                     <span>
                       View course <ArrowRight size={15} />

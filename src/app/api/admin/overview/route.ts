@@ -100,40 +100,38 @@ export async function GET() {
         },
         orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
       }),
-      prisma.notification.findMany({
-        where: { type: "ANNOUNCEMENT" },
+      prisma.announcement.findMany({
         select: {
           id: true,
           title: true,
           message: true,
           link: true,
+          audience: true,
           createdAt: true,
         },
         orderBy: { createdAt: "desc" },
-        take: 300,
+        take: 25,
       }),
     ]);
 
-    // One announcement creates one notification per recipient — group them back
-    // into a single row per message so the admin sees unique announcements.
-    const announcementGroups = new Map<
-      string,
-      {
-        id: string;
-        title: string;
-        message: string;
-        link: string | null;
-        createdAt: Date;
-        recipients: number;
-      }
-    >();
-    for (const notification of rawAnnouncements) {
-      const key = `${notification.title}|||${notification.message}`;
-      const existing = announcementGroups.get(key);
-      if (existing) existing.recipients += 1;
-      else announcementGroups.set(key, { ...notification, recipients: 1 });
-    }
-    const recentAnnouncements = [...announcementGroups.values()].slice(0, 25);
+    // Recipient math per audience (matches the send route's targeting).
+    const [allActive, studentActive, instructorActive] = await Promise.all([
+      prisma.user.count({ where: { isActive: true } }),
+      prisma.user.count({ where: { isActive: true, role: "STUDENT" } }),
+      prisma.user.count({
+        where: { isActive: true, role: { in: ["INSTRUCTOR", "ADMIN"] } },
+      }),
+    ]);
+    const recipientsFor = (audience: string) =>
+      audience === "STUDENT"
+        ? studentActive
+        : audience === "INSTRUCTOR"
+          ? instructorActive
+          : allActive;
+    const recentAnnouncements = rawAnnouncements.map((announcement) => ({
+      ...announcement,
+      recipients: recipientsFor(announcement.audience),
+    }));
 
     return NextResponse.json({
       metrics: {

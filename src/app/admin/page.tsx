@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
+import { formatINR } from "@/lib/currency";
 import {
   ArrowDownToLine,
   ArrowUpRight,
@@ -90,6 +91,7 @@ type AdminOverview = {
     title: string;
     message: string;
     link: string | null;
+    audience: string;
     createdAt: string;
     recipients: number;
   }[];
@@ -539,6 +541,29 @@ export default function AdminPage() {
     }
   }
 
+  async function deleteAnnouncement(
+    announcement: AdminOverview["recentAnnouncements"][number],
+  ) {
+    if (
+      !await confirm({
+        title: "Delete announcement",
+        message: `Delete "${announcement.title}"? It will disappear from the public board and from every inbox.`,
+      })
+    )
+      return;
+    try {
+      const response = await fetch(
+        `/api/admin/announcements/${announcement.id}`,
+        { method: "DELETE" },
+      );
+      if (!response.ok) throw new Error("Announcement deletion failed");
+      toast.success("Announcement deleted");
+      await loadOverview(true);
+    } catch {
+      toast.error("Could not delete this announcement");
+    }
+  }
+
   async function sendAnnouncement(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSendingAnnouncement(true);
@@ -754,18 +779,14 @@ export default function AdminPage() {
                     <CircleDollarSign size={19} />
                   </div>
                   <div className="admin-revenue-total">
-                    $
-                    {metrics.revenue.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
+                    {formatINR(metrics.revenue, 2)}
                   </div>
                   <div className="admin-revenue-note">
                     From {metrics.completedPayments} completed payments
                   </div>
                   <div className="admin-revenue-foot">
                     <span>All-time recorded revenue</span>
-                    <span>USD</span>
+                    <span>INR</span>
                   </div>
                 </section>
                 <section className="admin-panel admin-quick-actions">
@@ -944,6 +965,7 @@ export default function AdminPage() {
               ) : (
                 <AnnouncementTable
                   items={filteredItems as AdminOverview["recentAnnouncements"]}
+                  onDelete={deleteAnnouncement}
                 />
               )}
               {filteredItems.length === 0 && (
@@ -1088,7 +1110,7 @@ export default function AdminPage() {
                     </div>
                     <div className="instructor-form-row">
                       <label>
-                        Price (USD)
+                        Price (₹)
                         <input
                           type="number"
                           min="0"
@@ -1431,7 +1453,7 @@ function CourseTable({
                 {course.instructor.firstName} {course.instructor.lastName}
               </td>
               <td>{course._count.enrollments}</td>
-              <td>{course.price ? `$${course.price.toFixed(2)}` : "Free"}</td>
+              <td>{course.price ? formatINR(course.price, 2) : "Free"}</td>
               <td>
                 <span
                   className={`admin-pill ${course.status === "PUBLISHED" ? "is-good" : "is-muted"}`}
@@ -1615,8 +1637,10 @@ function EnrollmentTable({
 
 function AnnouncementTable({
   items,
+  onDelete,
 }: {
   items: AdminOverview["recentAnnouncements"];
+  onDelete: (announcement: AdminOverview["recentAnnouncements"][number]) => void;
 }) {
   return (
     <div className="admin-table-scroll">
@@ -1626,6 +1650,9 @@ function AnnouncementTable({
             <th>Announcement</th>
             <th>Recipients</th>
             <th>Sent</th>
+            <th>
+              <span className="sr-only">Actions</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -1653,6 +1680,16 @@ function AnnouncementTable({
                 </span>
               </td>
               <td>{new Date(announcement.createdAt).toLocaleDateString()}</td>
+              <td>
+                <div className="admin-row-actions">
+                  <button
+                    className="admin-row-action is-danger"
+                    onClick={() => onDelete(announcement)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>

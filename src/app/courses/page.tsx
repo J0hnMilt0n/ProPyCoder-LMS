@@ -7,6 +7,7 @@ import { Navbar } from "@/components/navbar";
 import { ArrowLeft, ArrowRight, BookOpen, Search, Users } from "lucide-react";
 import toast from "react-hot-toast";
 import { InstructorAvatar } from "@/components/instructor-avatar";
+import { formatINR } from "@/lib/currency";
 
 interface Course {
   id: string;
@@ -251,9 +252,7 @@ export default function CoursesPage() {
                   </div>
                   <div className="catalog-card-footer">
                     <strong>
-                      {course.price > 0
-                        ? `$${course.price.toFixed(0)}`
-                        : "Free"}
+                      {course.price > 0 ? formatINR(course.price) : "Free"}
                     </strong>
                     <Link
                       href={
