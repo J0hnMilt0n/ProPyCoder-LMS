@@ -120,6 +120,9 @@ export async function proxyPyCoderPage(request: NextRequest, pathname: string) {
  button[id="runCode"],  div[class="flex items-center space-x-3"] {
   display: none !important;
 }
+  .mobile-menu-btn{
+    margin-top: 43px!important;
+  }
 </style>`;
     html = html.replace(/<\/head>/i, `${themeBridge}</head>`);
 
