@@ -2030,9 +2030,9 @@ button {
 }
 .auth-content {
   display: flex;
-  align-items: center;
+  /* align-items: center; */
   justify-content: center;
-  padding: 37px clamp(25px, 5vw, 62px);
+  padding: 18px clamp(25px, 5vw, 62px);
   border: 1px solid #e8e8e8;
   border-left: 0;
   border-radius: 0 5px 5px 0;
@@ -2178,7 +2178,7 @@ button {
   }
   .auth-content {
     min-height: 550px;
-    padding: 34px 22px;
+    /* padding: 34px 22px; */
     border: 1px solid #e8e8e8;
     border-radius: 5px;
   }
