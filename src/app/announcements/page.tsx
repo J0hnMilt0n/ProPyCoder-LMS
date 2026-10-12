@@ -149,7 +149,7 @@ export default function AnnouncementsPage() {
                       <li
                         onClick={() => window.location.href = `${item?.link}`}
                         key={item.id}
-                        className={`cursor-pointer cert-item${item.read ? "" : " is-unread"}`}
+                        className={`cursor-pointer flex gap-3 p-2 cert-item${item.read ? "" : " is-unread"}`}
                       >     <span className="cert-item-icon" aria-hidden="true">
                           <Bell size={18} />
                         </span>                 
@@ -189,7 +189,7 @@ export default function AnnouncementsPage() {
               <ul className="cert-list">
                 {status === "authenticated" ? (
                 inbox.map((item) => ( item.read?(
-                  <li key={item.id} className="cert-item cursor-pointer" onClick={() => window.location.href = `${item?.link}`}>
+                  <li key={item.id} className="cert-item cursor-pointer flex gap-4 p-2 items-center" onClick={() => window.location.href = `${item?.link}`}>
                     <span className="cert-item-icon" aria-hidden="true">
                       <Megaphone size={18} />
                     </span>
@@ -214,7 +214,7 @@ export default function AnnouncementsPage() {
                     </span>
                   </li>):<></>
                 ))):(items.map((item) => (
-                  <li key={item.id} className="cert-item cursor-pointer" onClick={() => window.location.href = `${item?.link}`}>
+                  <li key={item.id} className="cert-item cursor-pointer flex gap-4 p-2 items-center rounded-xl m-2" onClick={() => window.location.href = `${item?.link}`}>
                     <span className="cert-item-icon" aria-hidden="true">
                       <Megaphone size={18} />
                     </span>

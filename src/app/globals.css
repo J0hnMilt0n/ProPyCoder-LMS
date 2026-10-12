@@ -4409,6 +4409,8 @@ body:has(.lab-page) {
 }
 
 html[data-theme="dark"] body,
+html[data-theme="dark"] .cert-item,
+html[data-theme="dark"] .cert-verify-card,
 html[data-theme="dark"] .check-out-page,
 html[data-theme="dark"] .bundle-detail-link,
 html[data-theme="dark"] .cert-verify,
@@ -4426,6 +4428,7 @@ html[data-theme="dark"] .not-found-page {
   color: var(--foreground);
 }
 
+html[data-theme="dark"] .cert-verify-card,
 html[data-theme="dark"] .cert-verify,
 html[data-theme="dark"] .cert-empty,
 html[data-theme="dark"] .cert-verify .auth-field > input
@@ -6458,7 +6461,7 @@ html[data-theme="dark"]  .cert-item-link:hover {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 .cert-item-body strong {
   color: #2f2f2f;
