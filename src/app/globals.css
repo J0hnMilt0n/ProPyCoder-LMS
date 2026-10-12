@@ -4058,6 +4058,7 @@ body:has(.lab-page) {
 @media (max-width: 900px) {
   .home-hero {
     min-height: 650px;
+    padding: 55px 23px 250px;
   }
   .home-hero-content {
     width: 65vw;
@@ -4196,7 +4197,7 @@ body:has(.lab-page) {
   .home-hero {
     min-height: 690px;
     align-items: flex-start;
-    padding: 75px 23px 250px;
+    padding: 37px 23px 250px;
   }
   .home-hero-image {
     background-position: 57% center;
@@ -4208,7 +4209,7 @@ body:has(.lab-page) {
   }
   .home-hero-content {
     width: 100%;
-    margin-bottom: 30px;
+    margin-bottom: 60px;
   }
   .home-hero h1 {
     margin-top: 19px;
