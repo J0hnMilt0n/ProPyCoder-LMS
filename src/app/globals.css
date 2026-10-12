@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Theme is driven by a `data-theme` attribute on <html> (set by the blocking
+   ThemeInitScript + ThemeProvider), not by prefers-color-scheme. Expose a
+   Tailwind `dark:` variant bound to that attribute so utility-class pages
+   (e.g. the checkout) can opt into dark styling with `dark:*`. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 :root {
   --background: #f8f8f5;
   --foreground: #1f1f1f;
@@ -6563,7 +6569,7 @@ html[data-theme="dark"]  .cert-item-link:hover {
 }
 .certificate-frame {
   position: relative;
-  padding: 46px 44px;
+  padding: 46px 44px 34px;
   border: 12px solid #e95f32;
   border-radius: 4px;
   background:
@@ -6634,6 +6640,7 @@ html[data-theme="dark"]  .cert-item-link:hover {
 .certificate-footer {
   display: flex;
   justify-content: space-between;
+  align-items: flex-end;
   gap: 20px;
   margin-top: 34px;
   padding-top: 18px;
@@ -6643,19 +6650,57 @@ html[data-theme="dark"]  .cert-item-link:hover {
 .certificate-footer > div {
   display: flex;
   flex-direction: column;
-  gap: 3px;
 }
 .certificate-label {
   color: #a3a3a3;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 1px;
+  line-height: 1;
   text-transform: uppercase;
 }
 .certificate-footer strong {
+  margin-top: 4px;
   color: #3a3a3a;
   font-size: 14px;
   font-weight: 680;
+  line-height: 1.1;
+}
+
+/* Certificate ID — pinned to the top-left corner (mirrors the logo) */
+.certificate-id {
+  position: absolute;
+  top: 20px;
+  left: 24px;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+.certificate-id strong {
+  margin-top: 1px;
+  color: #3a3a3a;
+  font-size: 14px;
+  font-weight: 680;
+  line-height: 1.7;
+  letter-spacing: 0.3px;
+}
+
+/* CEO signature — bottom-right corner of the certificate */
+.certificate-signature {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+.certificate-signature img {
+  display: block;
+  width: 150px;
+  height: auto;
+  object-fit: contain;
+}
+.certificate-signature .certificate-label {
+  margin-top: -5px;
+  letter-spacing: 0.6px;
 }
 .certificate-actions {
   display: flex;
@@ -6883,6 +6928,18 @@ html[data-theme="dark"] .certificate-logo  .site-brand{
    while exporting (applied via the `is-exporting` class in `onclone`). */
 .certificate-frame.is-exporting .certificate-logo .site-brand {
   top: 2px;
+}
+.certificate-frame.is-exporting .certificate-id {
+  top: 14px;
+}
+
+/* Download-only nudge: html2canvas draws the small uppercase labels a hair
+   lower than the browser does, so lift them slightly while exporting so the
+   printed/exported image matches the on-screen view. Covers the footer
+   labels (Issue date / Chief Executive Officer) and the Certificate ID. */
+.certificate-frame.is-exporting .certificate-signature img  {
+  position: relative;
+  top: 8px;
 }
 
 @media print {
@@ -7712,3 +7769,274 @@ html[data-theme="dark"] .certificate-logo  .site-brand{
     font-size: 1.35rem;
   }
 }
+
+/* ==========================================================================
+   Dark mode — extended coverage
+   The block above predates several newer component families that were built
+   with hardcoded light surfaces, light (#e/#f*) borders and low-contrast
+   gray text. Without these overrides those surfaces stay white and their
+   borders glow white on the black background, while the gray copy is nearly
+   invisible. Everything below remaps them onto the theme tokens so dark mode
+   reads cleanly: surfaces -> --paper, borders -> --line, headings ->
+   --foreground, muted copy -> --muted.
+   ========================================================================== */
+
+/* --- Online live classes (manager / instructor / course / dashboard) --- */
+html[data-theme="dark"] .live-row,
+html[data-theme="dark"] .live-action,
+html[data-theme="dark"] .live-manager-empty,
+html[data-theme="dark"] .course-live,
+html[data-theme="dark"] .course-live-row,
+html[data-theme="dark"] .learning-live-row,
+html[data-theme="dark"] .instructor-live {
+  background: var(--paper);
+  border-color: var(--line);
+}
+html[data-theme="dark"] .live-row-date,
+html[data-theme="dark"] .live-row-code code,
+html[data-theme="dark"] .course-live-join.is-locked {
+  background: #141416;
+  border-color: var(--line);
+}
+html[data-theme="dark"] .live-row.is-live .live-row-date {
+  background: rgba(233, 95, 50, 0.14);
+}
+html[data-theme="dark"] .live-manager-head h2,
+html[data-theme="dark"] .live-row-date strong,
+html[data-theme="dark"] .live-row-title h3,
+html[data-theme="dark"] .live-row-code code,
+html[data-theme="dark"] .live-manager-empty strong,
+html[data-theme="dark"] .course-live-head h3,
+html[data-theme="dark"] .course-live-when strong,
+html[data-theme="dark"] .course-live-copy h4,
+html[data-theme="dark"] .learning-live-copy strong {
+  color: var(--foreground);
+}
+html[data-theme="dark"] .live-manager.is-loading,
+html[data-theme="dark"] .live-manager-head p,
+html[data-theme="dark"] .live-row-date small,
+html[data-theme="dark"] .live-row-meta,
+html[data-theme="dark"] .live-row-desc,
+html[data-theme="dark"] .live-row-code,
+html[data-theme="dark"] .live-manager-empty,
+html[data-theme="dark"] .live-manager-empty span,
+html[data-theme="dark"] .course-live-when span,
+html[data-theme="dark"] .course-live-copy p,
+html[data-theme="dark"] .learning-live-copy span {
+  color: var(--muted);
+}
+html[data-theme="dark"] .live-action {
+  color: var(--foreground);
+}
+html[data-theme="dark"] .live-action:hover:not(:disabled) {
+  background: #16161a;
+  border-color: #34343c;
+}
+html[data-theme="dark"] .live-action.is-danger {
+  color: #fca5a5;
+  border-color: #7f2d2d;
+}
+html[data-theme="dark"] .live-action.is-danger:hover:not(:disabled) {
+  background: #2a1614;
+  border-color: #b91c1c;
+}
+html[data-theme="dark"] .live-pill.is-ended {
+  background: #1c1c20;
+  color: #a1a1aa;
+}
+html[data-theme="dark"] .live-pill.is-scheduled {
+  background: #1e1b4b;
+  color: #a5b4fc;
+}
+html[data-theme="dark"] .live-pill.is-cancelled {
+  background: #3b1414;
+  color: #fca5a5;
+}
+html[data-theme="dark"] .live-pill.is-live {
+  background: rgba(233, 95, 50, 0.16);
+  color: #f0a06e;
+}
+html[data-theme="dark"] .course-live {
+  background: linear-gradient(180deg, #14100e, var(--paper));
+}
+html[data-theme="dark"] .course-live-row.is-live {
+  background: #1a1210;
+}
+
+/* --- Course content manager (ccm) --- */
+html[data-theme="dark"] .ccm-module,
+html[data-theme="dark"] .ccm-lesson-form,
+html[data-theme="dark"] .ccm-form,
+html[data-theme="dark"] .ccm-empty {
+  background: var(--paper);
+  border-color: var(--line);
+}
+html[data-theme="dark"] .ccm-form input,
+html[data-theme="dark"] .ccm-form textarea {
+  background: #0c0c0e;
+  border-color: var(--line);
+  color: var(--foreground);
+}
+html[data-theme="dark"] .ccm-form label,
+html[data-theme="dark"] .ccm-stats strong,
+html[data-theme="dark"] .ccm-module-copy strong,
+html[data-theme="dark"] .ccm-lesson-copy strong {
+  color: var(--foreground);
+}
+html[data-theme="dark"] .ccm-stats,
+html[data-theme="dark"] .ccm-module-copy p,
+html[data-theme="dark"] .ccm-lesson-meta,
+html[data-theme="dark"] .ccm-empty {
+  color: var(--muted);
+}
+html[data-theme="dark"] .ccm-lesson-icon {
+  background: #16161a;
+}
+html[data-theme="dark"] .ccm-module-head,
+html[data-theme="dark"] .ccm-lesson {
+  border-color: var(--line);
+}
+html[data-theme="dark"] .ccm-drag-handle:hover {
+  background: #16161a;
+  color: #f0a06e;
+}
+
+/* --- Admin modal / shortcuts --- */
+html[data-theme="dark"] .admin-modal,
+html[data-theme="dark"] .admin-modal-close {
+  background: var(--paper);
+  border-color: var(--line);
+}
+html[data-theme="dark"] .admin-modal-head h2 {
+  color: var(--foreground);
+}
+html[data-theme="dark"] .admin-modal-head,
+html[data-theme="dark"] .admin-modal-actions,
+html[data-theme="dark"] .admin-shortcut-button {
+  border-color: var(--line);
+}
+html[data-theme="dark"] .admin-modal-close {
+  color: var(--muted);
+}
+html[data-theme="dark"] .admin-modal-close:hover:not(:disabled) {
+  border-color: #4a4a52;
+  color: var(--foreground);
+}
+html[data-theme="dark"] .admin-modal-loading {
+  color: var(--muted);
+}
+html[data-theme="dark"] .admin-row-action.is-danger:hover {
+  background: #2a1614;
+}
+
+/* --- Image upload field --- */
+html[data-theme="dark"] .image-upload-url,
+html[data-theme="dark"] .image-upload-button,
+html[data-theme="dark"] .image-upload-clear,
+html[data-theme="dark"] .image-upload-preview,
+html[data-theme="dark"] .image-upload-empty {
+  background: #0c0c0e;
+  border-color: var(--line);
+  color: var(--foreground);
+}
+html[data-theme="dark"] .image-upload-empty {
+  color: var(--muted);
+}
+html[data-theme="dark"] .image-upload-button:hover:not(:disabled),
+html[data-theme="dark"] .image-upload-row .image-upload-url:focus {
+  border-color: #4a4a52;
+  background: #141416;
+}
+html[data-theme="dark"] .image-upload-clear:hover {
+  border-color: #7f2d2d;
+  color: #fca5a5;
+}
+
+/* --- Profile page --- */
+html[data-theme="dark"] .profile-role,
+html[data-theme="dark"] .profile-cert-link,
+html[data-theme="dark"] .profile-avatar,
+html[data-theme="dark"] .profile-remove-photo {
+  background: #0c0c0e;
+  border-color: var(--line);
+  color: var(--foreground);
+}
+html[data-theme="dark"] .profile-section-title {
+  color: var(--foreground);
+}
+html[data-theme="dark"] .profile-hint {
+  color: var(--muted);
+}
+html[data-theme="dark"] .profile-password-form {
+  border-color: var(--line);
+}
+html[data-theme="dark"] .profile-remove-photo:hover {
+  background: #2a1614;
+}
+
+/* --- Bundle cards / picker / price tag --- */
+html[data-theme="dark"] .bundle-card,
+html[data-theme="dark"] .bundle-picker,
+html[data-theme="dark"] .bundle-picker-item {
+  background: var(--paper);
+  border-color: var(--line);
+}
+html[data-theme="dark"] .bundle-card-head h3 {
+  color: var(--foreground);
+}
+html[data-theme="dark"] .bundle-courses li {
+  border-color: var(--line);
+}
+html[data-theme="dark"] .price-tag-badge {
+  background: #14351f;
+  color: #86efac;
+}
+
+/* --- Certificate view + verify extras --- */
+html[data-theme="dark"] .certificate-view-card {
+  background: var(--paper);
+  border-color: var(--line);
+}
+html[data-theme="dark"] .certificate-view-card h1,
+html[data-theme="dark"] .cert-verify h2,
+html[data-theme="dark"] .cert-verify-result strong {
+  color: var(--foreground);
+}
+html[data-theme="dark"] .certificate-view-description,
+html[data-theme="dark"] .cert-verify p,
+html[data-theme="dark"] .cert-verify-result .cert-item-meta {
+  color: var(--muted);
+}
+html[data-theme="dark"] .cert-verify-result {
+  background: var(--paper);
+  border-color: var(--line);
+}
+
+/* --- Confirm dialog --- */
+html[data-theme="dark"] .confirm-dialog {
+  background: #100f0d;
+  border-color: var(--line);
+}
+html[data-theme="dark"] .confirm-icon {
+  background: #1c1410;
+}
+html[data-theme="dark"] .confirm-dialog h2 {
+  color: var(--foreground);
+}
+html[data-theme="dark"] .confirm-body {
+  color: var(--muted);
+}
+html[data-theme="dark"] .confirm-close {
+  color: var(--muted);
+}
+html[data-theme="dark"] .confirm-close:hover {
+  background: #1c1c20;
+  color: var(--foreground);
+}
+
+/* --- Checkout page (utility-class layout) --- */
+html[data-theme="dark"] .check-out-page {
+  background: var(--background);
+  color: var(--foreground);
+}
+

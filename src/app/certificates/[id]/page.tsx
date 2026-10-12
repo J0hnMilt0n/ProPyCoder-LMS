@@ -182,6 +182,10 @@ export default function CertificateViewPage() {
               <img src="/propycoder-logo.png" alt="ProPyCoder" />
               <div className="site-brand">ProPyCoder</div>
             </div>
+            <div className="certificate-id">
+              <span className="certificate-label">Certificate ID</span>
+              <strong>{certificate.certificateNumber}</strong>
+            </div>
             <div className="certificate-eyebrow">CERTIFICATE OF COMPLETION</div>
             <h1 className="certificate-title">{certificate.course}</h1>
             <p className="certificate-awarded">This certificate is awarded to</p>
@@ -199,9 +203,10 @@ export default function CertificateViewPage() {
                   {new Date(certificate.issueDate).toLocaleDateString()}
                 </strong>
               </div>
-              <div>
-                <span className="certificate-label">Certificate no.</span>
-                <strong>{certificate.certificateNumber}</strong>
+              <div className="certificate-signature">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/CEO-Signature.png" alt="CEO signature" />
+                <span className="certificate-label">Chief Executive Officer</span>
               </div>
             </div>
           </div>

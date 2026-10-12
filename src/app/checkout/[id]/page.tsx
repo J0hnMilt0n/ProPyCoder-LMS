@@ -185,7 +185,7 @@ export default function CheckoutPage({ params }: Props) {
       <div className="min-h-screen bg-gray-50 check-out-page">
         <Navbar />
         <div className="max-w-xl mx-auto py-20 px-4 text-center">
-          <p className="text-gray-600">Checkout not found.</p>
+          <p className="text-gray-600 dark:text-[#a7a5ae]">Checkout not found.</p>
           <button
             onClick={() => router.push("/courses")}
             className="mt-4 text-[#e95f32] font-semibold"
@@ -205,22 +205,22 @@ export default function CheckoutPage({ params }: Props) {
         <button
           type="button"
           onClick={() => router.back()}
-          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6"
+          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:text-[#a7a5ae] dark:hover:text-[#f1f0f2] mb-6"
         >
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
 
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Checkout</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-[#f1f0f2] mb-6">Checkout</h1>
 
         <div className="grid md:grid-cols-[1fr_380px] gap-6">
           {/* Payment form */}
           <form
             onSubmit={handlePay}
-            className="bg-white rounded-xl border border-gray-200 p-6"
+            className="bg-white dark:bg-[#0c0c0e] rounded-xl border border-gray-200 dark:border-[#232329] p-6"
           >
             <div className="flex items-center gap-2 mb-5">
               <CreditCard className="h-5 w-5 text-[#e95f32]" />
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-[#f1f0f2]">
                 Payment method
               </h2>
             </div>
@@ -242,8 +242,8 @@ export default function CheckoutPage({ params }: Props) {
                   onClick={() => setMethod(key)}
                   className={`flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 text-xs font-semibold transition ${
                     method === key
-                      ? "border-[#e95f32] bg-[#fdf3ef] text-[#e95f32]"
-                      : "border-gray-200 text-gray-500 hover:border-gray-300"
+                      ? "border-[#e95f32] bg-[#fdf3ef] text-[#e95f32] dark:bg-[#2a1a14]"
+                      : "border-gray-200 text-gray-500 hover:border-gray-300 dark:border-[#232329] dark:text-[#a7a5ae] dark:hover:border-[#3a3a42]"
                   }`}
                 >
                   <Icon className="h-5 w-5" />
@@ -255,7 +255,7 @@ export default function CheckoutPage({ params }: Props) {
             {method === "CARD" && (
               <>
                 <label className="block mb-4">
-                  <span className="text-sm font-medium text-gray-700">
+                  <span className="text-sm font-medium text-gray-700 dark:text-[#d6d5db]">
                     Name on card
                   </span>
                   <input
@@ -263,12 +263,12 @@ export default function CheckoutPage({ params }: Props) {
                     value={cardName}
                     onChange={(e) => setCardName(e.target.value)}
                     placeholder="Alex Johnson"
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#e95f32] focus:outline-none"
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white dark:bg-[#0c0c0e] dark:border-[#3a3a42] dark:text-[#f1f0f2] focus:border-[#e95f32] focus:outline-none"
                   />
                 </label>
 
             <label className="block mb-4">
-              <span className="text-sm font-medium text-gray-700">
+              <span className="text-sm font-medium text-gray-700 dark:text-[#d6d5db]">
                 Card number
               </span>
               <input
@@ -277,24 +277,24 @@ export default function CheckoutPage({ params }: Props) {
                 value={cardNumber}
                 onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
                 placeholder="4242 4242 4242 4242"
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm tracking-wider focus:border-[#e95f32] focus:outline-none"
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm tracking-wider bg-white dark:bg-[#0c0c0e] dark:border-[#3a3a42] dark:text-[#f1f0f2] focus:border-[#e95f32] focus:outline-none"
               />
             </label>
 
             <div className="grid grid-cols-2 gap-4 mb-6">
               <label className="block">
-                <span className="text-sm font-medium text-gray-700">Expiry</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-[#d6d5db]">Expiry</span>
                 <input
                   type="text"
                   inputMode="numeric"
                   value={expiry}
                   onChange={(e) => setExpiry(formatExpiry(e.target.value))}
                   placeholder="MM/YY"
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#e95f32] focus:outline-none"
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white dark:bg-[#0c0c0e] dark:border-[#3a3a42] dark:text-[#f1f0f2] focus:border-[#e95f32] focus:outline-none"
                 />
               </label>
               <label className="block">
-                <span className="text-sm font-medium text-gray-700">CVC</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-[#d6d5db]">CVC</span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -303,7 +303,7 @@ export default function CheckoutPage({ params }: Props) {
                     setCvc(e.target.value.replace(/\D/g, "").slice(0, 4))
                   }
                   placeholder="123"
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#e95f32] focus:outline-none"
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white dark:bg-[#0c0c0e] dark:border-[#3a3a42] dark:text-[#f1f0f2] focus:border-[#e95f32] focus:outline-none"
                 />
               </label>
                 </div>
@@ -313,7 +313,7 @@ export default function CheckoutPage({ params }: Props) {
             {method === "UPI" && (
               <div className="mb-6">
                 <label className="block">
-                  <span className="text-sm font-medium text-gray-700">
+                  <span className="text-sm font-medium text-gray-700 dark:text-[#d6d5db]">
                     UPI ID
                   </span>
                   <input
@@ -321,10 +321,10 @@ export default function CheckoutPage({ params }: Props) {
                     value={upiId}
                     onChange={(e) => setUpiId(e.target.value)}
                     placeholder="yourname@bank"
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#e95f32] focus:outline-none"
+                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white dark:bg-[#0c0c0e] dark:border-[#3a3a42] dark:text-[#f1f0f2] focus:border-[#e95f32] focus:outline-none"
                   />
                 </label>
-                <p className="mt-2 text-xs text-gray-400">
+                <p className="mt-2 text-xs text-gray-400 dark:text-[#8b8992]">
                   Pay from any UPI app (Google Pay, PhonePe, Paytm, etc.).
                 </p>
               </div>
@@ -332,7 +332,7 @@ export default function CheckoutPage({ params }: Props) {
 
             {method === "NETBANKING" && (
               <div className="mb-6">
-                <span className="text-sm font-medium text-gray-700">
+                <span className="text-sm font-medium text-gray-700 dark:text-[#d6d5db]">
                   Choose your bank
                 </span>
                 <div className="mt-2 space-y-2">
@@ -341,8 +341,8 @@ export default function CheckoutPage({ params }: Props) {
                       key={bank}
                       className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-2.5 text-sm transition ${
                         selectedBank === bank
-                          ? "border-[#e95f32] bg-[#fdf3ef] text-gray-900"
-                          : "border-gray-200 text-gray-600 hover:border-gray-300"
+                          ? "border-[#e95f32] bg-[#fdf3ef] text-gray-900 dark:bg-[#2a1a14] dark:text-[#f1f0f2]"
+                          : "border-gray-200 text-gray-600 hover:border-gray-300 dark:border-[#232329] dark:text-[#a7a5ae] dark:hover:border-[#3a3a42]"
                       }`}
                     >
                       <input
@@ -375,17 +375,17 @@ export default function CheckoutPage({ params }: Props) {
               )}
             </button>
 
-            <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-gray-400">
+            <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-gray-400 dark:text-[#8b8992]">
               <ShieldCheck className="h-4 w-4" /> Demo checkout — no real card
               is charged.
             </p>
           </form>
 
           {/* Order summary */}
-          <aside className="bg-white rounded-xl border border-gray-200 p-6 h-fit">
+          <aside className="bg-white dark:bg-[#0c0c0e] rounded-xl border border-gray-200 dark:border-[#232329] p-6 h-fit">
             <div className="flex items-center gap-2 mb-5">
               <ShieldCheck className="h-5 w-5 text-[#e95f32]" />
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-[#f1f0f2]">
                 Order summary
               </h2>
             </div>
@@ -400,7 +400,7 @@ export default function CheckoutPage({ params }: Props) {
                 />
               )}
 
-              <h3 className="font-semibold text-gray-900">
+              <h3 className="font-semibold text-gray-900 dark:text-[#f1f0f2]">
                 {payment.bundle?.title ?? payment.course?.title ?? "Order"}
               </h3>
               {payment.bundle ? (
@@ -409,44 +409,44 @@ export default function CheckoutPage({ params }: Props) {
                     Bundle · {payment.bundle.courses.length} courses included
                   </p>
                   {payment.bundle.courses.map(({ course }) => (
-                    <p key={course.id} className="text-sm text-gray-600">
+                    <p key={course.id} className="text-sm text-gray-600 dark:text-[#a7a5ae]">
                       · {course.title}
                     </p>
                   ))}
                 </div>
               ) : (
                 payment.course?.category && (
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="text-sm text-gray-500 mb-4 dark:text-[#a7a5ae]">
                     {payment.course.category}
                   </p>
                 )
               )}
 
               {payment.course?.instructor && (
-                <p className="text-sm text-gray-600 mb-4">
+                <p className="text-sm text-gray-600 mb-4 dark:text-[#a7a5ae]">
                   by {payment.course.instructor.firstName}{" "}
                   {payment.course.instructor.lastName}
                 </p>
               )}
 
-              <dl className="space-y-2 border-t border-gray-100 pt-4 text-sm">
-                <div className="flex justify-between text-gray-600">
+              <dl className="space-y-2 border-t border-gray-100 dark:border-[#232329] pt-4 text-sm">
+                <div className="flex justify-between text-gray-600 dark:text-[#a7a5ae]">
                   <dt>
                     {payment.bundle ? "Bundle price" : "Course price"}
                   </dt>
                   <dd>{formatINR(payment.amount, 2)}</dd>
                 </div>
-              <div className="flex justify-between text-gray-600">
+              <div className="flex justify-between text-gray-600 dark:text-[#a7a5ae]">
                 <dt>Lifetime access</dt>
                 <dd>Included</dd>
               </div>
-              <div className="flex justify-between font-semibold text-gray-900 text-base pt-2 border-t border-gray-100">
+              <div className="flex justify-between font-semibold text-gray-900 dark:text-[#f1f0f2] text-base pt-2 border-t border-gray-100 dark:border-[#232329]">
                 <dt>Total due today</dt>
                 <dd>{formatINR(payment.amount, 2)}</dd>
               </div>
             </dl>
 
-            <p className="mt-5 text-xs text-gray-400 leading-relaxed">
+            <p className="mt-5 text-xs text-gray-400 dark:text-[#8b8992] leading-relaxed">
               This is a demonstration checkout. No real payment is processed and
               no card is charged.
             </p>
