@@ -176,7 +176,7 @@ export function Navbar() {
         {!user && (
           <Link
             href="/announcements"
-            className="site-lab-shortcut site-announce-shortcut"
+            className="site-lab-shortcut"
             onClick={() => setIsOpen(false)}
             aria-label="Announcements"
             title="Announcements"
@@ -184,20 +184,10 @@ export function Navbar() {
             <Megaphone size={14} />
           </Link>
         )}
-        <button
-            className="site-lab-shortcut"
-            type="button"
-            onClick={toggleTheme}
-            aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
-            title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
-          >
-            {theme === "light" ? <Moon size={17} /> : <Sun size={17} />}
-          </button>
-        {user && (
-          <>
+        {user && 
             <Link
               href="/announcements"
-              className="site-bell"
+              className="site-lab-shortcut site-bell"
               aria-label={
                 unread > 0
                   ? `Announcements, ${unread} unread`
@@ -211,7 +201,17 @@ export function Navbar() {
                   {unread > 9 ? "9+" : unread}
                 </span>
               )}
-            </Link>
+            </Link>}
+            <button
+            className="site-lab-shortcut site-theme-shortcut"
+            type="button"
+            onClick={toggleTheme}
+            aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+            title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+          >
+            {theme === "light" ? <Moon size={17} /> : <Sun size={17} />}
+          </button>
+         { user &&( 
             <Link
               className="site-user-chip"
               href="/profile"
@@ -237,7 +237,7 @@ export function Navbar() {
             )}
             <ChevronDown size={13} />
           </Link>
-          </>
+          
         )}
         <button
           className="site-menu-toggle"
