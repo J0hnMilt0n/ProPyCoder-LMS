@@ -7,7 +7,7 @@ import { Navbar } from "@/components/navbar";
 import { ArrowLeft, ArrowRight, BookOpen, Search, Users } from "lucide-react";
 import toast from "react-hot-toast";
 import { InstructorAvatar } from "@/components/instructor-avatar";
-import { formatINR } from "@/lib/currency";
+import { PriceTag } from "@/components/price-tag";
 
 interface Course {
   id: string;
@@ -16,6 +16,7 @@ interface Course {
   category: string;
   level: string;
   price: number;
+  offerPrice: number | null;
   image: string | null;
   duration: number;
   instructor: { firstName: string; lastName: string; avatar: string | null };
@@ -36,19 +37,27 @@ export default function CoursesPage() {
   const { data: session } = useSession();
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFiltering, setIsFiltering] = useState(false);
   const [error, setError] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedLevel, setSelectedLevel] = useState("");
   const [page, setPage] = useState(1);
   const [pageCount, setPageCount] = useState(1);
   const [retry, setRetry] = useState(0);
+  const hasSearched = searchQuery.trim().length > 0;
 
   useEffect(() => {
     const controller = new AbortController();
+    const isFirstLoad = courses.length === 0 && !error && !hasSearched;
+    if (isFirstLoad) setIsLoading(true);
+    else setIsFiltering(true);
+    setError(false);
+    // Instant for typing (bundle-style): short debounce keeps keystrokes
+    // snappy, and we keep old results on screen instead of flashing
+    // the skeleton on every keystroke.
     const timer = window.setTimeout(async () => {
-      setIsLoading(true);
-      setError(false);
       const params = new URLSearchParams({ page: String(page), limit: "9" });
       if (searchQuery.trim()) params.set("title", searchQuery.trim());
       if (selectedCategory) params.set("category", selectedCategory);
@@ -60,8 +69,8 @@ export default function CoursesPage() {
         });
         if (!response.ok) throw new Error("Course request failed");
         const result = await response.json();
-        setCourses(result.data);
-        setPageCount(Math.max(1, result.pagination.pages));
+        setCourses(Array.isArray(result.data) ? result.data : []);
+        setPageCount(Math.max(1, result.pagination?.pages ?? 1));
       } catch (requestError) {
         if (
           requestError instanceof DOMException &&
@@ -71,17 +80,27 @@ export default function CoursesPage() {
         setError(true);
         toast.error("Could not load the course catalog");
       } finally {
-        if (!controller.signal.aborted) setIsLoading(false);
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+          setIsFiltering(false);
+        }
       }
-    }, 220);
+    }, 120);
 
     return () => {
       window.clearTimeout(timer);
       controller.abort();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, retry, searchQuery, selectedCategory, selectedLevel]);
 
+  function runSearch(value: string) {
+    setSearchQuery(value);
+    setPage(1);
+  }
+
   function resetFilters() {
+    setSearchInput("");
     setSearchQuery("");
     setSelectedCategory("");
     setSelectedLevel("");
@@ -107,20 +126,35 @@ export default function CoursesPage() {
               <span>LEARN BY BUILDING</span>
               <strong>One project at a time.</strong>
             </div>
-          </div>
-          <div className="catalog-searchbar">
-            <Search size={19} />
-            <input
-              type="search"
-              aria-label="Search courses"
-              placeholder="Search Python, web development, data..."
-              value={searchQuery}
-              onChange={(event) => {
-                setSearchQuery(event.target.value);
-                setPage(1);
+            <form
+              className="catalog-hero-search"
+              role="search"
+              onSubmit={(event) => {
+                event.preventDefault();
+                runSearch(searchInput);
               }}
-            />
-            <kbd>ENTER</kbd>
+            >
+              <div className="catalog-searchbar">
+                <Search size={17} />
+                <input
+                  type="search"
+                  aria-label="Search courses"
+                  placeholder="Search Python, web development, data..."
+                  value={searchInput}
+                  onChange={(event) => {
+                    setSearchInput(event.target.value);
+                    runSearch(event.target.value);
+                  }}
+                />
+                <button
+                  type="submit"
+                  className="catalog-search-go"
+                  disabled={isFiltering}
+                >
+                  Search
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       </header>
@@ -131,6 +165,7 @@ export default function CoursesPage() {
             {isLoading
               ? "Finding courses"
               : `${courses.length ? `Showing ${courses.length}` : "No"} ${courses.length === 1 ? "course" : "courses"}`}
+            {isFiltering && !isLoading ? " · updating…" : ""}
           </div>
           <div className="catalog-filters">
             <label>
@@ -192,8 +227,16 @@ export default function CoursesPage() {
         ) : courses.length === 0 ? (
           <div className="catalog-empty">
             <Search />
-            <h2>No courses found.</h2>
-            <p>Try a different search or clear your filters.</p>
+            <h2>
+              {hasSearched
+                ? `No courses match “${searchQuery.trim()}”.`
+                : "No courses found."}
+            </h2>
+            <p>
+              {hasSearched
+                ? "Try a different term, or clear filters to browse everything."
+                : "Try a different search or clear your filters."}
+            </p>
             <button onClick={resetFilters}>Clear filters</button>
           </div>
         ) : (
@@ -251,9 +294,10 @@ export default function CoursesPage() {
                     </span>
                   </div>
                   <div className="catalog-card-footer">
-                    <strong>
-                      {course.price > 0 ? formatINR(course.price) : "Free"}
-                    </strong>
+                    <PriceTag
+                      price={course.price}
+                      offerPrice={course.offerPrice ?? null}
+                    />
                     <Link
                       href={
                         session?.user

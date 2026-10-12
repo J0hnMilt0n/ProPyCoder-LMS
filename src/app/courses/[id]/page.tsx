@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
+import { PriceTag } from "@/components/price-tag";
 import { formatINR } from "@/lib/currency";
 import {
   Clock,
@@ -53,6 +54,7 @@ interface CourseDetail {
   category: string;
   level: string;
   price: number;
+  offerPrice: number | null;
   image: string | null;
   duration: number;
   instructor: {
@@ -621,14 +623,26 @@ export default function CourseDetailPage({ params }: Props) {
             <div className="course-purchase-card">
                 <div className="mb-6">
                   {course.price > 0 ? (
-                    <div className="text-3xl font-bold text-gray-900 mb-2">
-                      {formatINR(course.price)}
+                    <div className="mb-2">
+                      <PriceTag
+                        price={course.price}
+                        offerPrice={course.offerPrice ?? null}
+                        size="lg"
+                      />
                     </div>
                   ) : (
                     <div className="text-2xl font-bold text-sky-600 mb-2">
                       Free
                     </div>
                   )}
+                  {course.offerPrice !== null &&
+                    course.offerPrice !== undefined &&
+                    course.offerPrice > 0 &&
+                    course.offerPrice < course.price && (
+                      <p className="text-sm font-medium text-emerald-600">
+                        You save {formatINR(course.price - course.offerPrice)}
+                      </p>
+                    )}
                 </div>
 
                 <button

@@ -18,7 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
-// import { useTheme } from "@/components/theme-provider";
+import { useTheme } from "@/components/theme-provider";
 
 export function Navbar() {
   const { data: session } = useSession();
@@ -46,7 +46,7 @@ export function Navbar() {
       cancelled = true;
     };
   }, [userId]);
-  // const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -92,6 +92,9 @@ export function Navbar() {
           <Link href="/certificates" onClick={() => setIsOpen(false)}>
             Certificates
           </Link>
+          <Link href="/bundles" onClick={() => setIsOpen(false)}>
+            Bundles
+          </Link>
           <Link
             href="/announcements"
             className="site-nav-link-announcements"
@@ -103,7 +106,7 @@ export function Navbar() {
                 </span>
               ))}</span>
           </Link>
-          {/* <button
+          <button
             className="theme-switch"
             type="button"
             onClick={toggleTheme}
@@ -112,7 +115,7 @@ export function Navbar() {
           >
             {theme === "light" ? <Moon size={17} /> : <Sun size={17} />}
             <span>{theme === "light" ? "Dark" : "Light"}</span>
-          </button> */}
+          </button>
           {user ? (
             <>
               {user.role === "ADMIN" && (
@@ -181,6 +184,15 @@ export function Navbar() {
             <Megaphone size={14} />
           </Link>
         )}
+        <button
+            className="site-lab-shortcut"
+            type="button"
+            onClick={toggleTheme}
+            aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+            title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+          >
+            {theme === "light" ? <Moon size={17} /> : <Sun size={17} />}
+          </button>
         {user && (
           <>
             <Link

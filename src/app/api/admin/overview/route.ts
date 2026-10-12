@@ -67,6 +67,7 @@ export async function GET() {
           category: true,
           status: true,
           price: true,
+          offerPrice: true,
           updatedAt: true,
           instructor: { select: { firstName: true, lastName: true } },
           _count: { select: { enrollments: true } },

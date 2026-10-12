@@ -21,6 +21,9 @@ export async function GET(request: NextRequest, { params }: Props) {
       where: { id },
       include: {
         course: true,
+        bundle: {
+          include: { courses: { include: { course: true } } },
+        },
         enrollment: true,
       },
     });
@@ -66,6 +69,7 @@ export async function POST(request: NextRequest, { params }: Props) {
       where: { id },
       include: {
         course: true,
+        bundle: { include: { courses: true } },
       },
     });
 
@@ -93,7 +97,7 @@ export async function POST(request: NextRequest, { params }: Props) {
     // In production, verify payment with Stripe/PayPal using transactionId
     // For demo purposes, we'll mark it as completed
 
-    // Start a transaction to create enrollment and update payment
+    // Start a transaction to create enrollment(s) and update payment
     const result = await prisma.$transaction(async (tx) => {
       // Update payment status
       const updatedPayment = await tx.payment.update({
@@ -109,34 +113,61 @@ export async function POST(request: NextRequest, { params }: Props) {
         },
       });
 
-      // Create enrollment
-      const enrollment = await tx.enrollment.create({
-        data: {
-          studentId: session.user!.id,
-          courseId: payment.courseId,
-          status: "ACTIVE",
-        },
-        include: {
-          course: true,
-        },
-      });
+      let enrollments: { id: string; courseId: string }[] = [];
 
-      // Link payment to enrollment
+      if (payment.bundleId && payment.bundle) {
+        // Bundle purchase → enroll in every course the buyer doesn't own yet.
+        const courseIds = payment.bundle.courses.map((c) => c.courseId);
+        await tx.enrollment.createMany({
+          data: courseIds.map((courseId) => ({
+            studentId: session.user!.id,
+            courseId,
+            status: "ACTIVE",
+          })),
+          skipDuplicates: true,
+        });
+        enrollments = await tx.enrollment.findMany({
+          where: {
+            studentId: session.user!.id,
+            courseId: { in: courseIds },
+          },
+          select: { id: true, courseId: true },
+        });
+      } else if (payment.courseId) {
+        const enrollment = await tx.enrollment.create({
+          data: {
+            studentId: session.user!.id,
+            courseId: payment.courseId,
+            status: "ACTIVE",
+          },
+          select: { id: true, courseId: true },
+        });
+        enrollments = [enrollment];
+      } else {
+        throw new Error("Payment has neither course nor bundle");
+      }
+
+      // Link payment to the first enrollment (back-compat for single-course)
       await tx.payment.update({
         where: { id },
         data: {
-          enrollmentId: enrollment.id,
+          enrollmentId: enrollments[0]?.id ?? null,
         },
       });
 
-      return { payment: updatedPayment, enrollment };
+      return { payment: updatedPayment, enrollments };
     });
+
+    const message = payment.bundleId
+      ? "Payment successful! Your courses are unlocked."
+      : "Payment successful! You are now enrolled in the course.";
 
     return NextResponse.json({
       success: true,
       payment: result.payment,
-      enrollment: result.enrollment,
-      message: "Payment successful! You are now enrolled in the course.",
+      enrollments: result.enrollments,
+      enrollment: result.enrollments[0] ?? null,
+      message,
     });
   } catch (error) {
     console.error("Payment completion error:", error);

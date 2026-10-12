@@ -1,5 +1,6 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { isValidOffer } from "@/lib/pricing";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -11,6 +12,7 @@ const courseInput = z.object({
   category: z.string().trim().min(2).max(60),
   level: z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED"]),
   price: z.number().finite().min(0),
+  offerPrice: z.number().finite().min(0).nullable().optional(),
   duration: z.number().int().min(1).max(1000),
   image: z.union([z.string().url(), z.literal("")]).optional(),
   status: z.enum(courseStatuses).optional(),
@@ -51,6 +53,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const offerPrice = parsed.data.offerPrice ?? null;
+    if (!isValidOffer(parsed.data.price, offerPrice)) {
+      return NextResponse.json(
+        { error: "Offer price must be lower than the regular price" },
+        { status: 400 },
+      );
+    }
+
     const course = await prisma.course.create({
       data: {
         title: parsed.data.title,
@@ -58,6 +68,7 @@ export async function POST(request: NextRequest) {
         category: parsed.data.category,
         level: parsed.data.level,
         price: parsed.data.price,
+        offerPrice,
         duration: parsed.data.duration,
         image: parsed.data.image || null,
         status: parsed.data.status ?? "DRAFT",

@@ -26,6 +26,7 @@ interface InstructorCourse {
   category: string;
   status: string;
   price: number;
+  offerPrice: number | null;
   duration: number;
   updatedAt: string;
   _count: { enrollments: number; modules: number };
@@ -37,6 +38,7 @@ const emptyForm = {
   category: "Python",
   level: "BEGINNER",
   price: "0",
+  offerPrice: "",
   duration: "1",
   image: "",
 };
@@ -89,6 +91,10 @@ export default function InstructorPage() {
         body: JSON.stringify({
           ...form,
           price: Number(form.price),
+          offerPrice:
+            form.offerPrice.trim() === "" || Number(form.offerPrice) <= 0
+              ? null
+              : Number(form.offerPrice),
           duration: Number(form.duration),
         }),
       });
@@ -338,6 +344,21 @@ export default function InstructorPage() {
                     required
                   />
                 </label>
+                <label>
+                  Offer price (₹) — optional
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Leave empty for no offer"
+                    value={form.offerPrice}
+                    onChange={(event) =>
+                      setForm({ ...form, offerPrice: event.target.value })
+                    }
+                  />
+                </label>
+              </div>
+              <div className="instructor-form-row">
                 <label>
                   Duration (hours)
                   <input

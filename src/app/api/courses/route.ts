@@ -23,10 +23,19 @@ export async function GET(request: NextRequest) {
     if (category) where.category = category;
     if (level) where.level = level;
     if (title) {
+      // PostgreSQL `contains` is case-sensitive, so "python" would miss
+      // "Python". Bundles filter with toLowerCase() client-side, which is
+      // why bundle search felt fine. Use insensitive mode on Postgres.
+      const isPostgres = (process.env.DATABASE_URL || "").startsWith(
+        "postgres",
+      );
+      const textFilter = isPostgres
+        ? { contains: title, mode: "insensitive" as const }
+        : { contains: title };
       where.OR = [
-        { title: { contains: title } },
-        { description: { contains: title } },
-        { category: { contains: title } },
+        { title: textFilter },
+        { description: textFilter },
+        { category: textFilter },
       ];
     }
 
@@ -83,8 +92,16 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, description, category, level, price, duration, image } =
-      body;
+    const {
+      title,
+      description,
+      category,
+      level,
+      price,
+      offerPrice,
+      duration,
+      image,
+    } = body;
 
     const course = await prisma.course.create({
       data: {
@@ -93,6 +110,7 @@ export async function POST(request: NextRequest) {
         category,
         level: level || "BEGINNER",
         price: price || 0,
+        offerPrice: offerPrice ? Number(offerPrice) : null,
         duration,
         image,
         instructorId: session.user.id,

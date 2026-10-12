@@ -31,7 +31,14 @@ interface Payment {
     category: string | null;
     image: string | null;
     instructor?: { firstName: string; lastName: string } | null;
-  };
+  } | null;
+  bundle?: {
+    id: string;
+    title: string;
+    description: string | null;
+    image: string | null;
+    courses: { course: { id: string; title: string } }[];
+  } | null;
   enrollment?: { id: string } | null;
 }
 
@@ -69,10 +76,12 @@ export default function CheckoutPage({ params }: Props) {
       if (response.ok) {
         const data = await response.json();
         setPayment(data);
-        // Already paid → send them straight to the course.
+        // Already paid → send them to their courses (bundle or single course).
         if (data.status === "COMPLETED" && data.enrollment) {
           toast.success("Payment already completed");
-          router.push(`/courses/${data.course.id}`);
+          router.push(
+            data.course ? `/courses/${data.course.id}` : "/dashboard",
+          );
         }
       } else {
         const error = await response.json();
@@ -149,7 +158,10 @@ export default function CheckoutPage({ params }: Props) {
         return;
       }
       toast.success("Payment successful! You are now enrolled.");
-      router.push(`/courses/${payment.course.id}`);
+      // Bundle purchases unlock several courses → land on the dashboard.
+      router.push(
+        payment?.course ? `/courses/${payment.course.id}` : "/dashboard",
+      );
     } catch {
       toast.error("An error occurred while processing payment");
     } finally {
@@ -378,35 +390,52 @@ export default function CheckoutPage({ params }: Props) {
               </h2>
             </div>
 
-            {payment.course.image && (
-              <img
-                src={payment.course.image}
-                alt={payment.course.title}
-                className="w-full h-32 object-cover rounded-lg mb-4"
-              />
-            )}
+              {(payment.bundle?.image || payment.course?.image) && (
+                <img
+                  src={payment.bundle?.image ?? payment.course?.image ?? ""}
+                  alt={
+                    payment.bundle?.title ?? payment.course?.title ?? "Cover"
+                  }
+                  className="w-full h-32 object-cover rounded-lg mb-4"
+                />
+              )}
 
-            <h3 className="font-semibold text-gray-900">
-              {payment.course.title}
-            </h3>
-            {payment.course.category && (
-              <p className="text-sm text-gray-500 mb-4">
-                {payment.course.category}
-              </p>
-            )}
+              <h3 className="font-semibold text-gray-900">
+                {payment.bundle?.title ?? payment.course?.title ?? "Order"}
+              </h3>
+              {payment.bundle ? (
+                <div className="mt-2 mb-4 space-y-1">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#e95f32]">
+                    Bundle · {payment.bundle.courses.length} courses included
+                  </p>
+                  {payment.bundle.courses.map(({ course }) => (
+                    <p key={course.id} className="text-sm text-gray-600">
+                      · {course.title}
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                payment.course?.category && (
+                  <p className="text-sm text-gray-500 mb-4">
+                    {payment.course.category}
+                  </p>
+                )
+              )}
 
-            {payment.course.instructor && (
-              <p className="text-sm text-gray-600 mb-4">
-                by {payment.course.instructor.firstName}{" "}
-                {payment.course.instructor.lastName}
-              </p>
-            )}
+              {payment.course?.instructor && (
+                <p className="text-sm text-gray-600 mb-4">
+                  by {payment.course.instructor.firstName}{" "}
+                  {payment.course.instructor.lastName}
+                </p>
+              )}
 
-            <dl className="space-y-2 border-t border-gray-100 pt-4 text-sm">
-              <div className="flex justify-between text-gray-600">
-                <dt>Course price</dt>
-                <dd>{formatINR(payment.amount, 2)}</dd>
-              </div>
+              <dl className="space-y-2 border-t border-gray-100 pt-4 text-sm">
+                <div className="flex justify-between text-gray-600">
+                  <dt>
+                    {payment.bundle ? "Bundle price" : "Course price"}
+                  </dt>
+                  <dd>{formatINR(payment.amount, 2)}</dd>
+                </div>
               <div className="flex justify-between text-gray-600">
                 <dt>Lifetime access</dt>
                 <dd>Included</dd>

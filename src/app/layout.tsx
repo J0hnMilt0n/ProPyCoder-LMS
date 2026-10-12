@@ -22,6 +22,12 @@ export const metadata: Metadata = {
     apple: "/propycoder-logo.png"}
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#e95f2d",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
+import { PriceTag } from "@/components/price-tag";
 import { formatINR } from "@/lib/currency";
 import {
   ArrowDownToLine,
@@ -17,6 +18,7 @@ import {
   LayoutDashboard,
   LoaderCircle,
   Megaphone,
+  Package,
   Plus,
   RefreshCw,
   Search,
@@ -30,6 +32,7 @@ import {
 import toast from "react-hot-toast";
 import { CourseContentManager } from "@/components/course-content-manager";
 import { LiveClassManager } from "@/components/live-class-manager";
+import { BundleManager } from "@/components/bundle-manager";
 import { ImageUploadField } from "@/components/image-upload-field";
 import { useConfirm } from "@/components/confirm-dialog";
 
@@ -64,6 +67,7 @@ type AdminOverview = {
     category: string;
     status: string;
     price: number;
+    offerPrice: number | null;
     updatedAt: string;
     instructor: { firstName: string; lastName: string };
     _count: { enrollments: number };
@@ -100,6 +104,7 @@ type AdminOverview = {
 type View =
   | "overview"
   | "courses"
+  | "bundles"
   | "students"
   | "instructors"
   | "enrollments"
@@ -108,6 +113,7 @@ type View =
 const viewLabels: Record<View, string> = {
   overview: "Overview",
   courses: "Courses",
+  bundles: "Bundles",
   students: "Students",
   instructors: "Instructors",
   enrollments: "Enrollments",
@@ -117,6 +123,7 @@ const viewLabels: Record<View, string> = {
 const viewIcons: Record<View, typeof Users> = {
   overview: LayoutDashboard,
   courses: BookOpen,
+  bundles: Package,
   students: Users,
   instructors: UserCog,
   enrollments: GraduationCap,
@@ -130,6 +137,7 @@ type CourseForm = {
   category: string;
   level: string;
   price: string;
+  offerPrice: string;
   duration: string;
   image: string;
   status: string;
@@ -142,6 +150,7 @@ const EMPTY_COURSE_FORM: CourseForm = {
   category: "Python",
   level: "BEGINNER",
   price: "0",
+  offerPrice: "",
   duration: "1",
   image: "",
   status: "DRAFT",
@@ -391,6 +400,7 @@ export default function AdminPage() {
         category: string;
         level: string;
         price: number;
+        offerPrice: number | null;
         duration: number;
         image: string | null;
         status: string;
@@ -402,6 +412,7 @@ export default function AdminPage() {
         category: course.category,
         level: course.level,
         price: String(course.price),
+        offerPrice: course.offerPrice == null ? "" : String(course.offerPrice),
         duration: String(course.duration),
         image: course.image ?? "",
         status: course.status,
@@ -428,6 +439,11 @@ export default function AdminPage() {
         category: courseForm.category.trim(),
         level: courseForm.level,
         price: Number(courseForm.price),
+        offerPrice:
+          courseForm.offerPrice.trim() === "" ||
+          Number(courseForm.offerPrice) <= 0
+            ? null
+            : Number(courseForm.offerPrice),
         duration: Number(courseForm.duration),
         image: courseForm.image.trim(),
         status: courseForm.status,
@@ -872,6 +888,19 @@ export default function AdminPage() {
                 />
               </section>
             </>
+          ) : view === "bundles" ? (
+            <section className="admin-panel admin-live-panel">
+              <BundleManager
+                courses={overview.recentCourses
+                  .filter((course) => course.status === "PUBLISHED")
+                  .map((course) => ({
+                    id: course.id,
+                    title: course.title,
+                    price: course.price,
+                    offerPrice: course.offerPrice,
+                  }))}
+              />
+            </section>
           ) : view === "live" ? (
             <section className="admin-panel admin-live-panel">
               <LiveClassManager
@@ -1125,6 +1154,24 @@ export default function AdminPage() {
                           }
                         />
                       </label>
+                      <label>
+                        Offer price (₹) — optional
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="Leave empty for no offer"
+                          value={courseForm.offerPrice}
+                          onChange={(event) =>
+                            setCourseForm({
+                              ...courseForm,
+                              offerPrice: event.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+                    <div className="instructor-form-row">
                       <label>
                         Duration (hours)
                         <input
@@ -1453,7 +1500,9 @@ function CourseTable({
                 {course.instructor.firstName} {course.instructor.lastName}
               </td>
               <td>{course._count.enrollments}</td>
-              <td>{course.price ? formatINR(course.price, 2) : "Free"}</td>
+              <td>
+                <PriceTag price={course.price} offerPrice={course.offerPrice} />
+              </td>
               <td>
                 <span
                   className={`admin-pill ${course.status === "PUBLISHED" ? "is-good" : "is-muted"}`}

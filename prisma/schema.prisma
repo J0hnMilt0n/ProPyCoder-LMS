@@ -44,6 +44,7 @@ model Course {
   category    String
   level       String   @default("BEGINNER")
   price       Float    @default(0)
+  offerPrice  Float? // Optional discounted price (must be 0 <= offer <= price)
   image       String?
   status      String   @default("DRAFT")
   instructor  User     @relation("instructor", fields: [instructorId], references: [id], onDelete: Cascade)
@@ -58,6 +59,7 @@ model Course {
   quizzes     Quiz[]
   payments    Payment[]
   liveClasses LiveClass[]
+  bundles     BundleCourse[]
 
   @@index([instructorId])
   @@index([category])
@@ -141,26 +143,62 @@ model Progress {
   @@index([lessonId])
 }
 
-// Payment/Transaction model
+// Payment/Transaction model — a payment is for EITHER a single course
+// OR a bundle (exactly one of courseId / bundleId is set).
 model Payment {
   id              String   @id @default(cuid())
   userId          String
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  courseId        String
-  course          Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId        String?
+  course          Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  bundleId        String?
+  bundle          Bundle?  @relation(fields: [bundleId], references: [id], onDelete: Cascade)
   amount          Float
   currency        String   @default("INR")
   status          String   @default("PENDING") // PENDING, COMPLETED, FAILED, REFUNDED
   paymentMethod   String?  // STRIPE, PAYPAL, etc.
   transactionId   String?  // External transaction ID
-  enrollmentId    String?  @unique // Link to enrollment created after payment
+  enrollmentId    String?  @unique // Link to enrollment created after payment (course-only)
   enrollment      Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   @@index([userId])
   @@index([courseId])
+  @@index([bundleId])
   @@index([status])
+}
+
+// Bundle model — 2+ courses sold together at a reduced bundle price.
+model Bundle {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  image       String?
+  price       Float    @default(0) // Bundle selling price (should be < sum of course prices)
+  status      String   @default("DRAFT") // DRAFT, PUBLISHED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  courses  BundleCourse[]
+  payments Payment[]
+
+  @@index([status])
+}
+
+// Bundle ↔ Course join (ordered, cascade on either side).
+model BundleCourse {
+  id       String @id @default(cuid())
+  bundle   Bundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  bundleId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId String
+  order    Int    @default(0)
+
+  @@unique([bundleId, courseId])
+  @@index([bundleId])
+  @@index([courseId])
 }
 
 // Quiz model

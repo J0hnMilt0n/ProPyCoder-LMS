@@ -12,7 +12,7 @@ import {
 import { Navbar } from "@/components/navbar";
 import { BrandLogo } from "@/components/brand-logo";
 import { prisma } from "@/lib/prisma";
-import { formatINR } from "@/lib/currency";
+import { PriceTag } from "@/components/price-tag";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +29,7 @@ export default async function Home() {
         duration: true,
         image: true,
         price: true,
+        offerPrice: true,
         instructor: { select: { firstName: true, lastName: true } },
         _count: { select: { enrollments: true } },
       },
@@ -195,9 +196,10 @@ export default async function Home() {
                     </span>
                   </div>
                   <div className="home-course-bottom">
-                    <strong>
-                      {course.price ? formatINR(course.price) : "Free"}
-                    </strong>
+                    <PriceTag
+                      price={course.price}
+                      offerPrice={course.offerPrice ?? null}
+                    />
                     <span>
                       View course <ArrowRight size={15} />
                     </span>
