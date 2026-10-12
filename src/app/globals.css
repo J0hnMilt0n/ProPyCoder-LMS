@@ -4409,6 +4409,8 @@ body:has(.lab-page) {
 }
 
 html[data-theme="dark"] body,
+html[data-theme="dark"] .check-out-page,
+html[data-theme="dark"] .bundle-detail-link,
 html[data-theme="dark"] .cert-verify,
 html[data-theme="dark"] .cert-item-link,
 html[data-theme="dark"] .cert-empty,
@@ -6112,6 +6114,7 @@ a.profile-cert-link:hover {
   padding: 60px 0;
   color: #7a7a74;
   font-size: 13px;
+  width: 100%;
 }
 .auth-content.bundle-content > .auth-card {
   margin-inline: auto;
@@ -6141,7 +6144,6 @@ a.profile-cert-link:hover {
 }
 
 .bundle-store-cover {
-  height: 110px;
   background: linear-gradient(120deg, #fff7f1, #f6e8da);
   border-bottom: 1px solid #f0e4d6;
   display: flex;
@@ -6223,6 +6225,7 @@ a.profile-cert-link:hover {
 .bundle-buy {
   display: inline-flex;
   align-items: center;
+  /* padding-left: 25% !important; */
   gap: 6px;
   flex-shrink: 0;
   white-space: nowrap;

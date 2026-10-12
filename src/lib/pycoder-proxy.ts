@@ -239,6 +239,76 @@ export async function proxyPyCoderPage(request: NextRequest, pathname: string) {
 `;
     html = html.replace(/<\/head>/i, `${themeBridge}</head>`);
 
+    // Sync the lab with the host page's theme using the template's own
+    // theme mechanism (localStorage 'pycoder-theme' + the 'light' class
+    // on <html>). The host LMS shares this origin, so the stored host
+    // theme ('propycoder-theme') is readable directly; live toggles
+    // arrive via 'propycoder-theme' postMessage from the host
+    // ThemeProvider. This runs before <body> is parsed, so the
+    // template's default 'light' is corrected without a flash.
+    html = html.replace(
+      /<\/head>/i,
+      `
+    <script>
+    (function () {
+      function readHostTheme() {
+        try {
+          var stored = localStorage.getItem('propycoder-theme');
+          if (stored === 'light' || stored === 'dark') return stored;
+        } catch (e) {}
+        try {
+          return window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light';
+        } catch (e) {
+          return 'light';
+        }
+      }
+
+      function applyTheme(theme) {
+        try {
+          localStorage.setItem('pycoder-theme', theme);
+        } catch (e) {}
+        var isLight = theme === 'light';
+        if (isLight) {
+          document.documentElement.classList.add('light');
+        } else {
+          document.documentElement.classList.remove('light');
+        }
+        if (document.body) {
+          if (isLight) {
+            document.body.classList.add('light');
+          } else {
+            document.body.classList.remove('light');
+          }
+        }
+        // Re-apply the template's full theme (Monaco theme, buttons,
+        // labels) once its scripts have initialised.
+        if (window.updateTheme) {
+          try {
+            isDarkTheme = !isLight;
+          } catch (e) {}
+          try {
+            window.updateTheme();
+          } catch (e) {}
+        }
+      }
+
+      // Initial sync: correct the template's default before <body> parses.
+      applyTheme(readHostTheme());
+
+      window.addEventListener('message', function (event) {
+        if (event.origin !== window.location.origin) return;
+        var data = event.data;
+        if (!data || data.type !== 'propycoder-theme') return;
+        if (data.theme !== 'light' && data.theme !== 'dark') return;
+        applyTheme(data.theme);
+      });
+    })();
+    </script>
+  `
+    );
+
     return new NextResponse(html, {
       headers: {
         "Content-Type": "text/html; charset=utf-8",

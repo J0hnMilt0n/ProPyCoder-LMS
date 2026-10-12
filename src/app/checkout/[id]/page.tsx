@@ -171,7 +171,7 @@ export default function CheckoutPage({ params }: Props) {
 
   if (isLoading || status !== "authenticated") {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 check-out-page">
         <Navbar />
         <div className="flex items-center justify-center h-96">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#e95f32] border-t-transparent" />
@@ -182,7 +182,7 @@ export default function CheckoutPage({ params }: Props) {
 
   if (!payment) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 check-out-page">
         <Navbar />
         <div className="max-w-xl mx-auto py-20 px-4 text-center">
           <p className="text-gray-600">Checkout not found.</p>
@@ -198,10 +198,10 @@ export default function CheckoutPage({ params }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 check-out-page">
       <Navbar />
 
-      <main className="max-w-5xl mx-auto px-4 py-10">
+      <main className="max-w-5xl mx-auto px-4 py-10 check-out-page">
         <button
           type="button"
           onClick={() => router.back()}

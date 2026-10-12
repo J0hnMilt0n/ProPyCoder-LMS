@@ -175,7 +175,7 @@ export default function BundleDetailPage() {
               ))}
             </ul>
 
-            <aside className="bundle-buy-card">
+            <aside className="bundle-buy-card flex flex-col items-center">
               <div className="bundle-pricing mb-3">
                 <span className="bundle-mrp">{formatINR(mrp)}</span>
                 <strong className="bundle-price" style={{ fontSize: "1.7rem" }}>
@@ -188,7 +188,7 @@ export default function BundleDetailPage() {
                 {courses.length} courses, one payment.
               </p>
               <button
-                className="bundle-buy w-full"
+                className="bundle-buy w-50 flex justify-center"
                 onClick={() => void buyBundle()}
                 disabled={isBuying}
               >
