@@ -119,7 +119,7 @@ export default function AnnouncementsPage() {
 
             {status === "authenticated" && (
               <section className="cert-verify-card">
-                <div className="cert-verify-head">
+                <div className="cert-verify-head flex lg:flex-row flex-col">
                   <span>
                     <Megaphone size={14} /> New updates
                     {unread > 0 && (
