@@ -109,7 +109,7 @@ export function Navbar() {
           <button
             className="theme-switch"
             type="button"
-            onClick={toggleTheme}
+            onClick={(event) => toggleTheme(event.currentTarget)}
             aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
             title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
           >
@@ -205,7 +205,7 @@ export function Navbar() {
             <button
             className="site-lab-shortcut site-theme-shortcut"
             type="button"
-            onClick={toggleTheme}
+            onClick={(event) => toggleTheme(event.currentTarget)}
             aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
             title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
           >
