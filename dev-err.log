@@ -1470,7 +1470,7 @@ Import trace:
 Parsing CSS source code failed
   5318 |   color: var(--background);
   5319 | }
-> 5320 | html[data-theme="dark"] .site-lab-shortcut, {
+> 5320 | html[data-theme="dark"] .site-shortcut, {
        |                                             ^
   5321 |   background: var(--background);
   5322 |   color: var(--foreground);
@@ -1482,7 +1482,7 @@ Generated code of PostCSS transform of file content of src/app/globals.css:
 ./src/app/globals.css:5320:45
   5318 |   color: var(--background);
   5319 | }
-> 5320 | html[data-theme="dark"] .site-lab-shortcut, {
+> 5320 | html[data-theme="dark"] .site-shortcut, {
        |                                             ^
   5321 |   background: var(--background);
   5322 |   color: var(--foreground);

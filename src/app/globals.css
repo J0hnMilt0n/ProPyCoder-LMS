@@ -281,7 +281,7 @@ button {
   border-radius: 4px;
   background: white;
 }
-.site-lab-shortcut {
+.site-shortcut {
   display: none;
 }
 
@@ -2356,6 +2356,7 @@ button {
 .course-curriculum,
 .course-lesson-player,
 .course-purchase-card {
+  padding: 5px 20px;
   border: 1px solid #e6e6e6;
   border-radius: 5px;
   background: #fff;
@@ -2540,6 +2541,16 @@ button {
   color: #7a7a7a;
   font-size: 12px;
   line-height: 1.7;
+}
+/* Mobile: the player is injected into the lesson list directly beneath
+   the selected topic, so it reads as part of the row instead of a
+   second stacked card at the bottom of the page. */
+.course-lesson-list .course-lesson-inline-player .course-lesson-player {
+  margin-top: 0;
+  padding: 4px 12px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 .course-complete-button {
   display: inline-flex;
@@ -4141,12 +4152,12 @@ body:has(.lab-page) {
     flex-wrap: wrap;
   }
 }
-@media (max-width: 768px) {
+@media (max-width: 1200px) {
   .site-menu-toggle {
     display: inline-flex;
     margin-left: 5px;
   }
-  .site-lab-shortcut {
+  .site-shortcut {
     display: inline-flex;
     align-items: center;
     gap: 5px;
@@ -4160,10 +4171,10 @@ body:has(.lab-page) {
     font-weight: 700;
     white-space: nowrap;
   }
-  .site-theme-shortcut{
+  .site-theme-shortcut {
     padding: 7px;
   }
-  .site-courses-shortcut {
+  .site-shortcuts {
     margin-left: auto;
   }
   .site-nav-links {
@@ -4185,7 +4196,8 @@ body:has(.lab-page) {
   }
   .site-nav-link-courses,
   .site-nav-link-lab,
-  .site-nav-link-announcements, .theme-switch {
+  .site-nav-link-announcements,
+  .theme-switch {
     display: none;
   }
   .site-nav-links > a,
@@ -4226,12 +4238,10 @@ body:has(.lab-page) {
     font-size: 12px;
   }
   .brand-logo-badge img {
-  
-  width: 80%;
-  height: 100%;
-  padding: 2px;
-
-}
+    width: 80%;
+    height: 100%;
+    padding: 2px;
+  }
   .home-hero {
     min-height: 690px;
     align-items: flex-start;
@@ -4242,7 +4252,11 @@ body:has(.lab-page) {
   }
   .home-hero-shade {
     background:
-      linear-gradient(90deg, rgba(253, 251, 247, 0.97), rgba(253, 251, 247, 0.82)),
+      linear-gradient(
+        90deg,
+        rgba(253, 251, 247, 0.97),
+        rgba(253, 251, 247, 0.82)
+      ),
       linear-gradient(0deg, rgba(253, 251, 247, 0.9) 3%, transparent 75%);
   }
   .home-hero-content {
@@ -4447,6 +4461,7 @@ body:has(.lab-page) {
 }
 
 html[data-theme="dark"] body,
+html[data-theme="dark"] .course-certificate-card,
 html[data-theme="dark"] .cert-item,
 html[data-theme="dark"] .cert-verify-card,
 html[data-theme="dark"] .check-out-page,
@@ -4469,9 +4484,8 @@ html[data-theme="dark"] .not-found-page {
 html[data-theme="dark"] .cert-verify-card,
 html[data-theme="dark"] .cert-verify,
 html[data-theme="dark"] .cert-empty,
-html[data-theme="dark"] .cert-verify .auth-field > input
-{
-border: solid 1px #414141;
+html[data-theme="dark"] .cert-verify .auth-field > input {
+  border: solid 1px #414141;
 }
 html[data-theme="dark"] .site-nav {
   background: rgba(0, 0, 0, 0.92);
@@ -4631,7 +4645,8 @@ html[data-theme="dark"] .site-nav-cta {
   color: var(--background);
 }
 
-html[data-theme="dark"] .site-lab-shortcut,html[data-theme="dark"] .site-menu-toggle {
+html[data-theme="dark"] .site-shortcut,
+html[data-theme="dark"] .site-menu-toggle {
   background: var(--background);
   color: var(--foreground);
   border: 1px solid #211;
@@ -4639,7 +4654,7 @@ html[data-theme="dark"] .site-lab-shortcut,html[data-theme="dark"] .site-menu-to
 
 html[data-theme="dark"] .site-nav-cta:hover {
   color: var(--foreground);
-   background: var(--orange);
+  background: var(--orange);
   transform: translateY(-1px);
 }
 
@@ -4876,6 +4891,32 @@ html[data-theme="dark"] .course-overview-card > span {
   background: rgba(240, 160, 110, 0.12);
   color: #f0a06e;
 }
+/* Course page gray text: Tailwind text-gray-* utilities here have no
+   dark variants, and a few hardcoded grays (completion count,
+   no-video block, lesson titles) stayed light-on-black illegible. */
+html[data-theme="dark"] .course-detail-page .text-gray-900,
+html[data-theme="dark"] .course-detail-page .text-gray-800,
+html[data-theme="dark"] .course-detail-page .text-gray-700 {
+  color: var(--foreground);
+}
+html[data-theme="dark"] .course-detail-page .text-gray-600,
+html[data-theme="dark"] .course-detail-page .text-gray-500,
+html[data-theme="dark"] .course-detail-page .text-gray-400 {
+  color: var(--muted);
+}
+html[data-theme="dark"] .course-completion-count {
+  color: var(--muted);
+}
+html[data-theme="dark"] .course-no-video {
+  background: #141416;
+  color: var(--muted);
+}
+html[data-theme="dark"] .course-lesson-list .course-lesson-row p {
+  color: var(--foreground);
+}
+html[data-theme="dark"] .course-lesson-list .course-lesson-row p + p {
+  color: var(--muted);
+}
 
 html:has(.lab-page),
 body:has(.lab-page) {
@@ -4951,15 +4992,15 @@ html[data-theme="light"] .lab-frame {
 /* Two columns only when a player is present; otherwise the curriculum
    stays full width instead of leaving an empty second column.
    The player gets the larger share so the video is the visual hero. */
-.course-learning-grid:has(.course-lesson-player) {
+.course-learning-grid:has(> .course-lesson-player) {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
   align-items: start;
 }
 .course-learning-grid .course-curriculum,
-.course-learning-grid .course-lesson-player {
+.course-learning-grid > .course-lesson-player {
   margin-top: 0;
 }
-.course-learning-grid .course-lesson-player {
+.course-learning-grid > .course-lesson-player {
   position: sticky;
   top: 96px;
 }
@@ -4968,13 +5009,13 @@ html[data-theme="light"] .lab-frame {
     gap: 13px;
     margin-top: 0;
   }
-  .course-learning-grid:has(.course-lesson-player) {
+  .course-learning-grid:has(> .course-lesson-player) {
     grid-template-columns: minmax(0, 1fr);
   }
-  /* On small screens the video leads, curriculum follows. */
-  .course-learning-grid .course-lesson-player {
+  /* Mobile renders the player inline directly beneath the tapped topic;
+     this only covers the first frame before the viewport effect swaps it. */
+  .course-learning-grid > .course-lesson-player {
     position: static;
-    order: -1;
   }
 }
 
@@ -5187,12 +5228,7 @@ html[data-theme="light"] .lab-frame {
 }
 .skeleton-block {
   border-radius: 5px;
-  background: linear-gradient(
-    100deg,
-    #ececec 40%,
-    #f6f6f6 50%,
-    #ececec 60%
-  );
+  background: linear-gradient(100deg, #ececec 40%, #f6f6f6 50%, #ececec 60%);
   background-size: 200% 100%;
   animation: skeleton-shimmer 1.3s infinite linear;
 }
@@ -6176,7 +6212,9 @@ a.profile-cert-link:hover {
   background: #fff;
   display: flex;
   flex-direction: column;
-  transition: box-shadow 0.18s ease, transform 0.18s ease;
+  transition:
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
 }
 
 .bundle-store-card:hover {
@@ -6311,7 +6349,9 @@ a.profile-cert-link:hover {
   border-radius: 14px;
   padding: 12px 14px;
   background: #fff;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .bundle-detail-link:hover {
@@ -6477,11 +6517,11 @@ a.profile-cert-link:hover {
   background: #fffdf6;
   transform: translateY(-1px);
 }
-html[data-theme="dark"]  .cert-item-link {
-  border:solid 1px #414141;
+html[data-theme="dark"] .cert-item-link {
+  border: solid 1px #414141;
 }
-html[data-theme="dark"]  .cert-item-link:hover {
-  border-color: #DDB45A;
+html[data-theme="dark"] .cert-item-link:hover {
+  border-color: #ddb45a;
   background: #121212;
   transform: translateY(-1px);
 }
@@ -6605,11 +6645,7 @@ html[data-theme="dark"]  .cert-item-link:hover {
   border: 12px solid #e95f32;
   border-radius: 4px;
   background:
-    radial-gradient(
-      circle at 50% 0%,
-      rgba(233, 95, 50, 0.06),
-      transparent 60%
-    ),
+    radial-gradient(circle at 50% 0%, rgba(233, 95, 50, 0.06), transparent 60%),
     linear-gradient(180deg, #fffdf9, #fff);
   box-shadow:
     0 18px 50px rgba(15, 15, 15, 0.12),
@@ -6853,7 +6889,10 @@ html[data-theme="dark"]  .cert-item-link:hover {
   font-size: 14px;
   cursor: pointer;
   border: 1px solid transparent;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
 }
 
 .confirm-cancel {
@@ -6951,8 +6990,8 @@ html[data-theme="dark"]  .cert-item-link:hover {
   white-space: nowrap;
 }
 
-html[data-theme="dark"] .certificate-logo  .site-brand{
-  color:#2f2f2f;
+html[data-theme="dark"] .certificate-logo .site-brand {
+  color: #2f2f2f;
 }
 
 /* Download-only nudge: html2canvas renders absolute children slightly
@@ -6969,7 +7008,7 @@ html[data-theme="dark"] .certificate-logo  .site-brand{
    lower than the browser does, so lift them slightly while exporting so the
    printed/exported image matches the on-screen view. Covers the footer
    labels (Issue date / Chief Executive Officer) and the Certificate ID. */
-.certificate-frame.is-exporting .certificate-signature img  {
+.certificate-frame.is-exporting .certificate-signature img {
   position: relative;
   top: 8px;
 }
@@ -6997,8 +7036,8 @@ html[data-theme="dark"] .certificate-logo  .site-brand{
     display: none !important;
   }
   .certificate-frame .certificate-logo .site-brand {
-  top: 8px;
-}
+    top: 8px;
+  }
   .certificate-view {
     min-height: 0 !important;
   }
@@ -7023,7 +7062,11 @@ html[data-theme="dark"] .certificate-logo  .site-brand{
     box-shadow: none;
     padding: 40px 40px;
     background:
-      radial-gradient(circle at 50% 0%, rgba(233, 95, 50, 0.06), transparent 60%),
+      radial-gradient(
+        circle at 50% 0%,
+        rgba(233, 95, 50, 0.06),
+        transparent 60%
+      ),
       linear-gradient(180deg, #fffdf9, #fff);
     page-break-inside: avoid;
   }
@@ -7126,7 +7169,6 @@ html[data-theme="dark"] .certificate-logo  .site-brand{
   font-size: 14px;
   margin: 0 0 16px;
 }
-
 
 .cert-verify {
   margin-top: 20px;
@@ -7668,7 +7710,7 @@ html[data-theme="dark"] .certificate-logo  .site-brand{
 
 /* Fixed certificate dimensions */
 .certificate-frame {
-  width: 760px;  
+  width: 760px;
   aspect-ratio: auto;
   box-sizing: border-box;
   position: relative;
@@ -7680,9 +7722,9 @@ html[data-theme="dark"] .certificate-logo  .site-brand{
   top: 80px;
 }
 
-.home-hero h1{
+.home-hero h1 {
   font-size: clamp(2.85rem, 6vw, 2rem);
-    /* line-height: 1.15; */
+  /* line-height: 1.15; */
 }
 
 /* ============================================================
@@ -8074,4 +8116,3 @@ html[data-theme="dark"] .check-out-page {
   background: var(--background);
   color: var(--foreground);
 }
-

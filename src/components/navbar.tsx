@@ -70,18 +70,15 @@ export function Navbar() {
   return (
     <nav className="site-nav">
       <div className="site-nav-inner">
-        <Link href="/" className="site-brand -ml-3" aria-label="ProPyCoder home">
+        <Link
+          href="/"
+          className="site-brand -ml-3"
+          aria-label="ProPyCoder home"
+        >
           <BrandLogo />
           <span className="md:-ml-2 -ml-3 mr-2">ProPyCoder</span>
         </Link>
         <div className={`site-nav-links ${isOpen ? "is-open" : ""}`}>
-          <Link
-            href="/courses"
-            className="site-nav-link-courses"
-            onClick={handleCoursesTab}
-          >
-            Courses
-          </Link>
           <Link
             href="/pycoder"
             className="site-nav-link-lab"
@@ -89,34 +86,14 @@ export function Navbar() {
           >
             PyCoder <span className="nav-new">LAB</span>
           </Link>
-          <Link href="/certificates" onClick={() => setIsOpen(false)}>
-            Certificates
-          </Link>
-          <Link href="/bundles" onClick={() => setIsOpen(false)}>
-            Bundles
-          </Link>
           <Link
-            href="/announcements"
-            className="site-nav-link-announcements"
-            onClick={() => setIsOpen(false)}
+            href="/courses"
+            className="site-nav-link-courses"
+            onClick={handleCoursesTab}
           >
-             Announcements <span>{(unread > 0 && (
-                <span className="nav-new">
-                  {unread > 9 ? "9+" : unread}
-                </span>
-              ))}</span>
+            Courses
           </Link>
-          <button
-            className="theme-switch"
-            type="button"
-            onClick={(event) => toggleTheme(event.currentTarget)}
-            aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
-            title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
-          >
-            {theme === "light" ? <Moon size={17} /> : <Sun size={17} />}
-            <span>{theme === "light" ? "Dark" : "Light"}</span>
-          </button>
-          {user ? (
+          {user && (
             <>
               {user.role === "ADMIN" && (
                 <Link href="/admin" onClick={() => setIsOpen(false)}>
@@ -129,18 +106,49 @@ export function Navbar() {
                 </Link>
               )}
               {user.role === "STUDENT" && (
-              <Link href="/dashboard" onClick={() => setIsOpen(false)}>
-                My learning
-              </Link>
+                <Link href="/dashboard" onClick={() => setIsOpen(false)}>
+                  My learning
+                </Link>
               )}
-              <button
-                className="site-signout"
-                onClick={() => signOut({ callbackUrl: "/" })}
-              >
-                <LogOut size={15} /> Sign out
-              </button>
             </>
-          ) : (
+          )}{" "}
+          <Link href="/certificates" onClick={() => setIsOpen(false)}>
+            Certificates
+          </Link>
+          <Link href="/bundles" onClick={() => setIsOpen(false)}>
+            Bundles
+          </Link>
+          <Link
+            href="/announcements"
+            className="site-nav-link-announcements"
+            onClick={() => setIsOpen(false)}
+          >
+            Announcements{" "}
+            <span>
+              {unread > 0 && (
+                <span className="nav-new">{unread > 9 ? "9+" : unread}</span>
+              )}
+            </span>
+          </Link>
+          <button
+            className="theme-switch"
+            type="button"
+            onClick={(event) => toggleTheme(event.currentTarget)}
+            aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+            title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+          >
+            {theme === "light" ? <Moon size={17} /> : <Sun size={17} />}
+            <span>{theme === "light" ? "Dark" : "Light"}</span>
+          </button>
+          {user && (
+            <button
+              className="site-signout"
+              onClick={() => signOut({ callbackUrl: "/" })}
+            >
+              <LogOut size={15} /> Sign out
+            </button>
+          )}
+          {!user && (
             <>
               <Link
                 className="site-login"
@@ -160,23 +168,23 @@ export function Navbar() {
           )}
         </div>
         <Link
-          href="/courses"
-          className="site-lab-shortcut site-courses-shortcut"
-          onClick={handleCoursesTab}
-        >
-          <BookOpen size={14} />
-        </Link>
-        <Link
           href="/pycoder"
-          className="site-lab-shortcut"
+          className="site-shortcuts site-shortcut"
           onClick={() => setIsOpen(false)}
         >
           <FlaskConical size={14} />
         </Link>
+        <Link
+          href="/courses"
+          className="site-shortcut"
+          onClick={handleCoursesTab}
+        >
+          <BookOpen size={14} />
+        </Link>
         {!user && (
           <Link
             href="/announcements"
-            className="site-lab-shortcut"
+            className="site-shortcut"
             onClick={() => setIsOpen(false)}
             aria-label="Announcements"
             title="Announcements"
@@ -184,39 +192,34 @@ export function Navbar() {
             <Megaphone size={14} />
           </Link>
         )}
-        {user && 
-            <Link
-              href="/announcements"
-              className="site-lab-shortcut site-bell"
-              aria-label={
-                unread > 0
-                  ? `Announcements, ${unread} unread`
-                  : "Announcements"
-              }
-              title="Announcements"
-            >
-              <Megaphone size={14} />
-              {unread > 0 && (
-                <span className="site-bell-badge">
-                  {unread > 9 ? "9+" : unread}
-                </span>
-              )}
-            </Link>}
-            <button
-            className="site-lab-shortcut site-theme-shortcut"
-            type="button"
-            onClick={(event) => toggleTheme(event.currentTarget)}
-            aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
-            title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+        {user && (
+          <Link
+            href="/announcements"
+            className="site-shortcut site-bell"
+            aria-label={
+              unread > 0 ? `Announcements, ${unread} unread` : "Announcements"
+            }
+            title="Announcements"
           >
-            {theme === "light" ? <Moon size={17} /> : <Sun size={17} />}
-          </button>
-         { user &&( 
-            <Link
-              className="site-user-chip"
-              href="/profile"
-              title="Your profile"
-            >
+            <Megaphone size={14} />
+            {unread > 0 && (
+              <span className="site-bell-badge">
+                {unread > 9 ? "9+" : unread}
+              </span>
+            )}
+          </Link>
+        )}
+        <button
+          className="site-shortcut site-theme-shortcut"
+          type="button"
+          onClick={(event) => toggleTheme(event.currentTarget)}
+          aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+          title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+        >
+          {theme === "light" ? <Moon size={17} /> : <Sun size={17} />}
+        </button>
+        {user && (
+          <Link className="site-user-chip" href="/profile" title="Your profile">
             {user.image ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -237,7 +240,6 @@ export function Navbar() {
             )}
             <ChevronDown size={13} />
           </Link>
-          
         )}
         <button
           className="site-menu-toggle"

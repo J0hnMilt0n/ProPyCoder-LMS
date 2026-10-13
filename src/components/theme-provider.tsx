@@ -165,9 +165,23 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // timeouts for a previous theme never apply), reduced motion, and
   // keyboard activation (falls back to the viewport center).
   const rippleRunId = useRef(0);
+  // The overlay currently on screen, if any. A new toggle removes it
+  // synchronously — the superseded ripple's rAF loop exits on the run-id
+  // guard in playRippleFrame before it can ever reach its own teardown,
+  // so without this an opaque full-screen circle stayed stuck over the
+  // page whenever the switch was clicked more than once.
+  const rippleOverlayRef = useRef<HTMLElement | null>(null);
+  // Target requested by the most recent toggle. While a ripple is still
+  // in flight the rendered `theme` lags behind (it only flips mid-animation),
+  // so the next click chains off this instead — otherwise two fast clicks
+  // both compute the same nextTheme and the second click looks ignored.
+  const pendingThemeRef = useRef<Theme | null>(null);
 
   function toggleTheme(origin?: ThemeToggleOrigin) {
-    const nextTheme = theme === "light" ? "dark" : "light";
+    const rippleActive = rippleOverlayRef.current?.isConnected === true;
+    const baseline = rippleActive ? (pendingThemeRef.current ?? theme) : theme;
+    const nextTheme: Theme = baseline === "light" ? "dark" : "light";
+    pendingThemeRef.current = nextTheme;
     const runId = ++rippleRunId.current;
 
     let point: { x: number; y: number } | null = null;
@@ -175,6 +189,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       applyTheme(nextTheme);
       return;
     }
+
+    // Rapid clicks: retire the previous ripple now so its abandoned loop
+    // can't leave a stuck overlay behind, and keep the DevTools marker in
+    // sync with the ripple that owns the screen.
+    if (rippleOverlayRef.current) {
+      rippleOverlayRef.current.remove();
+      rippleOverlayRef.current = null;
+    }
+    if (document.documentElement.dataset.themeRipple === "running") {
+      delete document.documentElement.dataset.themeRipple;
+    }
+
     if (origin instanceof HTMLElement) {
       const rect = origin.getBoundingClientRect();
       point = {
@@ -220,6 +246,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     );
     const circle = document.createElement("div");
     circle.className = "theme-circle";
+    // .theme-circle carries a 0.4s transform transition for the
+    // CSS-class-driven twin of this animation; it must not fight the
+    // per-frame absolute scales written by the loop below.
+    circle.style.transition = "none";
     circle.style.position = "absolute";
     circle.style.borderRadius = "50%";
     // No CSS transition on purpose: the rAF loop below sets an absolute
@@ -239,6 +269,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     overlay.appendChild(circle);
     document.body.appendChild(overlay);
+    rippleOverlayRef.current = overlay;
     overlay.style.opacity = "1";
     // Mark the document while the ripple plays so the animation can be
     // verified in DevTools (the attribute is present for ~0.5s after a
@@ -282,7 +313,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       overlay.style.opacity = "0";
       setTimeout(() => {
         overlay.remove();
-        if (document.documentElement.dataset.themeRipple === "running") {
+        if (rippleOverlayRef.current === overlay) {
+          rippleOverlayRef.current = null;
+        }
+        // Only the ripple that still owns the screen may clear the marker;
+        // a newer one may already be running.
+        if (
+          rippleRunId.current === runId &&
+          document.documentElement.dataset.themeRipple === "running"
+        ) {
           delete document.documentElement.dataset.themeRipple;
         }
       }, FADE_MS);

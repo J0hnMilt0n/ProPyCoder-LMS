@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -448,6 +448,18 @@ export default function CourseDetailPage({ params }: Props) {
     }
   }, [courseId, selectedLesson]);
 
+  // Mobile: the player is rendered inline in the curriculum, directly
+  // beneath the tapped topic — not pinned above/below the whole list.
+  // Breakpoint must match the 740px layout rules in globals.css.
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 740px)");
+    const sync = () => setIsMobileViewport(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
   const handleMarkComplete = async () => {
     if (!session?.user || !isEnrolled || !selectedLesson) return;
     setIsMarkingComplete(true);
@@ -497,6 +509,49 @@ export default function CourseDetailPage({ params }: Props) {
       setIsMarkingComplete(false);
     }
   };
+
+  // The lesson player is rendered in exactly one place at a time:
+  // side column on desktop, inline beneath the selected topic on mobile.
+  const lessonPlayer =
+    selectedLesson && (isEnrolled || selectedLesson.isFree) ? (
+      <div className="course-lesson-player">
+        <h3 className="text-lg font-bold text-gray-900 mb-4">
+          {selectedLesson.title}
+        </h3>
+        {selectedLesson.videoId ? (
+          <LessonVideoPlayer
+            key={selectedLesson.id}
+            lessonId={selectedLesson.id}
+            videoId={selectedLesson.videoId}
+            title={selectedLesson.title}
+          />
+        ) : (
+          <div className="course-no-video">
+            Lesson materials are available in the lesson description.
+          </div>
+        )}
+        {selectedLesson.description && (
+          <p className="mt-4 text-gray-600">{selectedLesson.description}</p>
+        )}
+        {isEnrolled && (
+          <button
+            type="button"
+            className="course-complete-button"
+            disabled={
+              isMarkingComplete || completedLessonIds.has(selectedLesson.id)
+            }
+            onClick={handleMarkComplete}
+          >
+            <CheckCircle size={16} />
+            {completedLessonIds.has(selectedLesson.id)
+              ? "Lesson completed"
+              : isMarkingComplete
+                ? "Saving progress..."
+                : "Mark lesson complete"}
+          </button>
+        )}
+      </div>
+    ) : null;
 
   if (isLoading) {
     return (
@@ -846,9 +901,9 @@ export default function CourseDetailPage({ params }: Props) {
                       </div>
                       <div className="course-lesson-list">
                         {module.lessons.map((lesson) => (
+                          <Fragment key={lesson.id}>
                           <button
                             type="button"
-                            key={lesson.id}
                             className={`course-lesson-row ${
                               selectedLesson?.id === lesson.id
                                 ? "is-selected"
@@ -893,6 +948,15 @@ export default function CourseDetailPage({ params }: Props) {
                               </span>
                             )}
                           </button>
+                          {/* Mobile: video opens right below the tapped topic */}
+                          {isMobileViewport &&
+                            selectedLesson?.id === lesson.id &&
+                            lessonPlayer && (
+                              <div className="course-lesson-inline-player">
+                                {lessonPlayer}
+                              </div>
+                            )}
+                          </Fragment>
                         ))}
                       </div>
                     </div>
@@ -935,49 +999,9 @@ export default function CourseDetailPage({ params }: Props) {
                 }
             </div>
 
-            {/* Video Player */}
-            {selectedLesson && (isEnrolled || selectedLesson.isFree) && (
-              <div className="course-lesson-player">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">
-                  {selectedLesson.title}
-                </h3>
-                {selectedLesson.videoId ? (
-                  <LessonVideoPlayer
-                    key={selectedLesson.id}
-                    lessonId={selectedLesson.id}
-                    videoId={selectedLesson.videoId}
-                    title={selectedLesson.title}
-                  />
-                ) : (
-                  <div className="course-no-video">
-                    Lesson materials are available in the lesson description.
-                  </div>
-                )}
-                {selectedLesson.description && (
-                  <p className="mt-4 text-gray-600">
-                    {selectedLesson.description}
-                  </p>
-                )}
-                {isEnrolled && (
-                  <button
-                    type="button"
-                    className="course-complete-button"
-                    disabled={
-                      isMarkingComplete ||
-                      completedLessonIds.has(selectedLesson.id)
-                    }
-                    onClick={handleMarkComplete}
-                  >
-                    <CheckCircle size={16} />
-                    {completedLessonIds.has(selectedLesson.id)
-                      ? "Lesson completed"
-                      : isMarkingComplete
-                        ? "Saving progress..."
-                        : "Mark lesson complete"}
-                  </button>
-                )}
-              </div>
-            )}
+            {/* Video Player — desktop only; mobile renders the same
+                player inline directly beneath the tapped topic. */}
+            {!isMobileViewport && lessonPlayer}
           </div>
         </div>
       </main>
