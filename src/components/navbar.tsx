@@ -93,6 +93,9 @@ export function Navbar() {
           >
             Courses
           </Link>
+          <Link href="/bundles" onClick={() => setIsOpen(false)}>
+            Bundles
+          </Link>
           {user && (
             <>
               {user.role === "ADMIN" && (
@@ -114,9 +117,6 @@ export function Navbar() {
           )}{" "}
           <Link href="/certificates" onClick={() => setIsOpen(false)}>
             Certificates
-          </Link>
-          <Link href="/bundles" onClick={() => setIsOpen(false)}>
-            Bundles
           </Link>
           <Link
             href="/announcements"
