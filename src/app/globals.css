@@ -4464,6 +4464,7 @@ body:has(.lab-page) {
 }
 
 html[data-theme="dark"] body,
+html[data-theme="dark"] .bundle-courses li,
 html[data-theme="dark"] .course-certificate-card,
 html[data-theme="dark"] .cert-item,
 html[data-theme="dark"] .cert-verify-card,

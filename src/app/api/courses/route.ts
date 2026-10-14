@@ -1,7 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+import { unstable_cache } from "next/cache";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
+import { cached } from "@/lib/data-cache";
+import {
+  COURSE_CACHE,
+  CATALOG_TAG,
+  invalidateCatalog,
+  preloadCourse,
+} from "@/lib/course-cache";
 
 // GET all courses
 export async function GET(request: NextRequest) {
@@ -39,37 +47,58 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    const courses = await prisma.course.findMany({
-      where,
-      include: {
-        instructor: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            avatar: true,
+    // Public, read-heavy payload — serve from the cache when possible and
+    // revalidate in the background (the database is remote). The persistent
+    // Data Cache layer is shared across instances; the in-process layer in
+    // front gives instant reads and background revalidation.
+    const cacheKey = `catalog:${category ?? ""}:${level ?? ""}:${title ?? ""}:${page}:${limit}:`;
+    const loader = unstable_cache(
+      async () => {
+        const [courses, total] = await Promise.all([
+          prisma.course.findMany({
+            where,
+            include: {
+              instructor: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  avatar: true,
+                },
+              },
+              _count: {
+                select: { enrollments: true },
+              },
+            },
+            skip: (page - 1) * limit,
+            take: limit,
+            orderBy: { createdAt: "desc" },
+          }),
+          prisma.course.count({ where }),
+        ]);
+        return {
+          data: courses,
+          pagination: {
+            page,
+            limit,
+            total,
+            pages: Math.ceil(total / limit),
           },
-        },
-        _count: {
-          select: { enrollments: true },
-        },
+        };
       },
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy: { createdAt: "desc" },
-    });
+      ["catalog", category ?? "", level ?? "", title ?? "", String(page), String(limit)],
+      { tags: [CATALOG_TAG] },
+    );
+    const payload = await cached(cacheKey, () => loader(), COURSE_CACHE);
 
-    const total = await prisma.course.count({ where });
+    // Warm the detail + content caches for the first page of results in the
+    // background, so opening a course from this list skips the database.
+    // Capped so a 50-row page can't fire a flood of background queries.
+    for (const course of payload.data.slice(0, 12)) {
+      preloadCourse(course.id);
+    }
 
-    return NextResponse.json({
-      data: courses,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-      },
-    });
+    return NextResponse.json(payload);
   } catch (error) {
     console.error("Course fetch error:", error);
     return NextResponse.json(
@@ -117,6 +146,8 @@ export async function POST(request: NextRequest) {
         status: "DRAFT",
       },
     });
+
+    invalidateCatalog();
 
     return NextResponse.json(course, { status: 201 });
   } catch (error) {

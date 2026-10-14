@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { extractYouTubeId } from "@/lib/youtube";
+import { getCourseModules, invalidateCourse } from "@/lib/course-cache";
 
 // GET lessons for a course (only accessible to enrolled users or for free previews)
 export async function GET(request: NextRequest) {
@@ -17,28 +18,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get all modules for the course with their lessons
-    const modules = await prisma.module.findMany({
-      where: { courseId },
-      include: {
-        lessons: { orderBy: { order: "asc" } },
-      },
-      orderBy: { order: "asc" },
-    });
-
-    // Check if user is enrolled (for showing all lessons)
-    let isEnrolled = false;
-    if (session) {
-      const enrollment = await prisma.enrollment.findUnique({
-        where: {
-          studentId_courseId: {
-            studentId: session.user.id,
-            courseId,
-          },
-        },
-      });
-      isEnrolled = !!enrollment;
-    }
+    // Cached modules + enrollment check are independent of each other —
+    // run them together so the remote database only costs one round trip.
+    const [modules, enrollment] = await Promise.all([
+      getCourseModules(courseId),
+      session
+        ? prisma.enrollment.findUnique({
+            where: {
+              studentId_courseId: {
+                studentId: session.user.id,
+                courseId,
+              },
+            },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
+    ]);
+    const isEnrolled = Boolean(enrollment);
 
     // If not enrolled, only show free preview lessons
     const lessonsWithAccess = modules.map((module) => ({
@@ -114,6 +110,8 @@ export async function POST(request: NextRequest) {
         isFree: isFree || false,
       },
     });
+
+    invalidateCourse(moduleRecord.courseId);
 
     return NextResponse.json(lesson, { status: 201 });
   } catch (error) {

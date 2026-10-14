@@ -33,6 +33,20 @@ const categories = [
 ];
 const levels = ["BEGINNER", "INTERMEDIATE", "ADVANCED"];
 
+// Warm a course's detail/content cache once per id on hover/focus so the
+// navigation is instant. Deduped so repeated hovers don't refire.
+const warmedCourses = new Set<string>();
+function warmCourse(id: string) {
+  if (!id || warmedCourses.has(id)) return;
+  warmedCourses.add(id);
+  try {
+    void fetch(`/api/courses/${id}/warm`);
+  } catch {
+    // Warming is best-effort; ignore network errors.
+  }
+}
+
+
 export default function CoursesPage() {
   const { data: session } = useSession();
   const [courses, setCourses] = useState<Course[]>([]);
@@ -254,6 +268,8 @@ export default function CoursesPage() {
                       : undefined
                   }
                   aria-label={`View ${course.title}`}
+                  onMouseEnter={() => warmCourse(course.id)}
+                  onFocus={() => warmCourse(course.id)}
                 >{
                 !course.image
                   ? ( <>
@@ -275,6 +291,8 @@ export default function CoursesPage() {
                   <Link
                     href={`/courses/${course.id}`}
                     className="catalog-card-title"
+                    onMouseEnter={() => warmCourse(course.id)}
+                    onFocus={() => warmCourse(course.id)}
                   >
                     <h2>{course.title}</h2>
                   </Link>
@@ -304,6 +322,8 @@ export default function CoursesPage() {
                           ? `/courses/${course.id}`
                           : "/auth/register"
                       }
+                      onMouseEnter={() => warmCourse(course.id)}
+                      onFocus={() => warmCourse(course.id)}
                     >
                       {session?.user ? "View course" : "Start learning"}
                       <ArrowRight size={15} />

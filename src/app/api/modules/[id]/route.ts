@@ -1,5 +1,6 @@
 import { authorizeCourseContent } from "@/lib/course-content-auth";
 import { prisma } from "@/lib/prisma";
+import { invalidateCourse } from "@/lib/course-cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -55,6 +56,8 @@ export async function PATCH(
       include: { lessons: { orderBy: { order: "asc" } } },
     });
 
+    invalidateCourse(moduleRecord.courseId);
+
     return NextResponse.json(updated);
   } catch (error) {
     console.error("Module update error:", error);
@@ -86,6 +89,8 @@ export async function DELETE(
     }
 
     await prisma.module.delete({ where: { id } });
+
+    invalidateCourse(moduleRecord.courseId);
 
     return NextResponse.json({ id });
   } catch (error) {

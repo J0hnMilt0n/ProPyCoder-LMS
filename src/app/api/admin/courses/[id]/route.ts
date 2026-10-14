@@ -1,5 +1,6 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { invalidateCatalog, invalidateCourse } from "@/lib/course-cache";
 import { isValidOffer } from "@/lib/pricing";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -94,6 +95,9 @@ export async function PATCH(
       select: { id: true, status: true },
     });
 
+    invalidateCourse(id);
+    invalidateCatalog();
+
     return NextResponse.json(course);
   } catch (error) {
     console.error("Admin course update error:", error);
@@ -164,6 +168,9 @@ export async function PUT(
       select: { id: true, title: true, status: true, updatedAt: true },
     });
 
+    invalidateCourse(id);
+    invalidateCatalog();
+
     return NextResponse.json(course);
   } catch (error) {
     if (
@@ -202,6 +209,9 @@ export async function DELETE(
     }
 
     await prisma.course.delete({ where: { id } });
+
+    invalidateCourse(id);
+    invalidateCatalog();
 
     return NextResponse.json({ id: course.id, title: course.title });
   } catch (error) {

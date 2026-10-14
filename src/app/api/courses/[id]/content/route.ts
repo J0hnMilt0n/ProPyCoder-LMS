@@ -1,5 +1,6 @@
 import { authorizeCourseContent } from "@/lib/course-content-auth";
 import { prisma } from "@/lib/prisma";
+import { getCourseModules, invalidateCourse } from "@/lib/course-cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -27,11 +28,9 @@ export async function GET(
       );
     }
 
-    const modules = await prisma.module.findMany({
-      where: { courseId: id },
-      include: { lessons: { orderBy: { order: "asc" } } },
-      orderBy: { order: "asc" },
-    });
+    // Same cached modules the student-facing endpoint reads — writes below
+    // invalidate this key, so the editor and the course page stay in sync.
+    const modules = await getCourseModules(id);
 
     return NextResponse.json({ modules });
   } catch (error) {
@@ -82,6 +81,8 @@ export async function POST(
       include: { lessons: true },
     });
 
+    invalidateCourse(id);
+
     return NextResponse.json(newModule, { status: 201 });
   } catch (error) {
     console.error("Module creation error:", error);
@@ -131,6 +132,8 @@ export async function PATCH(
         }),
       ),
     );
+
+    invalidateCourse(id);
 
     return NextResponse.json({ ok: true });
   } catch (error) {

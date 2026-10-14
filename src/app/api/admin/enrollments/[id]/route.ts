@@ -1,5 +1,6 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { invalidateCatalog, invalidateCourse } from "@/lib/course-cache";
 import { NextRequest, NextResponse } from "next/server";
 
 // DELETE remove a student from a course (admin only)
@@ -30,6 +31,10 @@ export async function DELETE(
     }
 
     await prisma.enrollment.delete({ where: { id } });
+
+    // Removing a student changes the course's cached enrollment count.
+    invalidateCourse(enrollment.course.id);
+    invalidateCatalog();
 
     return NextResponse.json({ id: enrollment.id });
   } catch (error) {

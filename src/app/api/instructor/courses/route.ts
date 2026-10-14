@@ -1,5 +1,6 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { invalidateCatalog } from "@/lib/course-cache";
 import { isValidOffer } from "@/lib/pricing";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -81,6 +82,8 @@ export async function POST(request: NextRequest) {
       },
       select: { id: true, title: true, status: true },
     });
+
+    invalidateCatalog();
 
     return NextResponse.json(course, { status: 201 });
   } catch (error) {

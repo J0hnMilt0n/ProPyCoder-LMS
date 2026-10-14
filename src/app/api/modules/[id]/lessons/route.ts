@@ -1,5 +1,6 @@
 import { authorizeCourseContent } from "@/lib/course-content-auth";
 import { prisma } from "@/lib/prisma";
+import { invalidateCourse } from "@/lib/course-cache";
 import { extractYouTubeId } from "@/lib/youtube";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -67,6 +68,8 @@ export async function POST(
       },
     });
 
+    invalidateCourse(moduleRecord.courseId);
+
     return NextResponse.json(lesson, { status: 201 });
   } catch (error) {
     console.error("Lesson creation error:", error);
@@ -124,6 +127,8 @@ export async function PATCH(
         }),
       ),
     );
+
+    invalidateCourse(moduleRecord.courseId);
 
     return NextResponse.json({ ok: true });
   } catch (error) {

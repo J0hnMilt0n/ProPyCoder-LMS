@@ -30,6 +30,9 @@ export async function GET() {
       recentEnrollments,
       instructors,
       rawAnnouncements,
+      allActive,
+      studentActive,
+      instructorActive,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { role: "STUDENT", isActive: true } }),
@@ -113,16 +116,16 @@ export async function GET() {
         orderBy: { createdAt: "desc" },
         take: 25,
       }),
-    ]);
-
-    // Recipient math per audience (matches the send route's targeting).
-    const [allActive, studentActive, instructorActive] = await Promise.all([
+      // Recipient math per audience (matches the send route's targeting) —
+      // independent of everything else, so it rides along in the same batch
+      // instead of costing a second round of round trips.
       prisma.user.count({ where: { isActive: true } }),
       prisma.user.count({ where: { isActive: true, role: "STUDENT" } }),
       prisma.user.count({
         where: { isActive: true, role: { in: ["INSTRUCTOR", "ADMIN"] } },
       }),
     ]);
+
     const recipientsFor = (audience: string) =>
       audience === "STUDENT"
         ? studentActive

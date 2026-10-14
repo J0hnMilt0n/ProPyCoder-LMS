@@ -27,8 +27,12 @@ export async function GET(request: NextRequest) {
         studentId: session.user.id,
         lesson: { module: { courseId } },
       },
-      include: {
-        lesson: { include: { module: true } },
+      // The client only needs the lesson id + status — skip pulling the
+      // full lesson and module rows (titles, descriptions, video URLs)
+      // over the wire on every page load.
+      select: {
+        lessonId: true,
+        status: true,
       },
     });
 

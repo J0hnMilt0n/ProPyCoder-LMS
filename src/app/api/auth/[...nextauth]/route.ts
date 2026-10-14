@@ -3,6 +3,18 @@ import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
+// The session callback below runs on every auth() call — i.e. once per
+// authenticated API request. Reading the profile (including the full
+// base64 avatar) from the database each time cost an extra round trip to
+// the remote database on every request, which made the whole API feel
+// slow. Cache the result briefly per user; session updates invalidate it
+// immediately and the TTL bounds any other staleness.
+const SESSION_PROFILE_TTL_MS = 30_000;
+const sessionProfileCache = new Map<
+  string,
+  { name: string; avatar: string | null; expires: number }
+>();
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
@@ -70,6 +82,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (trigger === "update" && session && typeof session.name === "string") {
         token.name = session.name;
       }
+      if (trigger === "update" && typeof token.id === "string") {
+        // The profile may have changed — drop the cached session profile so
+        // the next auth() reads fresh values from the database.
+        sessionProfileCache.delete(token.id);
+      }
       return token;
     },
     async session({ session, token }) {
@@ -77,17 +94,37 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.id;
         if (typeof token.role === "string") session.user.role = token.role;
         if (typeof token.name === "string") session.user.name = token.name;
-        try {
-          const dbUser = await prisma.user.findUnique({
-            where: { id: token.id },
-            select: { firstName: true, lastName: true, avatar: true },
-          });
-          if (dbUser) {
-            session.user.name = `${dbUser.firstName} ${dbUser.lastName}`;
-            session.user.image = dbUser.avatar;
+
+        const cached = sessionProfileCache.get(token.id);
+        if (cached && cached.expires > Date.now()) {
+          session.user.name = cached.name;
+          session.user.image = cached.avatar;
+        } else {
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { id: token.id },
+              select: { firstName: true, lastName: true, avatar: true },
+            });
+            if (dbUser) {
+              const name = `${dbUser.firstName} ${dbUser.lastName}`;
+              session.user.name = name;
+              session.user.image = dbUser.avatar;
+              // Opportunistic cleanup so the cache cannot grow unbounded.
+              if (sessionProfileCache.size > 1_000) {
+                const now = Date.now();
+                for (const [key, entry] of sessionProfileCache) {
+                  if (entry.expires <= now) sessionProfileCache.delete(key);
+                }
+              }
+              sessionProfileCache.set(token.id, {
+                name,
+                avatar: dbUser.avatar,
+                expires: Date.now() + SESSION_PROFILE_TTL_MS,
+              });
+            }
+          } catch {
+            // Database unavailable — fall back to the token's cached name.
           }
-        } catch {
-          // Database unavailable — fall back to the token's cached name.
         }
       }
       return session;

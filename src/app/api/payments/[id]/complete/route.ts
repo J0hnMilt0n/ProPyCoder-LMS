@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
+import { invalidateCatalog, invalidateCourse } from "@/lib/course-cache";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -157,6 +158,12 @@ export async function POST(request: NextRequest, { params }: Props) {
 
       return { payment: updatedPayment, enrollments };
     });
+
+    // New enrollments bump the enrollment count cached on the course
+    // detail and in the public catalog — refresh both.
+    const affectedCourseIds = new Set(result.enrollments.map((e) => e.courseId));
+    for (const courseId of affectedCourseIds) invalidateCourse(courseId);
+    invalidateCatalog();
 
     const message = payment.bundleId
       ? "Payment successful! Your courses are unlocked."

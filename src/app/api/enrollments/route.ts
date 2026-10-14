@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
+import { invalidateCatalog, invalidateCourse } from "@/lib/course-cache";
 
 // GET user's enrollments
 export async function GET(request: NextRequest) {
@@ -77,6 +78,10 @@ export async function POST(request: NextRequest) {
         course: true,
       },
     });
+
+    // The catalog and course detail cache the enrollment count.
+    invalidateCourse(courseId);
+    invalidateCatalog();
 
     return NextResponse.json(enrollment, { status: 201 });
   } catch (error) {

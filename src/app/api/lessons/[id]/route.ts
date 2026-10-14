@@ -1,5 +1,6 @@
 import { authorizeCourseContent } from "@/lib/course-content-auth";
 import { prisma } from "@/lib/prisma";
+import { invalidateCourse } from "@/lib/course-cache";
 import { extractYouTubeId } from "@/lib/youtube";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -66,6 +67,8 @@ export async function PATCH(
 
     const updated = await prisma.lesson.update({ where: { id }, data });
 
+    invalidateCourse(lesson.module.courseId);
+
     return NextResponse.json(updated);
   } catch (error) {
     console.error("Lesson update error:", error);
@@ -100,6 +103,8 @@ export async function DELETE(
     }
 
     await prisma.lesson.delete({ where: { id } });
+
+    invalidateCourse(lesson.module.courseId);
 
     return NextResponse.json({ id });
   } catch (error) {

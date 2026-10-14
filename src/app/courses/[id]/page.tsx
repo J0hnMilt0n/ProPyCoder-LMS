@@ -157,7 +157,17 @@ export default function CourseDetailPage({ params }: Props) {
 
   const loadCourse = useCallback(async () => {
     try {
-      const response = await fetch(`/api/courses/${courseId}`);
+      // All four requests are independent of each other. The database is
+      // remote, so awaiting them one after another made the page wait for
+      // the SUM of four round trips — fire them together and wait for the
+      // slowest single one instead.
+      const [response, lessonsResponse, progressResponse, certResponse] =
+        await Promise.all([
+          fetch(`/api/courses/${courseId}`),
+          fetch(`/api/lessons?courseId=${courseId}`),
+          fetch(`/api/progress?courseId=${courseId}`),
+          fetch("/api/certificates"),
+        ]);
       if (response.ok) {
         const data = await response.json();
         setCourse(data);
@@ -169,38 +179,31 @@ export default function CourseDetailPage({ params }: Props) {
           // Storage unavailable.
         }
 
-        // Fetch lessons for this course
-        const lessonsResponse = await fetch(
-          `/api/lessons?courseId=${courseId}`,
-        );
         if (lessonsResponse.ok) {
           const lessonsData = await lessonsResponse.json();
           const loadedModules: Module[] = lessonsData.modules;
           setModules(loadedModules);
           setIsEnrolled(lessonsData.isEnrolled);
 
-          if (lessonsData.isEnrolled) {
-            const progressResponse = await fetch(
-              `/api/progress?courseId=${courseId}`,
+          // Fetched in parallel above; only meaningful for enrolled users
+          // (401 when signed out, empty otherwise).
+          if (lessonsData.isEnrolled && progressResponse.ok) {
+            const progressData = await progressResponse.json();
+            setCompletedLessonIds(
+              new Set(
+                progressData.data
+                  .filter(
+                    (item: { status: string }) =>
+                      item.status === "COMPLETED",
+                  )
+                  .map((item: { lessonId: string }) => item.lessonId),
+              ),
             );
-            if (progressResponse.ok) {
-              const progressData = await progressResponse.json();
-              setCompletedLessonIds(
-                new Set(
-                  progressData.data
-                    .filter(
-                      (item: { status: string }) =>
-                        item.status === "COMPLETED",
-                    )
-                    .map((item: { lessonId: string }) => item.lessonId),
-                ),
-              );
-            }
           }
 
-          // If a certificate already exists for this course, surface it.
+          // If a certificate already exists for this course, surface it
+          // (also fetched in parallel above).
           try {
-            const certResponse = await fetch("/api/certificates");
             if (certResponse.ok) {
               const certData = await certResponse.json();
               const match = (certData.data ?? []).find(
@@ -961,13 +964,7 @@ export default function CourseDetailPage({ params }: Props) {
                       </div>
                     </div>
                   ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-center py-8">
-                  Course curriculum will be available soon.
-                </p>
-              )}
-              {/* Certificate — locked until the course is 100% complete */}
+                  {/* Certificate — locked until the course is 100% complete */}
                 {
                   <div className="mt-2">
                     {certificateId ? (
@@ -997,6 +994,14 @@ export default function CourseDetailPage({ params }: Props) {
                     )}
                   </div>
                 }
+                </div>
+                
+              ) : (
+                <p className="text-gray-500 text-center py-8">
+                  Course curriculum will be available soon.
+                </p>
+              )}
+              
             </div>
 
             {/* Video Player — desktop only; mobile renders the same

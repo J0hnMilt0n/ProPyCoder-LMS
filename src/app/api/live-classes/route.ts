@@ -37,21 +37,25 @@ export async function GET(request: NextRequest) {
     const role = session.user.role;
 
     if (courseId) {
-      const course = await prisma.course.findUnique({
-        where: { id: courseId },
-        select: { id: true, instructorId: true },
-      });
+      // Course lookup + enrollment check are independent — run them
+      // together to save a round trip against the remote database.
+      const [course, enrollment] = await Promise.all([
+        prisma.course.findUnique({
+          where: { id: courseId },
+          select: { id: true, instructorId: true },
+        }),
+        prisma.enrollment.findFirst({
+          where: { courseId, studentId: session.user.id },
+          select: { id: true },
+        }),
+      ]);
       if (!course) {
         return NextResponse.json({ error: "Course not found" }, { status: 404 });
       }
-      let allowed = role === "ADMIN" || course.instructorId === session.user.id;
-      if (!allowed) {
-        const enrollment = await prisma.enrollment.findFirst({
-          where: { courseId, studentId: session.user.id },
-          select: { id: true },
-        });
-        allowed = Boolean(enrollment);
-      }
+      const allowed =
+        role === "ADMIN" ||
+        course.instructorId === session.user.id ||
+        Boolean(enrollment);
       if (!allowed) {
         return NextResponse.json(
           { error: "Enroll in this course to see its live classes" },

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { getCourseDetail } from "@/lib/course-cache";
 
 export async function GET(
   request: NextRequest,
@@ -8,28 +9,9 @@ export async function GET(
   try {
     const { id } = await params;
     
-    const course = await prisma.course.findUnique({
-      where: { id },
-      include: {
-        instructor: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            avatar: true,
-          },
-        },
-        modules: {
-          select: {
-            id: true,
-            title: true,
-          },
-        },
-        _count: {
-          select: { enrollments: true },
-        },
-      },
-    });
+    // Cached — course details are public and read far more often than the
+    // rare write (which invalidates this key).
+    const course = await getCourseDetail(id);
 
     if (!course) {
       return NextResponse.json(
