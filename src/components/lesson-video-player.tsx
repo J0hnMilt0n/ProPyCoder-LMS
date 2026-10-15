@@ -163,11 +163,31 @@ export function LessonVideoPlayer({
   }, []);
 
   useEffect(() => {
-    const onFullscreenChange = () =>
-      setIsFullscreen(document.fullscreenElement === rootRef.current);
-    document.addEventListener("fullscreenchange", onFullscreenChange);
-    return () =>
-      document.removeEventListener("fullscreenchange", onFullscreenChange);
+    const syncFullscreen = () => {
+      const fullscreen = document.fullscreenElement === rootRef.current;
+      setIsFullscreen(fullscreen);
+      if (!fullscreen) {
+        setIsRotated(false);
+        void screen.orientation?.unlock?.();
+        return;
+      }
+
+      // Locking the device is supported by Android browsers, but not by every
+      // mobile browser (notably iOS Safari). CSS rotation is the fallback.
+      void screen.orientation?.lock?.("landscape").catch(() => undefined);
+      setIsRotated(window.innerHeight > window.innerWidth);
+    };
+    const onOrientationChange = () => {
+      if (document.fullscreenElement === rootRef.current) {
+        setIsRotated(window.innerHeight > window.innerWidth);
+      }
+    };
+    document.addEventListener("fullscreenchange", syncFullscreen);
+    window.addEventListener("orientationchange", onOrientationChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", syncFullscreen);
+      window.removeEventListener("orientationchange", onOrientationChange);
+    };
   }, []);
 
   const revealControls = useCallback(() => {
@@ -236,6 +256,10 @@ export function LessonVideoPlayer({
     if (!root) return;
 
     await root.requestFullscreen().catch(() => undefined);
+    if (document.fullscreenElement === root) {
+      void screen.orientation?.lock?.("landscape").catch(() => undefined);
+      setIsRotated(window.innerHeight > window.innerWidth);
+    }
   }, []);
 
   const togglePlayerRotation = useCallback(() => {

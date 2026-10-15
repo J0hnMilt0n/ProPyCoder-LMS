@@ -5175,7 +5175,6 @@ html[data-theme="light"] .lab-frame {
 
   .lvp-root:fullscreen.is-rotated {
     position: fixed;
-    inset: auto;
     top: 50%;
     left: 50%;
     width: 100dvh;
@@ -5297,16 +5296,6 @@ html[data-theme="light"] .lab-frame {
 }
 .lvp-progress {
   width: 100%;
-}
-.lvp-root:fullscreen.is-rotated {
-  position: fixed;
-  inset: 0;
-  width: 100vh;
-  height: 100vw;
-  max-width: none;
-  aspect-ratio: auto;
-  transform: rotate(90deg) translateY(-100%);
-  transform-origin: top left;
 }
 .lvp-volume {
   flex: 0 0 auto;
