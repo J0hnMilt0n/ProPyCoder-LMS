@@ -5166,24 +5166,22 @@ html[data-theme="light"] .lab-frame {
     height: 10px;
   }
 }
-@media (max-width: 1024px) {
-  .lvp-root:fullscreen {
-    width: 100vw;
-    height: 100dvh;
-    aspect-ratio: auto;
-  }
+.lvp-root:fullscreen {
+  width: 100vw;
+  height: 100dvh;
+  aspect-ratio: auto;
+}
 
-  .lvp-root:fullscreen.is-rotated {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    width: 100dvh;
-    height: 100vw;
-    max-width: none;
-    aspect-ratio: auto;
-    transform: translate(-50%, -50%) rotate(90deg);
-    transform-origin: center;
-  }
+.lvp-root.is-rotated {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 100dvh;
+  height: 100vw;
+  max-width: none;
+  aspect-ratio: auto;
+  transform: translate(-50%, -50%) rotate(90deg);
+  transform-origin: center;
 }
 .lvp-rate-menu {
   position: relative;
