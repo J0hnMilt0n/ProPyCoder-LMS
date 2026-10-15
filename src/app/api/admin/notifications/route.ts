@@ -2,6 +2,12 @@ import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import {
+  NS,
+  invalidateAdminOverview,
+  invalidateAnnouncements,
+  invalidateUserNamespace,
+} from "@/lib/page-cache";
 
 const announcementInput = z.object({
   title: z.string().trim().min(3).max(120),
@@ -53,6 +59,12 @@ export async function POST(request: NextRequest) {
           })
         : Promise.resolve(null),
     ]);
+
+    // A broadcast changes the public announcements feed, the admin dashboard's
+    // recent list, and every recipient's inbox/unread badge.
+    invalidateAnnouncements();
+    invalidateAdminOverview();
+    invalidateUserNamespace(NS.notifications);
 
     return NextResponse.json(
       { sent: users.length, announcementId: announcement.id },

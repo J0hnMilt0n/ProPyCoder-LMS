@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -19,6 +19,7 @@ import toast from "react-hot-toast";
 import { CourseContentManager } from "@/components/course-content-manager";
 import { LiveClassManager } from "@/components/live-class-manager";
 import { ImageUploadField } from "@/components/image-upload-field";
+import { useResource } from "@/lib/use-resource";
 
 interface InstructorCourse {
   id: string;
@@ -46,40 +47,33 @@ const emptyForm = {
 export default function InstructorPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [courses, setCourses] = useState<InstructorCourse[]>([]);
   const [form, setForm] = useState(emptyForm);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [contentCourse, setContentCourse] = useState<{
     id: string;
     title: string;
   } | null>(null);
 
-  const loadCourses = useCallback(async (options?: { silent?: boolean }) => {
-    if (!options?.silent) setIsLoading(true);
-    try {
-      const response = await fetch("/api/instructor/courses", {
-        cache: "no-store",
-      });
-      if (!response.ok) throw new Error("Could not load instructor courses");
-      const result = await response.json();
-      setCourses(result.data);
-    } catch {
-      toast.error("Could not load your course workspace");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
+  const userId = session?.user?.id ?? "";
   const role = session?.user?.role;
-  const loadCoursesRef = useRef(loadCourses);
-  loadCoursesRef.current = loadCourses;
 
+  // Stale-while-revalidate: paint the cached course list instantly, refresh in
+  // the background, and patch only when something actually changed.
+  const coursesRes = useResource<InstructorCourse[]>({
+    key: "instructor-courses",
+    url: "/api/instructor/courses",
+    scope: userId,
+    enabled: role === "INSTRUCTOR",
+    select: (json) => (json as { data: InstructorCourse[] }).data,
+  });
+  const courses = coursesRes.data ?? [];
+  const isLoading = coursesRes.isLoading;
+
+  const role$ = role;
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/auth/login");
-    if (role && role !== "INSTRUCTOR") router.replace("/dashboard");
-    if (role === "INSTRUCTOR") void loadCoursesRef.current();
-  }, [status, role, router]);
+    if (role$ && role$ !== "INSTRUCTOR") router.replace("/dashboard");
+  }, [status, role$, router]);
 
   async function createCourse(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -103,7 +97,8 @@ export default function InstructorPage() {
         throw new Error(result.error || "Course creation failed");
       toast.success("Draft course created");
       setForm(emptyForm);
-      await loadCourses();
+      // Pull the fresh list so the new draft appears without a full reload.
+      coursesRes.refresh();
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Could not create course",
@@ -433,7 +428,7 @@ export default function InstructorPage() {
             <div className="admin-modal-scroll">
               <CourseContentManager
                 courseId={contentCourse.id}
-                onChanged={() => void loadCourses({ silent: true })}
+                onChanged={coursesRes.refresh}
               />
             </div>
           </div>

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { NS, invalidateUser, userCached } from "@/lib/page-cache";
 
 const updateSchema = z.object({
   firstName: z.string().trim().min(1).max(60).optional(),
@@ -23,18 +24,22 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        avatar: true,
-        role: true,
-        createdAt: true,
-      },
-    });
+    // Per-user — cached in-process keyed by the user id. The profile PATCH
+    // invalidates it so edits show immediately.
+    const user = await userCached(NS.profile, session.user.id, async () =>
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          avatar: true,
+          role: true,
+          createdAt: true,
+        },
+      }),
+    );
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -121,6 +126,10 @@ export async function PATCH(request: NextRequest) {
         role: true,
       },
     });
+
+    // Profile changed — drop this user's cached profile so the next read is
+    // fresh (the navbar avatar/name refresh via the session update too).
+    invalidateUser(NS.profile, session.user.id);
 
     return NextResponse.json(updated);
   } catch (error) {

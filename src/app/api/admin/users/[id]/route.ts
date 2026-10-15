@@ -2,6 +2,7 @@ import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { invalidateAdminOverview, invalidateHome } from "@/lib/page-cache";
 
 const updateInput = z
   .object({
@@ -56,6 +57,11 @@ export async function PATCH(
       },
       select: { id: true, isActive: true, role: true },
     });
+
+    // Role/active changes move the user + instructor counts on the admin
+    // dashboard and the active-learner count on the home page.
+    invalidateAdminOverview();
+    invalidateHome();
 
     return NextResponse.json(user);
   } catch (error) {

@@ -35,6 +35,7 @@ import { LiveClassManager } from "@/components/live-class-manager";
 import { BundleManager } from "@/components/bundle-manager";
 import { ImageUploadField } from "@/components/image-upload-field";
 import { useConfirm } from "@/components/confirm-dialog";
+import { useResource } from "@/lib/use-resource";
 
 type AdminOverview = {
   metrics: {
@@ -174,9 +175,6 @@ type CourseModalState =
 export default function AdminPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [overview, setOverview] = useState<AdminOverview | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [view, setView] = useState<View>("overview");
   const [search, setSearch] = useState("");
   const [courseModal, setCourseModal] = useState<CourseModalState>(null);
@@ -196,30 +194,37 @@ export default function AdminPage() {
     title: string;
   } | null>(null);
 
+  const isAdmin = session?.user?.role === "ADMIN";
+  const adminId = isAdmin ? (session?.user?.id ?? "") : "";
+
+  // Stale-while-revalidate: paint the cached dashboard instantly, refresh in
+  // the background, and patch only the metrics/rows that actually change.
+  const overviewRes = useResource<AdminOverview>({
+    key: "admin-overview",
+    url: "/api/admin/overview",
+    scope: adminId,
+    enabled: isAdmin,
+  });
+  const overview = overviewRes.data;
+  const isLoading = overviewRes.isLoading;
+  const isRefreshing = overviewRes.isRevalidating;
+  // Keep the historical `loadOverview(refresh?)` signature so existing call
+  // sites stay unchanged; the arg is ignored (the hook always revalidates in
+  // the background and patches only what changed).
+  const loadOverview = useCallback(
+    (_refresh?: boolean) => {
+      overviewRes.refresh();
+    },
+    [overviewRes],
+  );
+
   const confirm = useConfirm();
-  const loadOverview = useCallback(async (refresh = false) => {
-    if (refresh) setIsRefreshing(true);
-    else setIsLoading(true);
-    try {
-      const response = await fetch("/api/admin/overview", {
-        cache: "no-store",
-      });
-      if (!response.ok) throw new Error("Could not load admin data");
-      setOverview(await response.json());
-    } catch {
-      toast.error("Could not load the admin dashboard");
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, []);
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/auth/login");
     if (session?.user && session.user.role !== "ADMIN")
       router.replace("/dashboard");
-    if (session?.user?.role === "ADMIN") void loadOverview();
-  }, [status, session, router, loadOverview]);
+  }, [status, session, router]);
 
   const filteredItems = useMemo(() => {
     if (!overview) return [];

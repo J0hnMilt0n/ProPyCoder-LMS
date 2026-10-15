@@ -1,6 +1,7 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { NS, invalidateUser, userCached } from "@/lib/page-cache";
 
 // GET the signed-in user's personal notification inbox (incl. unread count)
 export async function GET() {
@@ -9,26 +10,36 @@ export async function GET() {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const [notifications, unread] = await Promise.all([
-      prisma.notification.findMany({
-        where: { userId: session.user.id },
-        select: {
-          id: true,
-          title: true,
-          message: true,
-          link: true,
-          type: true,
-          read: true,
-          createdAt: true,
-        },
-        orderBy: { createdAt: "desc" },
-        take: 50,
-      }),
-      prisma.notification.count({
-        where: { userId: session.user.id, read: false },
-      }),
-    ]);
-    return NextResponse.json({ notifications, unread });
+    // Per-user — cached in-process keyed by the user id (the navbar polls this
+    // for the unread badge). Marking read / broadcasts invalidate it.
+    const payload = await userCached(
+      NS.notifications,
+      session.user.id,
+      async () => {
+        const [notifications, unread] = await Promise.all([
+          prisma.notification.findMany({
+            where: { userId: session.user.id },
+            select: {
+              id: true,
+              title: true,
+              message: true,
+              link: true,
+              type: true,
+              read: true,
+              createdAt: true,
+            },
+            orderBy: { createdAt: "desc" },
+            take: 50,
+          }),
+          prisma.notification.count({
+            where: { userId: session.user.id, read: false },
+          }),
+        ]);
+        return { notifications, unread };
+      },
+    );
+
+    return NextResponse.json(payload);
   } catch (error) {
     console.error("Inbox error:", error);
     return NextResponse.json(
@@ -54,6 +65,7 @@ export async function PATCH(request: NextRequest) {
         where: { userId: session.user.id, read: false },
         data: { read: true },
       });
+      invalidateUser(NS.notifications, session.user.id);
       return NextResponse.json({ ok: true });
     }
     if (!body?.id) {
@@ -63,6 +75,7 @@ export async function PATCH(request: NextRequest) {
       where: { id: body.id, userId: session.user.id },
       data: { read: true },
     });
+    invalidateUser(NS.notifications, session.user.id);
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Inbox update error:", error);

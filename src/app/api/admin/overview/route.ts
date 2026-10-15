@@ -1,6 +1,7 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getAdminOverview } from "@/lib/page-cache";
 
 export async function GET() {
   try {
@@ -10,11 +11,16 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const monthStart = new Date();
-    monthStart.setDate(1);
-    monthStart.setHours(0, 0, 0, 0);
+    // Admin-only, and identical for every admin — cache it globally. Writes
+    // (courses, enrollments, payments, users, announcements) call
+    // invalidateAdminOverview() so the dashboard refreshes the moment data
+    // changes, and stays warm (served from cache) in between.
+    const payload = await getAdminOverview(async () => {
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
 
-    const [
+      const [
       totalUsers,
       activeStudents,
       instructorCount,
@@ -137,7 +143,7 @@ export async function GET() {
       recipients: recipientsFor(announcement.audience),
     }));
 
-    return NextResponse.json({
+    return {
       metrics: {
         totalUsers,
         activeStudents,
@@ -159,7 +165,10 @@ export async function GET() {
       recentEnrollments,
       instructors,
       recentAnnouncements,
+    };
     });
+
+    return NextResponse.json(payload);
   } catch (error) {
     console.error("Admin overview error:", error);
     return NextResponse.json(

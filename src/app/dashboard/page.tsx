@@ -15,12 +15,12 @@ import {
   Radio,
   Search,
 } from "lucide-react";
-import toast from "react-hot-toast";
 import {
   PROVIDER_LABELS,
   STATUS_LABELS,
   effectiveStatus,
 } from "@/lib/live-classes";
+import { useResource } from "@/lib/use-resource";
 
 interface Enrollment {
   id: string;
@@ -52,11 +52,31 @@ interface LiveClassItem {
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
   const [search, setSearch] = useState("");
-  const [liveClasses, setLiveClasses] = useState<LiveClassItem[]>([]);
+  const userId = session?.user?.id ?? "";
+
+  // Stale-while-revalidate: paint cached courses instantly, then refresh in
+  // the background — setState fires only when the payload actually changes,
+  // so a background update patches just the changed rows.
+  const enrollmentsRes = useResource<Enrollment[]>({
+    key: "enrollments",
+    url: "/api/enrollments",
+    scope: userId,
+    enabled: Boolean(userId),
+    select: (json) => (json as { data: Enrollment[] }).data,
+  });
+  const liveRes = useResource<LiveClassItem[]>({
+    key: "live-mine",
+    url: "/api/live-classes?scope=mine",
+    scope: userId,
+    enabled: Boolean(userId),
+    select: (json) => (json as { data: LiveClassItem[] }).data ?? [],
+  });
+
+  const enrollments = enrollmentsRes.data ?? [];
+  const liveClasses = liveRes.data ?? [];
+  const isLoading = enrollmentsRes.isLoading;
+  const loadError = enrollmentsRes.error;
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/auth/login");
@@ -64,52 +84,6 @@ export default function Dashboard() {
     else if (session?.user?.role === "INSTRUCTOR")
       router.replace("/instructor");
   }, [status, session, router]);
-
-  useEffect(() => {
-    if (!session?.user?.id) return;
-    const controller = new AbortController();
-    const fetchEnrollments = async () => {
-      setIsLoading(true);
-      setLoadError(false);
-      try {
-        const response = await fetch("/api/enrollments", {
-          signal: controller.signal,
-        });
-        if (!response.ok) throw new Error("Enrollment request failed");
-        const result = await response.json();
-        setEnrollments(result.data);
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError")
-          return;
-        setLoadError(true);
-        toast.error("Could not load your courses");
-      } finally {
-        if (!controller.signal.aborted) setIsLoading(false);
-      }
-    };
-    void fetchEnrollments();
-    return () => controller.abort();
-  }, [session?.user?.id]);
-
-  // Live classes across my enrolled courses.
-  useEffect(() => {
-    if (!session?.user?.id) return;
-    const controller = new AbortController();
-    (async () => {
-      try {
-        const response = await fetch("/api/live-classes?scope=mine", {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        if (!response.ok) return;
-        const result = await response.json();
-        if (!controller.signal.aborted) setLiveClasses(result.data ?? []);
-      } catch {
-        // Non-critical — the dashboard still works without the schedule.
-      }
-    })();
-    return () => controller.abort();
-  }, [session?.user?.id]);
 
   if (status === "loading" || isLoading) {
     return (

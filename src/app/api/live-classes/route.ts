@@ -1,6 +1,7 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { serializeLiveClass } from "@/lib/live-classes";
+import { LIVE_CACHE, NS, invalidateUser, userCached } from "@/lib/page-cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -62,12 +63,19 @@ export async function GET(request: NextRequest) {
           { status: 403 },
         );
       }
-      const rows = await prisma.liveClass.findMany({
-        where: { courseId },
-        include: liveClassInclude,
-        orderBy: { startsAt: "asc" },
-        take: 100,
-      });
+      const rows = await userCached(
+        NS.liveClasses,
+        session.user.id,
+        async () =>
+          prisma.liveClass.findMany({
+            where: { courseId },
+            include: liveClassInclude,
+            orderBy: { startsAt: "asc" },
+            take: 100,
+          }),
+        LIVE_CACHE,
+        `course:${courseId}`,
+      );
       return NextResponse.json({ data: rows.map(serializeLiveClass) });
     }
 
@@ -75,34 +83,47 @@ export async function GET(request: NextRequest) {
       if (role !== "ADMIN" && role !== "INSTRUCTOR") {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-      const rows = await prisma.liveClass.findMany({
-        where: role === "ADMIN" ? {} : { instructorId: session.user.id },
-        include: liveClassInclude,
-        orderBy: { startsAt: "asc" },
-        take: 100,
-      });
+      const rows = await userCached(
+        NS.liveClasses,
+        session.user.id,
+        async () =>
+          prisma.liveClass.findMany({
+            where: role === "ADMIN" ? {} : { instructorId: session.user.id },
+            include: liveClassInclude,
+            orderBy: { startsAt: "asc" },
+            take: 100,
+          }),
+        LIVE_CACHE,
+        `manage:${role}`,
+      );
       return NextResponse.json({ data: rows.map(serializeLiveClass) });
     }
 
     if (scope === "mine") {
-      const enrollments = await prisma.enrollment.findMany({
-        where: { studentId: session.user.id },
-        select: { courseId: true },
-      });
-      const courseIds = enrollments.map((entry) => entry.courseId);
-      if (courseIds.length === 0) {
-        return NextResponse.json({ data: [] });
-      }
-      const rows = await prisma.liveClass.findMany({
-        where: {
-          courseId: { in: courseIds },
-          // Live now or still upcoming (keep the last hour so "Live" lingers).
-          endsAt: { gte: new Date(Date.now() - 60 * 60 * 1000) },
+      const rows = await userCached(
+        NS.liveClasses,
+        session.user.id,
+        async () => {
+          const enrollments = await prisma.enrollment.findMany({
+            where: { studentId: session.user.id },
+            select: { courseId: true },
+          });
+          const courseIds = enrollments.map((entry) => entry.courseId);
+          if (courseIds.length === 0) return [];
+          return prisma.liveClass.findMany({
+            where: {
+              courseId: { in: courseIds },
+              // Live now or still upcoming (keep the last hour so "Live" lingers).
+              endsAt: { gte: new Date(Date.now() - 60 * 60 * 1000) },
+            },
+            include: liveClassInclude,
+            orderBy: { startsAt: "asc" },
+            take: 50,
+          });
         },
-        include: liveClassInclude,
-        orderBy: { startsAt: "asc" },
-        take: 50,
-      });
+        LIVE_CACHE,
+        "mine",
+      );
       return NextResponse.json({ data: rows.map(serializeLiveClass) });
     }
 
@@ -178,6 +199,10 @@ export async function POST(request: NextRequest) {
       },
       include: liveClassInclude,
     });
+
+    // A newly scheduled class shows up in the course's list for everyone who
+    // can see it, and in the instructor's manage list.
+    invalidateUser(NS.liveClasses, session.user.id);
 
     return NextResponse.json(
       { data: serializeLiveClass(created) },

@@ -2,6 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { issueCertificateForCourse } from "@/lib/certificates";
+import {
+  NS,
+  invalidateAdminOverview,
+  invalidateUser,
+  userCached,
+} from "@/lib/page-cache";
 
 // GET progress for a course
 export async function GET(request: NextRequest) {
@@ -22,21 +28,31 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const progress = await prisma.progress.findMany({
-      where: {
-        studentId: session.user.id,
-        lesson: { module: { courseId } },
-      },
-      // The client only needs the lesson id + status — skip pulling the
-      // full lesson and module rows (titles, descriptions, video URLs)
-      // over the wire on every page load.
-      select: {
-        lessonId: true,
-        status: true,
-      },
-    });
+    // Per-user, scoped per course — cached in-process keyed by user+course.
+    // The progress POST invalidates it when a lesson is marked complete.
+    const { data } = await userCached(
+      NS.progress,
+      session.user.id,
+      async () => ({
+        data: await prisma.progress.findMany({
+          where: {
+            studentId: session.user.id,
+            lesson: { module: { courseId } },
+          },
+          // The client only needs the lesson id + status — skip pulling the
+          // full lesson and module rows (titles, descriptions, video URLs)
+          // over the wire on every page load.
+          select: {
+            lessonId: true,
+            status: true,
+          },
+        }),
+      }),
+      undefined,
+      courseId,
+    );
 
-    return NextResponse.json({ data: progress });
+    return NextResponse.json({ data });
   } catch (error) {
     console.error("Progress fetch error:", error);
     return NextResponse.json(
@@ -159,6 +175,13 @@ export async function POST(request: NextRequest) {
         lesson.module.courseId,
       );
     }
+
+    // This user's progress/dashboard/enrollments just changed; a completion
+    // also moves the platform-wide completed count shown on the admin dashboard.
+    invalidateUser(NS.progress, session.user.id);
+    invalidateUser(NS.enrollments, session.user.id);
+    invalidateUser(NS.certificates, session.user.id);
+    invalidateAdminOverview();
 
     return NextResponse.json({ ...progress, certificateId });
   } catch (error) {

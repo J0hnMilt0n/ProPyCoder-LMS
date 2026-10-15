@@ -1,5 +1,6 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { getAdminBundles, invalidateBundles } from "@/lib/page-cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -45,10 +46,14 @@ export async function GET() {
     if (session?.user?.role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-    const bundles = await prisma.bundle.findMany({
-      select: bundleSelect,
-      orderBy: { updatedAt: "desc" },
-    });
+    // Admin-only, identical for every admin — cache globally. Bundle writes
+    // call invalidateBundles().
+    const { bundles } = await getAdminBundles(async () => ({
+      bundles: await prisma.bundle.findMany({
+        select: bundleSelect,
+        orderBy: { updatedAt: "desc" },
+      }),
+    }));
     return NextResponse.json({ bundles });
   } catch (error) {
     console.error("Admin bundles error:", error);
@@ -109,6 +114,7 @@ export async function POST(request: NextRequest) {
       },
       select: bundleSelect,
     });
+    invalidateBundles();
     return NextResponse.json({ bundle }, { status: 201 });
   } catch (error) {
     console.error("Create bundle error:", error);

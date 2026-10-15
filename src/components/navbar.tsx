@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 import { useTheme } from "@/components/theme-provider";
+import { useResource, clearResourceCaches } from "@/lib/use-resource";
 
 export function Navbar() {
   const { data: session } = useSession();
@@ -27,25 +28,16 @@ export function Navbar() {
   // Unread inbox count for the bell badge (logged-in users only).
   // Keyed on user id so logging out naturally resets the badge to 0.
   const userId = user?.id ?? null;
-  const [unread, setUnread] = useState(0);
-  useEffect(() => {
-    if (!userId) return;
-    let cancelled = false;
-    const loadUnread = async () => {
-      try {
-        const response = await fetch("/api/notifications");
-        if (!response.ok) return;
-        const data = (await response.json()) as { unread?: number };
-        if (!cancelled) setUnread(data.unread ?? 0);
-      } catch {
-        // Badge is best-effort — inbox page still shows the count.
-      }
-    };
-    void loadUnread();
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
+  // Paint the cached unread count instantly, then refresh in the background
+  // (the hook patches only when the number actually changes).
+  const unreadRes = useResource<number>({
+    key: "notifications-unread",
+    url: "/api/notifications",
+    scope: userId ?? "",
+    enabled: Boolean(userId),
+    select: (json) => (json as { unread?: number }).unread ?? 0,
+  });
+  const unread = unreadRes.data ?? 0;
   const { theme, toggleTheme } = useTheme();
   const pathname = usePathname();
   const router = useRouter();
@@ -143,7 +135,12 @@ export function Navbar() {
           {user && (
             <button
               className="site-signout"
-              onClick={() => signOut({ callbackUrl: "/" })}
+              onClick={() => {
+                // Wipe per-user resource caches so the next account on this
+                // browser never sees the previous user's cached data.
+                clearResourceCaches();
+                signOut({ callbackUrl: "/" });
+              }}
             >
               <LogOut size={15} /> Sign out
             </button>

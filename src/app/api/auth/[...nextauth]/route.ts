@@ -14,6 +14,12 @@ const sessionProfileCache = new Map<
   string,
   { name: string; avatar: string | null; expires: number }
 >();
+// In-flight profile loads keyed by user — parallel auth() calls in the same
+// tick share one DB query instead of each firing their own.
+const sessionProfileInflight = new Map<
+  string,
+  Promise<{ name: string; avatar: string | null } | null>
+>();
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -86,6 +92,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // The profile may have changed — drop the cached session profile so
         // the next auth() reads fresh values from the database.
         sessionProfileCache.delete(token.id);
+        sessionProfileInflight.delete(token.id);
       }
       return token;
     },
@@ -100,30 +107,51 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           session.user.name = cached.name;
           session.user.image = cached.avatar;
         } else {
-          try {
-            const dbUser = await prisma.user.findUnique({
-              where: { id: token.id },
-              select: { firstName: true, lastName: true, avatar: true },
-            });
-            if (dbUser) {
-              const name = `${dbUser.firstName} ${dbUser.lastName}`;
-              session.user.name = name;
-              session.user.image = dbUser.avatar;
-              // Opportunistic cleanup so the cache cannot grow unbounded.
-              if (sessionProfileCache.size > 1_000) {
-                const now = Date.now();
-                for (const [key, entry] of sessionProfileCache) {
-                  if (entry.expires <= now) sessionProfileCache.delete(key);
-                }
-              }
-              sessionProfileCache.set(token.id, {
-                name,
-                avatar: dbUser.avatar,
-                expires: Date.now() + SESSION_PROFILE_TTL_MS,
-              });
+          // Collapse concurrent identical loads: one DB read shared by every
+          // auth() call in the same tick — without this, N parallel API
+          // requests each fire their own profile query on a cold cache.
+          const userId: string = token.id;
+          const pending = sessionProfileInflight.get(userId);
+          if (pending) {
+            const profile = await pending.catch(() => null);
+            if (profile) {
+              session.user.name = profile.name;
+              session.user.image = profile.avatar;
             }
-          } catch {
-            // Database unavailable — fall back to the token's cached name.
+          } else {
+            try {
+              const load = (async () => {
+                const dbUser = await prisma.user.findUnique({
+                  where: { id: userId },
+                  select: { firstName: true, lastName: true, avatar: true },
+                });
+                if (!dbUser) return null;
+                const name = `${dbUser.firstName} ${dbUser.lastName}`;
+                // Opportunistic cleanup so the cache cannot grow unbounded.
+                if (sessionProfileCache.size > 1_000) {
+                  const now = Date.now();
+                  for (const [key, entry] of sessionProfileCache) {
+                    if (entry.expires <= now) sessionProfileCache.delete(key);
+                  }
+                }
+                sessionProfileCache.set(userId, {
+                  name,
+                  avatar: dbUser.avatar,
+                  expires: Date.now() + SESSION_PROFILE_TTL_MS,
+                });
+                return { name, avatar: dbUser.avatar };
+              })();
+              sessionProfileInflight.set(userId, load);
+              const profile = await load.catch(() => null);
+              if (profile) {
+                session.user.name = profile.name;
+                session.user.image = profile.avatar;
+              }
+            } catch {
+              // Database unavailable — fall back to the token's cached name.
+            } finally {
+              sessionProfileInflight.delete(userId);
+            }
           }
         }
       }

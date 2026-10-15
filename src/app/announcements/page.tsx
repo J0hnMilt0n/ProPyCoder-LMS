@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
@@ -12,6 +12,7 @@ import {
   Megaphone,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useResource } from "@/lib/use-resource";
 
 interface Broadcast {
   id: string;
@@ -33,57 +34,36 @@ interface InboxItem {
 }
 
 export default function AnnouncementsPage() {
-  const { status } = useSession();
-  const [items, setItems] = useState<Broadcast[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [inbox, setInbox] = useState<InboxItem[]>([]);
-  const [unread, setUnread] = useState(0);
+  const { data: session, status } = useSession();
+  const userId = session?.user?.id ?? "";
+  const authenticated = status === "authenticated";
   const [marking, setMarking] = useState(false);
 
-  // Public broadcasts — everyone, registered or not.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const response = await fetch("/api/announcements", {
-          cache: "no-store",
-        });
-        if (!response.ok) throw new Error("load failed");
-        const data = (await response.json()) as { announcements?: Broadcast[] };
-        if (!cancelled) setItems(data.announcements ?? []);
-      } catch {
-        if (!cancelled) toast.error("Could not load announcements");
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Public broadcasts — paint cached instantly, refresh in the background, and
+  // patch only when the feed actually changes.
+  const broadcastsRes = useResource<Broadcast[]>({
+    key: "announcements",
+    url: "/api/announcements",
+    scope: "public",
+    select: (json) =>
+      (json as { announcements?: Broadcast[] }).announcements ?? [],
+  });
+  const items = broadcastsRes.data ?? [];
+  const isLoading = broadcastsRes.isLoading;
 
   // Personal inbox — signed-in users only.
-  const loadInbox = useCallback(async () => {
-    if (status !== "authenticated") return;
-    try {
-      const response = await fetch("/api/notifications", {
-        cache: "no-store",
-      });
-      if (!response.ok) return;
-      const data = (await response.json()) as {
-        notifications?: InboxItem[];
-        unread?: number;
-      };
-      setInbox(data.notifications ?? []);
-      setUnread(data.unread ?? 0);
-    } catch {
-      // Inbox is best-effort — public board still renders.
-    }
-  }, [status]);
-
-  useEffect(() => {
-    void loadInbox();
-  }, [loadInbox]);
+  const inboxRes = useResource<{ notifications: InboxItem[]; unread: number }>({
+    key: "notifications",
+    url: "/api/notifications",
+    scope: userId,
+    enabled: authenticated,
+    select: (json) => {
+      const data = json as { notifications?: InboxItem[]; unread?: number };
+      return { notifications: data.notifications ?? [], unread: data.unread ?? 0 };
+    },
+  });
+  const inbox = inboxRes.data?.notifications ?? [];
+  const unread = inboxRes.data?.unread ?? 0;
 
   async function markAllRead() {
     setMarking(true);
@@ -94,8 +74,9 @@ export default function AnnouncementsPage() {
         body: JSON.stringify({ all: true }),
       });
       if (!response.ok) throw new Error("update failed");
-      setInbox((prev) => prev.map((item) => ({ ...item, read: true })));
-      setUnread(0);
+      // Re-pull the inbox — the server invalidated it, and the hook patches
+      // only the changed rows (badges/list go to read) without a reload.
+      inboxRes.refresh();
       toast.success("All caught up");
     } catch {
       toast.error("Could not update your inbox");

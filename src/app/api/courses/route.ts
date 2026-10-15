@@ -10,6 +10,7 @@ import {
   invalidateCatalog,
   preloadCourse,
 } from "@/lib/course-cache";
+import { invalidateAdminOverview, invalidateHome } from "@/lib/page-cache";
 
 // GET all courses
 export async function GET(request: NextRequest) {
@@ -148,6 +149,9 @@ export async function POST(request: NextRequest) {
     });
 
     invalidateCatalog();
+    // New course moves the platform totals on the admin dashboard.
+    invalidateAdminOverview();
+    invalidateHome();
 
     return NextResponse.json(course, { status: 201 });
   } catch (error) {

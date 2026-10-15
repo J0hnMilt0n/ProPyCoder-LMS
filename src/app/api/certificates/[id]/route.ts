@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { getCertificateDetail } from "@/lib/page-cache";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -10,12 +11,16 @@ interface Props {
 export async function GET(_request: NextRequest, { params }: Props) {
   try {
     const { id } = await params;
-    const certificate = await prisma.certificate.findUnique({
-      where: { id },
-      include: {
-        student: { select: { firstName: true, lastName: true } },
-      },
-    });
+    // Certificates are immutable once issued, so this is safe to cache
+    // globally and never needs invalidation.
+    const certificate = await getCertificateDetail(id, async () =>
+      prisma.certificate.findUnique({
+        where: { id },
+        include: {
+          student: { select: { firstName: true, lastName: true } },
+        },
+      }),
+    );
 
     if (!certificate) {
       return NextResponse.json(

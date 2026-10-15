@@ -1,6 +1,13 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { invalidateCatalog } from "@/lib/course-cache";
+import {
+  NS,
+  invalidateAdminOverview,
+  invalidateHome,
+  invalidateUser,
+  userCached,
+} from "@/lib/page-cache";
 import { isValidOffer } from "@/lib/pricing";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -23,23 +30,31 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const courses = await prisma.course.findMany({
-      where: { instructorId: session.user.id },
-      select: {
-        id: true,
-        title: true,
-        category: true,
-        status: true,
-        price: true,
-        offerPrice: true,
-        duration: true,
-        updatedAt: true,
-        _count: { select: { enrollments: true, modules: true } },
-      },
-      orderBy: { updatedAt: "desc" },
-    });
+    // Per-user (the instructor's own courses) — cached in-process keyed by
+    // the instructor id. Course writes invalidate it.
+    const { data } = await userCached(
+      NS.instructorCourses,
+      session.user.id,
+      async () => ({
+        data: await prisma.course.findMany({
+          where: { instructorId: session.user.id },
+          select: {
+            id: true,
+            title: true,
+            category: true,
+            status: true,
+            price: true,
+            offerPrice: true,
+            duration: true,
+            updatedAt: true,
+            _count: { select: { enrollments: true, modules: true } },
+          },
+          orderBy: { updatedAt: "desc" },
+        }),
+      }),
+    );
 
-    return NextResponse.json({ data: courses });
+    return NextResponse.json({ data });
   } catch (error) {
     console.error("Instructor courses fetch error:", error);
     return NextResponse.json(
@@ -84,6 +99,11 @@ export async function POST(request: NextRequest) {
     });
 
     invalidateCatalog();
+    // The instructor's own course list just changed.
+    invalidateUser(NS.instructorCourses, session.user.id);
+    // New course moves the platform totals on the admin dashboard.
+    invalidateAdminOverview();
+    invalidateHome();
 
     return NextResponse.json(course, { status: 201 });
   } catch (error) {

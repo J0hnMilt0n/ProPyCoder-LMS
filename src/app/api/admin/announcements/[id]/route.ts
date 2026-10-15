@@ -1,6 +1,12 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import {
+  NS,
+  invalidateAdminOverview,
+  invalidateAnnouncements,
+  invalidateUserNamespace,
+} from "@/lib/page-cache";
 
 // DELETE an announcement broadcast + its inbox copies (admin only)
 export async function DELETE(
@@ -35,6 +41,11 @@ export async function DELETE(
         },
       }),
     ]);
+    // Deleting the broadcast changes the public feed, the admin dashboard's
+    // recent list, and every user's inbox.
+    invalidateAnnouncements();
+    invalidateAdminOverview();
+    invalidateUserNamespace(NS.notifications);
     return NextResponse.json({ ok: true, id: deleted.id });
   } catch (error) {
     console.error("Delete announcement error:", error);

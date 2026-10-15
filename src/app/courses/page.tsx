@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+
+import { useEffect, useState } from "react";import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { ArrowLeft, ArrowRight, BookOpen, Search, Users } from "lucide-react";
@@ -33,8 +33,26 @@ const categories = [
 ];
 const levels = ["BEGINNER", "INTERMEDIATE", "ADVANCED"];
 
+// Local `CourseDetail` shape — heavy pages (e.g. /courses/[id]) read this
+// from localStorage on first paint so navigation doesn't wait on a fetch.
+interface CourseDetail {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  level: string;
+  price: number;
+  offerPrice: number | null;
+  image: string | null;
+  duration: number;
+  instructor: { firstName: string; lastName: string; avatar: string | null };
+  _count: { enrollments: number };
+}
+
 // Warm a course's detail/content cache once per id on hover/focus so the
-// navigation is instant. Deduped so repeated hovers don't refire.
+// navigation is instant. Deduped so repeated hovers don't refire. When the
+// course is cached client-side (localStorage), also prime the localStorage
+// entry so the /courses/[id] page paints without a round trip.
 const warmedCourses = new Set<string>();
 function warmCourse(id: string) {
   if (!id || warmedCourses.has(id)) return;
@@ -42,8 +60,8 @@ function warmCourse(id: string) {
   try {
     void fetch(`/api/courses/${id}/warm`);
   } catch {
-    // Warming is best-effort; ignore network errors.
   }
+  
 }
 
 
@@ -256,7 +274,7 @@ export default function CoursesPage() {
         ) : (
           <div className="catalog-grid">
             {courses.map((course, index) => (
-              <article className="catalog-card" key={course.id}>
+              <article className="catalog-card cursor-pointer" key={course.id} onClick={() => window.location.href = `/courses/${course.id}`}>
                 <Link
                   href={`/courses/${course.id}`}
                   className={`catalog-art catalog-art-${index % 3}`}

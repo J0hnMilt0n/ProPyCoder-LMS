@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { useResource } from "@/lib/use-resource";
 
 interface Profile {
   id: string;
@@ -35,8 +36,19 @@ export default function ProfilePage() {
   const { status, update } = useSession();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { status: authStatus } = useSession();
+  const authenticated = authStatus === "authenticated";
+
+  // Stale-while-revalidate: paint the cached profile instantly, refresh in the
+  // background, patch only when it actually changes.
+  const profileRes = useResource<Profile>({
+    key: "profile",
+    url: "/api/profile",
+    scope: "me",
+    enabled: authenticated,
+  });
+  const profile = profileRes.data;
+  const isLoading = profileRes.isLoading;
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -48,36 +60,27 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSavingPassword, setIsSavingPassword] = useState(false);
 
-  const loadProfile = useCallback(async () => {
-    try {
-      const response = await fetch("/api/profile");
-      if (response.ok) {
-        const data: Profile = await response.json();
-        setProfile(data);
-        setFirstName(data.firstName);
-        setLastName(data.lastName);
-        setAvatar(data.avatar);
-      } else if (response.status === 401) {
-        router.push("/auth/login");
-      } else {
-        toast.error("Could not load your profile");
-      }
-    } catch {
-      toast.error("Could not load your profile");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [router]);
+  // Keep the editable fields in sync with the loaded profile. Runs only when
+  // the payload actually changes, so a background no-op refresh never resets
+  // what the user is typing.
+  const syncedIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!profile || syncedIdRef.current === profile.id) return;
+    syncedIdRef.current = profile.id;
+    setFirstName(profile.firstName);
+    setLastName(profile.lastName);
+    setAvatar(profile.avatar);
+  }, [profile]);
 
   useEffect(() => {
-    if (status === "unauthenticated") {
+    if (authStatus === "unauthenticated") {
       router.push("/auth/login");
       return;
     }
-    if (status === "authenticated") {
-      void loadProfile();
+    if (authStatus === "authenticated" && profileRes.error) {
+      toast.error("Could not load your profile");
     }
-  }, [status, loadProfile, router]);
+  }, [authStatus, profileRes.error, router]);
 
   const handleAvatarPick = (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -110,7 +113,9 @@ export default function ProfilePage() {
         throw new Error(error.error || "Could not save your profile");
       }
       const updated: Profile = await response.json();
-      setProfile(updated);
+      // Refresh the cached profile so the new values persist and any other
+      // open view updates; the hook patches only what changed.
+      profileRes.refresh();
       // Refresh the session so the navbar avatar/name update immediately.
       await update({
         name: `${updated.firstName} ${updated.lastName}`,
@@ -160,7 +165,7 @@ export default function ProfilePage() {
   const initials =
     `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase() || "P";
 
-  if (status === "loading" || (isLoading && !profile)) {
+  if (authStatus === "loading" || (isLoading && !profile)) {
     return (
       <div className="auth-page">
         <Navbar />

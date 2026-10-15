@@ -12,33 +12,39 @@ import {
 import { Navbar } from "@/components/navbar";
 import { BrandLogo } from "@/components/brand-logo";
 import { prisma } from "@/lib/prisma";
+import { getHomeData } from "@/lib/page-cache";
 import { PriceTag } from "@/components/price-tag";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [courses, studentCount, enrollmentCount] = await Promise.all([
-    prisma.course.findMany({
-      where: { status: "PUBLISHED" },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        category: true,
-        level: true,
-        duration: true,
-        image: true,
-        price: true,
-        offerPrice: true,
-        instructor: { select: { firstName: true, lastName: true } },
-        _count: { select: { enrollments: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 3,
-    }),
-    prisma.user.count({ where: { role: "STUDENT", isActive: true } }),
-    prisma.enrollment.count(),
-  ]);
+  // Public marketing page — cache the featured courses + counts globally.
+  // Course/enrollment writes invalidate the "home" tag, so the numbers stay
+  // fresh without every visit hitting the remote database.
+  const [courses, studentCount, enrollmentCount] = await getHomeData(async () =>
+    Promise.all([
+      prisma.course.findMany({
+        where: { status: "PUBLISHED" },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          category: true,
+          level: true,
+          duration: true,
+          image: true,
+          price: true,
+          offerPrice: true,
+          instructor: { select: { firstName: true, lastName: true } },
+          _count: { select: { enrollments: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 3,
+      }),
+      prisma.user.count({ where: { role: "STUDENT", isActive: true } }),
+      prisma.enrollment.count(),
+    ]),
+  );
 
   return (
     <main className="site-home">

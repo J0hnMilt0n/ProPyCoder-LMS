@@ -1,6 +1,7 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { invalidateCatalog, invalidateCourse } from "@/lib/course-cache";
+import { invalidateAdminOverview, invalidateHome } from "@/lib/page-cache";
 import { isValidOffer } from "@/lib/pricing";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -97,6 +98,10 @@ export async function PATCH(
 
     invalidateCourse(id);
     invalidateCatalog();
+    // Publishing/unpublishing moves the published/draft counts on the admin
+    // dashboard and can change the home page's featured list.
+    invalidateAdminOverview();
+    invalidateHome();
 
     return NextResponse.json(course);
   } catch (error) {
@@ -170,6 +175,8 @@ export async function PUT(
 
     invalidateCourse(id);
     invalidateCatalog();
+    invalidateAdminOverview();
+    invalidateHome();
 
     return NextResponse.json(course);
   } catch (error) {
@@ -212,6 +219,8 @@ export async function DELETE(
 
     invalidateCourse(id);
     invalidateCatalog();
+    invalidateAdminOverview();
+    invalidateHome();
 
     return NextResponse.json({ id: course.id, title: course.title });
   } catch (error) {

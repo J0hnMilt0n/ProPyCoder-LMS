@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 import { Navbar } from "@/components/navbar";
 import { formatINR } from "@/lib/currency";
 import { bundleMrpTotal, discountPercent } from "@/lib/pricing";
+import { useResource } from "@/lib/use-resource";
 
 interface StoreBundle {
   id: string;
@@ -24,29 +25,19 @@ interface StoreBundle {
 export default function BundlesPage() {
   const router = useRouter();
   const { status } = useSession();
-  const [bundles, setBundles] = useState<StoreBundle[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [buyingId, setBuyingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
-    let active = true;
-    void (async () => {
-      try {
-        const response = await fetch("/api/bundles", { cache: "no-store" });
-        if (!response.ok) throw new Error("Load failed");
-        const data = (await response.json()) as { bundles: StoreBundle[] };
-        if (active) setBundles(data.bundles);
-      } catch {
-        toast.error("Could not load bundles");
-      } finally {
-        if (active) setIsLoading(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
+  // Paint cached bundles instantly, refresh in the background, patch only when
+  // the list actually changes.
+  const bundlesRes = useResource<StoreBundle[]>({
+    key: "bundles",
+    url: "/api/bundles",
+    scope: "public",
+    select: (json) => (json as { bundles: StoreBundle[] }).bundles,
+  });
+  const bundles = bundlesRes.data ?? [];
+  const isLoading = bundlesRes.isLoading;
 
   async function buyBundle(bundleId: string) {
     if (status === "unauthenticated") {

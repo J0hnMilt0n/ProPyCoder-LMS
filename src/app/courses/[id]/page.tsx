@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -22,6 +22,10 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { LessonVideoPlayer } from "@/components/lesson-video-player";
+import {
+  primeResourceCache,
+  readResourceCache,
+} from "@/lib/use-resource";
 import {
   PROVIDER_LABELS,
   STATUS_LABELS,
@@ -76,6 +80,37 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+// Use the actual scrolling surface. Some layouts scroll the window, while
+// others place the course page inside an overflow-y container.
+type CourseScrollTarget = Window | HTMLElement;
+
+function getCourseScrollTarget(): CourseScrollTarget {
+  let element = document.querySelector<HTMLElement>(".course-detail-page");
+  while (element && element !== document.body) {
+    const overflowY = window.getComputedStyle(element).overflowY;
+    if (
+      (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") &&
+      element.scrollHeight > element.clientHeight + 1
+    ) {
+      return element;
+    }
+    element = element.parentElement;
+  }
+  return window;
+}
+
+function readCourseScrollPosition(target: CourseScrollTarget): number {
+  return target === window ? window.scrollY : target.scrollTop;
+}
+
+function writeCourseScrollPosition(target: CourseScrollTarget, top: number): void {
+  if (target === window) {
+    window.scrollTo({ top, left: 0, behavior: "auto" });
+  } else {
+    target.scrollTo({ top, left: 0, behavior: "auto" });
+  }
+}
+
 interface LiveClassItem {
   id: string;
   title: string;
@@ -91,17 +126,39 @@ interface LiveClassItem {
 export default function CourseDetailPage({ params }: Props) {
   const { data: session } = useSession();
   const router = useRouter();
-  const [course, setCourse] = useState<CourseDetail | null>(null);
-  const [modules, setModules] = useState<Module[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // courseId from the pathname synchronously — the Promise<{id}> in params
+  // resolves one tick later. Knowing it on the very first render lets us
+  // prime cached course content immediately instead of waiting a round trip.
+  const [courseId, setCourseId] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    const tail = window.location.pathname.split("/").filter(Boolean).pop();
+    return tail && tail !== "courses" ? tail : "";
+  });
+  const [course, setCourse] = useState<CourseDetail | null>(() => {
+    if (!courseId) return null;
+    const cached = readResourceCache<CourseDetail>("course-detail", `public:${courseId}`);
+    // Placeholder / legacy cache entries may not carry `modules`;
+    // normalize once here so the render can trust the shape.
+    return cached ? { ...cached, modules: cached.modules ?? [] } : null;
+  });
+  const [modules, setModules] = useState<Module[]>(
+    () =>
+      (courseId
+        ? readResourceCache<Module[]>("course-modules", `public:${courseId}`)
+        : null) ?? [],
+  );
+  // Start unblocked when the first paint was primed from localStorage (back
+  // navigation, lab -> courses return) so the cached content paints instantly
+  // with no spinner flash. A true first visit still starts blocked.
+  const [isLoading, setIsLoading] = useState<boolean>(() => !course);
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isEnrolled, setIsEnrolled] = useState(false);
-  const [courseId, setCourseId] = useState<string>("");
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(
     new Set(),
   );
   const [isMarkingComplete, setIsMarkingComplete] = useState(false);
+  const isRestoringScroll = useRef(false);
   const [certificateId, setCertificateId] = useState<string | null>(null);
   const [liveClasses, setLiveClasses] = useState<LiveClassItem[]>([]);
   const totalLessons = modules.reduce(
@@ -111,10 +168,22 @@ export default function CourseDetailPage({ params }: Props) {
   const completedLessons = completedLessonIds.size;
 
   useEffect(() => {
-    // Get the course ID from params
+    // Keep courseId in sync with the router params (covers trailing-slash /
+    // rewrite edge cases); the first paint already derived it from the URL.
     params.then((p) => {
+      if (!p.id) return;
+      // params is the authoritative source: the synchronous URL read
+      // above returns "" during SSR/hydration (React reuses the server
+      // render), so without this call the courseId-keyed fetch effect
+      // never fires and the page spins forever on back navigation.
       setCourseId(p.id);
+      try {
+        window.sessionStorage.setItem("propycoder-last-course", p.id);
+      } catch {
+        // Storage unavailable.
+      }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
 
   // Live classes for this course (visible to enrolled students + staff;
@@ -164,13 +233,31 @@ export default function CourseDetailPage({ params }: Props) {
       const [response, lessonsResponse, progressResponse, certResponse] =
         await Promise.all([
           fetch(`/api/courses/${courseId}`),
-          fetch(`/api/lessons?courseId=${courseId}`),
-          fetch(`/api/progress?courseId=${courseId}`),
+          fetch(`/api/lessons?courseId=${encodeURIComponent(courseId)}`),
+          fetch(`/api/progress?courseId=${encodeURIComponent(courseId)}`),
           fetch("/api/certificates"),
         ]);
-      if (response.ok) {
-        const data = await response.json();
-        setCourse(data);
+      
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          throw new Error(
+            errorData?.error || errorData?.message || "Course not found",
+          );
+        }
+
+        const data: CourseDetail = await response.json();
+        if (!data || typeof data !== "object" || !data.id) {
+          throw new Error("Invalid course data received from the server");
+        }
+
+        setCourse({ ...data, modules: data.modules ?? [] });
+        // Cache for instant first paint on the next visit (paint-first from
+        // localStorage, then this background fetch patches what changed).
+        primeResourceCache<CourseDetail>(
+          "course-detail",
+          `public:${courseId}`,
+          data,
+        );
         // Remember this course so the navbar "Courses" tab can return
         // here (lab → courses switch) instead of always showing the list.
         try {
@@ -181,9 +268,14 @@ export default function CourseDetailPage({ params }: Props) {
 
         if (lessonsResponse.ok) {
           const lessonsData = await lessonsResponse.json();
-          const loadedModules: Module[] = lessonsData.modules;
+          const loadedModules: Module[] = lessonsData.modules ?? [];
           setModules(loadedModules);
           setIsEnrolled(lessonsData.isEnrolled);
+          primeResourceCache<Module[]>(
+            "course-modules",
+            `public:${courseId}`,
+            loadedModules,
+          );
 
           // Fetched in parallel above; only meaningful for enrolled users
           // (401 when signed out, empty otherwise).
@@ -246,20 +338,21 @@ export default function CourseDetailPage({ params }: Props) {
             return firstFree ?? accessible[0] ?? null;
           });
         }
-      } else {
-        toast.error("Course not found");
-        router.push("/courses");
-      }
+      
     } catch {
-      toast.error("Failed to load course");
     } finally {
       setIsLoading(false);
     }
-  }, [courseId, router]);
+  }, [courseId]);
 
   useEffect(() => {
     if (!courseId) return;
+    // If the first paint was primed from cache, course/modules already read
+    // from localStorage — run the network fetch without showing the blocker.
+    // Otherwise (true first visit) keep the spinner until data lands.
+    if (course) setIsLoading(false);
     void loadCourse();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId, loadCourse]);
 
   // Remember the last-watched lesson so switching away (e.g. to the lab) and
@@ -276,48 +369,46 @@ export default function CourseDetailPage({ params }: Props) {
     }
   }, [courseId, selectedLesson]);
 
-  // Persist the scroll position per course so refresh and back-navigation
-  // (e.g. lab → courses → back) restore where the user was.
+  // Persist and restore the actual scroll surface (window or an overflow container).
   useEffect(() => {
     if (!courseId) return;
     const storageKey = `propycoder-course-scroll:${courseId}`;
+    const target = getCourseScrollTarget();
     let frame = 0;
+
     const persist = () => {
       frame = 0;
+      if (isRestoringScroll.current) return;
       try {
-        window.sessionStorage.setItem(storageKey, String(window.scrollY));
+        window.sessionStorage.setItem(
+          storageKey,
+          String(readCourseScrollPosition(target)),
+        );
       } catch {
         // Storage unavailable.
       }
     };
+
     const onScroll = () => {
-      if (frame) return;
+      if (isRestoringScroll.current || frame) return;
       frame = window.requestAnimationFrame(persist);
     };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    // Also capture the position when the tab is hidden / the page unloads
-    // (covers refresh and navigating to the lab), which the scroll handler
-    // alone can miss if no further scrolling happens.
+
+    target.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("pagehide", persist);
-    // NOTE: do NOT persist() here — on first mount (and after returning
-    // from another route) scrollY is already 0, which would clobber the
-    // saved position before the restore effect can read it.
     return () => {
-      window.removeEventListener("scroll", onScroll);
+      target.removeEventListener("scroll", onScroll);
       window.removeEventListener("pagehide", persist);
       if (frame) window.cancelAnimationFrame(frame);
-      // Persist on unmount, but never a 0: Next may reset scroll to top
-      // before this cleanup runs, which would clobber the real position.
-      // Real positions were already written by the scroll handler.
-      if (window.scrollY > 0) persist();
+      if (!isRestoringScroll.current) {
+        const current = readCourseScrollPosition(target);
+        if (current > 0) {
+          try { window.sessionStorage.setItem(storageKey, String(current)); } catch { /* Storage unavailable. */ }
+        }
+      }
     };
   }, [courseId]);
 
-  // Restore the saved scroll position, retrying until the document settles.
-  // The course page is cached by Next.js while the user switches to the
-  // PyCoder lab and back, so a mount-time restore alone does not re-run on
-  // re-activation. We restore on mount, on `pageshow` (cached re-activation),
-  // and on `visibilitychange`.
   useEffect(() => {
     if (!courseId) return;
 
@@ -329,52 +420,63 @@ export default function CourseDetailPage({ params }: Props) {
     } catch {
       // Storage unavailable.
     }
+    if (!Number.isFinite(saved) || saved <= 0) return;
 
-    const restore = () => {
-      if (!Number.isFinite(saved) || saved <= 0) return;
+    let stopped = false;
+    let timeoutId: number | undefined;
+    const startedAt = Date.now();
+    const target = getCourseScrollTarget();
+    isRestoringScroll.current = true;
 
-      let attempts = 0;
-
-      const tick = () => {
-        window.scrollTo(0, saved);
-        attempts += 1;
-        if (attempts >= 30) return; // bail out after ~1.5s
-
-        // Nudge again if we are not yet at the saved position, or if the
-        // document has not grown enough to contain it.
-        if (window.scrollY !== saved) {
-          window.setTimeout(tick, 50);
-          return;
-        }
-        if (document.documentElement.scrollHeight >= saved + window.innerHeight) {
-          return;
-        }
-        window.setTimeout(tick, 50);
-      };
-
-      // Let content settle after first paint, then keep nudging until the
-      // saved position holds or we reach the bail-out limit.
-      window.requestAnimationFrame(() => window.requestAnimationFrame(tick));
+    const finish = () => {
+      if (stopped) return;
+      stopped = true;
+      isRestoringScroll.current = false;
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+      observer?.disconnect();
+      resizeObserver?.disconnect();
     };
 
-    // Initial restore (covers refreshes and fresh mounts).
-    restore();
-
-    // Re-activation from the route cache (course -> PyCoder lab -> back)
-    // does not re-run the mount-time effect, so restore here too.
-    const onPageshow = (event: PageTransitionEvent) => {
-      if (event.persisted || document.visibilityState === "visible") {
-        restore();
+    const tick = () => {
+      if (stopped) return;
+      writeCourseScrollPosition(target, saved);
+      const position = readCourseScrollPosition(target);
+      const enoughContent = target === window
+        ? document.documentElement.scrollHeight >= saved + window.innerHeight
+        : target.scrollHeight >= saved + target.clientHeight;
+      if (Math.abs(position - saved) <= 1 && enoughContent) {
+        finish();
+        return;
       }
+      if (Date.now() - startedAt >= 8000) {
+        writeCourseScrollPosition(target, saved);
+        finish();
+        return;
+      }
+      timeoutId = window.setTimeout(tick, 80);
+    };
+
+    const observer = typeof MutationObserver !== "undefined"
+      ? new MutationObserver(() => tick())
+      : null;
+    const resizeObserver = typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(() => tick())
+      : null;
+    observer?.observe(document.documentElement, { childList: true, subtree: true });
+    resizeObserver?.observe(target === window ? document.documentElement : target);
+    window.requestAnimationFrame(() => window.requestAnimationFrame(tick));
+
+    const onPageshow = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") tick();
     };
     window.addEventListener("pageshow", onPageshow);
-
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") restore();
-    };
     window.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
+      finish();
       window.removeEventListener("pageshow", onPageshow);
       window.removeEventListener("visibilitychange", onVisibilityChange);
     };
@@ -435,21 +537,6 @@ export default function CourseDetailPage({ params }: Props) {
       setIsEnrolling(false);
     }
   };
-
-  // Remember which lesson the user is watching so returning to the course
-  // (lab → courses → back, or a refresh) re-opens the same video instead of
-  // resetting to the first one.
-  useEffect(() => {
-    if (!courseId || !selectedLesson) return;
-    try {
-      window.sessionStorage.setItem(
-        `propycoder-course-lesson:${courseId}`,
-        selectedLesson.id,
-      );
-    } catch {
-      // Storage unavailable.
-    }
-  }, [courseId, selectedLesson]);
 
   // Mobile: the player is rendered inline in the curriculum, directly
   // beneath the tapped topic — not pinned above/below the whole list.
@@ -571,9 +658,6 @@ export default function CourseDetailPage({ params }: Props) {
     return (
       <div className="course-detail-page">
         <Navbar />
-        <div className="max-w-4xl mx-auto py-12">
-          <p className="text-center text-gray-600">Course not found</p>
-        </div>
       </div>
     );
   }
@@ -587,7 +671,7 @@ export default function CourseDetailPage({ params }: Props) {
           <button
             type="button"
             className="course-back-button"
-            onClick={() => router.back()}
+            onClick={() =>  router.push("/courses")}
             aria-label="Go back"
           >
             <ArrowLeft className="h-4 w-4" /> Back

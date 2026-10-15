@@ -1,5 +1,6 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
+import { invalidateBundles } from "@/lib/page-cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -106,6 +107,7 @@ export async function PUT(
         },
       },
     });
+    invalidateBundles();
     return NextResponse.json({ bundle });
   } catch (error) {
     console.error("Update bundle error:", error);
@@ -137,6 +139,7 @@ export async function DELETE(
       );
     }
     await prisma.bundle.delete({ where: { id } });
+    invalidateBundles();
     return NextResponse.json({ ok: true, id });
   } catch (error) {
     console.error("Delete bundle error:", error);

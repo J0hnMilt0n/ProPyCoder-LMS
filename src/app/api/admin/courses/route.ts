@@ -1,6 +1,7 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { invalidateCatalog } from "@/lib/course-cache";
+import { invalidateAdminOverview, invalidateHome } from "@/lib/page-cache";
 import { isValidOffer } from "@/lib/pricing";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -79,6 +80,9 @@ export async function POST(request: NextRequest) {
     });
 
     invalidateCatalog();
+    // Course totals on the admin dashboard and the home page counts changed.
+    invalidateAdminOverview();
+    invalidateHome();
 
     return NextResponse.json(course, { status: 201 });
   } catch (error) {

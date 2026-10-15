@@ -1,6 +1,7 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { serializeLiveClass } from "@/lib/live-classes";
+import { NS, invalidateUser } from "@/lib/page-cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -88,6 +89,10 @@ export async function PATCH(
       include: liveClassInclude,
     });
 
+    // Editing a class refreshes the editor's cached lists. Other viewers'
+    // per-user caches self-heal within the short stale window.
+    invalidateUser(NS.liveClasses, session.user.id);
+
     return NextResponse.json({ data: serializeLiveClass(updated) });
   } catch (error) {
     console.error("Live class PATCH error:", error);
@@ -120,6 +125,7 @@ export async function DELETE(
     }
 
     await prisma.liveClass.delete({ where: { id } });
+    invalidateUser(NS.liveClasses, session.user.id);
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Live class DELETE error:", error);

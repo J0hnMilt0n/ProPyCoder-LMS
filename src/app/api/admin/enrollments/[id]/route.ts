@@ -1,6 +1,12 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { invalidateCatalog, invalidateCourse } from "@/lib/course-cache";
+import {
+  NS,
+  invalidateAdminOverview,
+  invalidateHome,
+  invalidateUser,
+} from "@/lib/page-cache";
 import { NextRequest, NextResponse } from "next/server";
 
 // DELETE remove a student from a course (admin only)
@@ -19,6 +25,7 @@ export async function DELETE(
       where: { id },
       select: {
         id: true,
+        studentId: true,
         student: { select: { firstName: true, lastName: true } },
         course: { select: { id: true, title: true } },
       },
@@ -32,9 +39,14 @@ export async function DELETE(
 
     await prisma.enrollment.delete({ where: { id } });
 
-    // Removing a student changes the course's cached enrollment count.
+    // Removing a student changes the course's cached enrollment count, the
+    // platform totals on the admin dashboard + home page, and that student's
+    // own dashboard list.
     invalidateCourse(enrollment.course.id);
     invalidateCatalog();
+    invalidateAdminOverview();
+    invalidateHome();
+    invalidateUser(NS.enrollments, enrollment.studentId);
 
     return NextResponse.json({ id: enrollment.id });
   } catch (error) {

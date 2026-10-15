@@ -2,6 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { invalidateCatalog, invalidateCourse } from "@/lib/course-cache";
+import {
+  NS,
+  invalidateAdminOverview,
+  invalidateHome,
+  invalidateUser,
+} from "@/lib/page-cache";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -164,6 +170,11 @@ export async function POST(request: NextRequest, { params }: Props) {
     const affectedCourseIds = new Set(result.enrollments.map((e) => e.courseId));
     for (const courseId of affectedCourseIds) invalidateCourse(courseId);
     invalidateCatalog();
+    // The buyer's dashboard just gained courses; platform-wide enrollment and
+    // revenue totals on the admin dashboard and home page changed too.
+    invalidateUser(NS.enrollments, session.user.id);
+    invalidateAdminOverview();
+    invalidateHome();
 
     const message = payment.bundleId
       ? "Payment successful! Your courses are unlocked."
