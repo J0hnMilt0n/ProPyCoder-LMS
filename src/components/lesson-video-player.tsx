@@ -65,6 +65,7 @@ export function LessonVideoPlayer({
   const [controlsVisible, setControlsVisible] = useState(true);
   const [isRotated, setIsRotated] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isPortrait, setIsPortrait] = useState(false);
 
   useEffect(() => {
   const media = window.matchMedia("(max-width: 1024px)");
@@ -73,6 +74,18 @@ export function LessonVideoPlayer({
   media.addEventListener("change", update);
   return () => media.removeEventListener("change", update);
 }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia("(orientation: portrait)");
+    const update = () => {
+      setIsPortrait(media.matches);
+      if (!media.matches) setIsRotated(false);
+    };
+
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     try {
@@ -268,6 +281,10 @@ export function LessonVideoPlayer({
   }, [isMobile, revealControls]);
 
   const togglePlayerRotation = useCallback(() => {
+    if (!window.matchMedia("(orientation: portrait)").matches) {
+      setIsRotated(false);
+      return;
+    }
     setIsRotated((rotated) => !rotated);
     revealControls();
   }, [revealControls]);
@@ -564,7 +581,7 @@ export function LessonVideoPlayer({
     </div>
   )}
 </div>
-          {isMobile && isFullscreen && (
+          {isMobile && isFullscreen && isPortrait && (
   <button
     type="button"
     className={`lvp-btn ${isRotated ? "is-active" : ""}`}
