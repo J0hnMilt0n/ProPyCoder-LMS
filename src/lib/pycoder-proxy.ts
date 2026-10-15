@@ -125,6 +125,11 @@ export async function proxyPyCoderPage(request: NextRequest, pathname: string) {
   // .mobile-menu-btn{
   //   margin-top: 43px!important;
   // }
+  @media (max-width: 640px) {
+  body {
+    font-size: 0.85em !important;
+  }
+}
 </style><script>
 (function () {
   function removeCenterAlignment() {

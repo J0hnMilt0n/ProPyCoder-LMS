@@ -4891,8 +4891,9 @@ html[data-theme="dark"] .catalog-art-index {
   border-color: var(--line);
   color: var(--foreground);
 }
-/* Locked certificate — extra muted dark mode */
-html[data-theme="dark"] .course-certificate-card.is-locked {
+/* Locked certificate, Enrolled Course — extra muted dark mode */
+html[data-theme="dark"] .course-certificate-card.is-locked, 
+html[data-theme="dark"] .course-purchase-card button:disabled {
   background: #080809 !important;
   border-color: #19191d !important;
   color: #55555e !important;
@@ -5063,6 +5064,7 @@ html[data-theme="light"] .lab-frame {
 /* ===== Native lesson video player (lvp) ===== */
 .lvp-root {
   position: relative;
+  container-type: inline-size;
   overflow: hidden;
   aspect-ratio: 16 / 9;
   border: 1px solid #17181c;
@@ -5140,6 +5142,83 @@ html[data-theme="light"] .lab-frame {
   transform: translate(-50%, -50%) scale(1.06);
   background: rgba(233, 95, 50, 0.92);
   border-color: transparent;
+}
+@container (max-width: 420px) {
+  .lvp-big-play {
+    width: 46px;
+    height: 46px;
+  }
+
+  .lvp-big-play svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+@container (max-width: 320px) {
+  .lvp-big-play {
+    width: 36px;
+    height: 36px;
+  }
+
+  .lvp-big-play svg {
+    width: 10px;
+    height: 10px;
+  }
+}
+@media (max-width: 767px) {
+
+  .lvp-root:fullscreen {
+    width: 100vw;
+    height: 100vh;
+  }
+
+  /* Fallback for mobile browsers that do not support orientation locking. */
+  @media (orientation: portrait) {
+    .lvp-root:fullscreen {
+      position: fixed;
+      inset: 0;
+      width: 100vh;
+      height: 100vw;
+      transform: rotate(90deg) translateY(-100%);
+      transform-origin: top left;
+    }
+  }
+}
+.lvp-rate-menu {
+  position: relative;
+}
+
+.lvp-rate-options {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 5;
+  display: flex;
+  flex-direction: column-reverse;
+  min-width: 56px;
+  padding: 3px;
+  gap: 1px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(14, 15, 18, 0.96);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.lvp-rate-options button {
+  padding: 5px 8px;
+  font-size: 12px;
+  line-height: 1.2;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.lvp-rate-options button:hover,
+.lvp-rate-options button[aria-checked="true"] {
+  background: rgba(233, 95, 50, 0.8);
 }
 .lvp-controls {
   position: absolute;
@@ -5939,8 +6018,12 @@ a.profile-cert-link:hover {
   text-decoration: line-through;
 }
 
-.price-tag-now {
-  color: #e95f32;
+html[data-theme="dark"] .price-tag-now, .price-tag-now {
+  color: #e95f32 !important;
+}
+
+html[data-theme="dark"] .text-emerald-600 {
+  color: var(--color-emerald-600) !important;
 }
 
 .price-tag-badge {

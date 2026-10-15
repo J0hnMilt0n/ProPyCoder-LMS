@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { getLessonVideoSource } from "@/lib/lesson-video-sources";
 
-const RATES = [1, 1.25, 1.5, 2];
+const RATES = [0.25, 0.5, 1, 1.25, 1.5, 2];
 
 function formatTime(value: number): string {
   if (!Number.isFinite(value) || value < 0) return "0:00";
@@ -27,6 +27,7 @@ function formatTime(value: number): string {
 const VOLUME_KEY = "propycoder-video-volume";
 const MUTED_KEY = "propycoder-video-muted";
 const PROGRESS_PREFIX = "propycoder-video-progress:";
+const RATE_KEY = "propycoder-video-rate";
 
 interface LessonVideoPlayerProps {
   lessonId: string;
@@ -49,7 +50,7 @@ export function LessonVideoPlayer({
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressRestoredRef = useRef(false);
   const lastSavedTimeRef = useRef(0);
-
+  const [rateMenuOpen, setRateMenuOpen] = useState(false);
   const [src, setSrc] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
@@ -57,11 +58,25 @@ export function LessonVideoPlayer({
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
-  const [rateIndex, setRateIndex] = useState(0);
+  const [rateIndex, setRateIndex] = useState(2);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
+
+useEffect(() => {
+  try {
+    const savedRate = Number(localStorage.getItem(RATE_KEY));
+    const savedIndex = RATES.indexOf(savedRate);
+
+    if (savedIndex !== -1) {
+      setRateIndex(savedIndex);
+      if (videoRef.current) videoRef.current.playbackRate = savedRate;
+    }
+  } catch {
+    // Storage unavailable; use the default rate.
+  }
+}, []);
 
   // Resolve the obfuscated source after mount so the server render and the
   // first client render always agree (avoids a hydration mismatch).
@@ -200,13 +215,22 @@ export function LessonVideoPlayer({
     revealControls();
   }, [revealControls]);
 
-  const toggleFullscreen = useCallback(() => {
-    if (document.fullscreenElement) {
-      void document.exitFullscreen().catch(() => undefined);
-    } else {
-      void rootRef.current?.requestFullscreen().catch(() => undefined);
+  const toggleFullscreen = useCallback(async () => {
+  if (document.fullscreenElement) {
+    await document.exitFullscreen().catch(() => undefined);
+    return;
+  }
+
+  await rootRef.current?.requestFullscreen().catch(() => undefined);
+
+  if (window.matchMedia("(max-width: 767px)").matches) {
+    try {
+      await screen.orientation.lock("landscape");
+    } catch {
+      // The browser may not support orientation locking.
     }
-  }, []);
+  }
+}, []);
 
   const cycleRate = useCallback(() => {
     const video = videoRef.current;
@@ -468,14 +492,38 @@ export function LessonVideoPlayer({
             onChange={handleVolume}
             style={{ "--lvp-pct": `${volumePct}%` } as CSSProperties}
           />
-          <button
-            type="button"
-            className="lvp-btn lvp-rate"
-            aria-label="Playback speed"
-            onClick={cycleRate}
-          >
-            {RATES[rateIndex]}×
-          </button>
+          <div className="lvp-rate-menu">
+  <button
+    type="button"
+    className="lvp-btn lvp-rate"
+    aria-label="Playback speed"
+    aria-expanded={rateMenuOpen}
+    onClick={() => setRateMenuOpen((open) => !open)}
+  >
+    {RATES[rateIndex]}×
+  </button>
+
+  {rateMenuOpen && (
+    <div className="lvp-rate-options" role="menu">
+      {[...RATES].reverse().map((rate) => (
+        <button
+          key={rate}
+          type="button"
+          role="menuitemradio"
+          aria-checked={RATES[rateIndex] === rate}
+          onClick={() => {
+            const index = RATES.indexOf(rate);
+            setRateIndex(index);
+            if (videoRef.current) videoRef.current.playbackRate = rate;
+            setRateMenuOpen(false);
+          }}
+        >
+          {rate}×
+        </button>
+      ))}
+    </div>
+  )}
+</div>
           <button
             type="button"
             className="lvp-btn"
