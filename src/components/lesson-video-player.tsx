@@ -4,11 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, ChangeEvent } from "react";
 import {
   Maximize,
+  Lock,
   Minimize,
   Pause,
   Play,
   RotateCcw,
   RotateCw,
+  Unlock,
   Volume2,
   VolumeX,
 } from "lucide-react";
@@ -66,6 +68,8 @@ export function LessonVideoPlayer({
   const [controlsVisible, setControlsVisible] = useState(true);
   const [isRotated, setIsRotated] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isPortrait, setIsPortrait] = useState(false);
+  const [isOrientationLocked, setIsOrientationLocked] = useState(false);
 
   useEffect(() => {
   const media = window.matchMedia("(max-width: 1024px)");
@@ -74,6 +78,14 @@ export function LessonVideoPlayer({
   media.addEventListener("change", update);
   return () => media.removeEventListener("change", update);
 }, []);
+
+  useEffect(() => {
+    const media = window.matchMedia("(orientation: portrait)");
+    const update = () => setIsPortrait(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     try {
@@ -172,6 +184,15 @@ export function LessonVideoPlayer({
         if (!fullscreen) {
           setIsFullscreen(false);
           setIsRotated(false);
+          setIsOrientationLocked(false);
+          try {
+            const orientation = window.screen.orientation as ScreenOrientation & {
+              unlock?: () => void;
+            };
+            orientation.unlock?.();
+          } catch {
+            // Orientation locking is optional and browser-dependent.
+          }
         }
         return;
       }
@@ -263,6 +284,15 @@ export function LessonVideoPlayer({
         setIsFullscreen(false);
         setIsNativeFullscreen(false);
         setIsRotated(false);
+        setIsOrientationLocked(false);
+        try {
+          const orientation = window.screen.orientation as ScreenOrientation & {
+            unlock?: () => void;
+          };
+          orientation.unlock?.();
+        } catch {
+          // Orientation locking is optional and browser-dependent.
+        }
         return;
       }
 
@@ -270,8 +300,16 @@ export function LessonVideoPlayer({
       const root = rootRef.current;
       if (!root) return;
 
-      // Request native fullscreen directly from the tap in either orientation.
-      // The rotate control can then rotate the fullscreen element with CSS.
+      // Portrait keeps the proven CSS fullscreen overlay so its rotate
+      // control can rotate the player. Landscape requests native fullscreen.
+      if (isPortrait) {
+        setIsNativeFullscreen(false);
+        setIsFullscreen(true);
+        revealControls();
+        return;
+      }
+
+      // Request native fullscreen directly from the tap in landscape.
       // Fall back to the working CSS overlay if the browser denies the request.
       if (root.requestFullscreen) {
         setIsNativeFullscreen(true);
@@ -307,12 +345,33 @@ export function LessonVideoPlayer({
     if (document.fullscreenElement === root) {
       setIsRotated(false);
     }
-  }, [isFullscreen, isMobile, isNativeFullscreen, revealControls]);
+  }, [isFullscreen, isMobile, isNativeFullscreen, isPortrait, revealControls]);
 
   const togglePlayerRotation = useCallback(() => {
     setIsRotated((rotated) => !rotated);
     revealControls();
   }, [revealControls]);
+
+  const toggleOrientationLock = useCallback(async () => {
+    const orientation = window.screen.orientation as ScreenOrientation & {
+      lock?: (value: "landscape") => Promise<void>;
+      unlock?: () => void;
+    };
+
+    try {
+      if (isOrientationLocked) {
+        orientation.unlock?.();
+        setIsOrientationLocked(false);
+      } else if (orientation.lock) {
+        await orientation.lock("landscape");
+        setIsOrientationLocked(true);
+      }
+    } catch {
+      // Browser may not permit orientation locking in this context.
+      setIsOrientationLocked(false);
+    }
+    revealControls();
+  }, [isOrientationLocked, revealControls]);
 
   const cycleRate = useCallback(() => {
     const video = videoRef.current;
@@ -606,7 +665,7 @@ export function LessonVideoPlayer({
     </div>
   )}
 </div>
-          {isMobile && isFullscreen && (
+          {isMobile && isFullscreen && isPortrait && (
   <button
     type="button"
     className={`lvp-btn ${isRotated ? "is-active" : ""}`}
@@ -617,6 +676,17 @@ export function LessonVideoPlayer({
     ↻
   </button>
 )}
+          {isMobile && isFullscreen && !isPortrait && isNativeFullscreen && (
+            <button
+              type="button"
+              className={`lvp-btn ${isOrientationLocked ? "is-active" : ""}`}
+              aria-label={isOrientationLocked ? "Unlock landscape orientation" : "Lock landscape orientation"}
+              aria-pressed={isOrientationLocked}
+              onClick={() => void toggleOrientationLock()}
+            >
+              {isOrientationLocked ? <Unlock size={15} /> : <Lock size={15} />}
+            </button>
+          )}
           <button
             type="button"
             className={`lvp-btn ${isFullscreen ? "is-active" : ""}`}
