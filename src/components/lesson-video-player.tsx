@@ -29,6 +29,15 @@ const MUTED_KEY = "propycoder-video-muted";
 const PROGRESS_PREFIX = "propycoder-video-progress:";
 const RATE_KEY = "propycoder-video-rate";
 
+function lockScreenToLandscape(): void {
+  const orientation = screen.orientation as ScreenOrientation & {
+    lock?: (orientation: "landscape") => Promise<void>;
+  };
+  if (orientation.lock) {
+    void orientation.lock("landscape").catch(() => undefined);
+  }
+}
+
 interface LessonVideoPlayerProps {
   lessonId: string;
   videoId: string | null;
@@ -174,7 +183,7 @@ export function LessonVideoPlayer({
 
       // Locking the device is supported by Android browsers, but not by every
       // mobile browser (notably iOS Safari). CSS rotation is the fallback.
-      void screen.orientation?.lock?.("landscape").catch(() => undefined);
+      lockScreenToLandscape();
       setIsRotated(window.innerHeight > window.innerWidth);
     };
     const onOrientationChange = () => {
@@ -257,7 +266,7 @@ export function LessonVideoPlayer({
 
     await root.requestFullscreen().catch(() => undefined);
     if (document.fullscreenElement === root) {
-      void screen.orientation?.lock?.("landscape").catch(() => undefined);
+      lockScreenToLandscape();
       setIsRotated(window.innerHeight > window.innerWidth);
     }
   }, []);
