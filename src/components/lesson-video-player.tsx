@@ -215,24 +215,11 @@ useEffect(() => {
     revealControls();
   }, [revealControls]);
 
-  const toggleFullscreen = useCallback(async () => {
+  const toggleFullscreen = useCallback(() => {
   if (document.fullscreenElement) {
-    await document.exitFullscreen().catch(() => undefined);
-    return;
-  }
-
-  await rootRef.current?.requestFullscreen().catch(() => undefined);
-
-  if (window.matchMedia("(max-width: 767px)").matches) {
-    try {
-      const orientation = screen.orientation as ScreenOrientation & {
-  lock?: (orientation: "landscape") => Promise<void>;
-};
-
-await orientation.lock?.("landscape");
-    } catch {
-      // The browser may not support orientation locking.
-    }
+    void document.exitFullscreen().catch(() => undefined);
+  } else {
+    void rootRef.current?.requestFullscreen().catch(() => undefined);
   }
 }, []);
 

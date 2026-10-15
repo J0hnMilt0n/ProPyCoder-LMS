@@ -5197,6 +5197,8 @@ html[data-theme="light"] .lab-frame {
   display: flex;
   flex-direction: column-reverse;
   min-width: 56px;
+  max-height: 180px;
+  overflow-y: auto;
   padding: 3px;
   gap: 1px;
   border: 1px solid rgba(255, 255, 255, 0.18);
