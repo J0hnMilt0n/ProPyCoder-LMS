@@ -182,10 +182,12 @@ export function LessonVideoPlayer({
 
       // Mobile can also use the CSS fullscreen overlay. Only let browser
       // fullscreen events update that state when native fullscreen was used.
-      if (isMobile && !isNativeFullscreen) return;
+      if (isMobile) {
+        setIsNativeFullscreen(fullscreen);
+        return;
+      }
 
       setIsFullscreen(fullscreen);
-      setIsNativeFullscreen(fullscreen);
       if (!fullscreen) setIsRotated(false);
     };
     document.addEventListener("fullscreenchange", syncFullscreen);
@@ -193,6 +195,33 @@ export function LessonVideoPlayer({
       document.removeEventListener("fullscreenchange", syncFullscreen);
     };
   }, [isMobile, isNativeFullscreen]);
+
+  useEffect(() => {
+    if (!isMobile || !isFullscreen) return;
+
+    const root = rootRef.current;
+    if (!root) return;
+
+    if (!isPortrait && !isNativeFullscreen && root.requestFullscreen) {
+      // Browsers may reject fullscreen without a fresh user gesture. If they
+      // do, leave the mobile CSS fullscreen overlay active.
+      void root.requestFullscreen().then(
+        () => {
+          if (document.fullscreenElement === root) {
+            setIsNativeFullscreen(true);
+          }
+        },
+        () => undefined,
+      );
+      return;
+    }
+
+    if (isPortrait && isNativeFullscreen && document.fullscreenElement === root) {
+      // Keep app fullscreen active; only leave the browser's native mode.
+      setIsNativeFullscreen(false);
+      void document.exitFullscreen().catch(() => undefined);
+    }
+  }, [isFullscreen, isMobile, isNativeFullscreen, isPortrait]);
 
   useEffect(() => {
     if (!isMobile || !isFullscreen) return;
@@ -268,10 +297,9 @@ export function LessonVideoPlayer({
       if (isFullscreen) {
         if (isNativeFullscreen && document.fullscreenElement) {
           await document.exitFullscreen().catch(() => undefined);
-        } else {
-          setIsFullscreen(false);
-          setIsNativeFullscreen(false);
         }
+        setIsFullscreen(false);
+        setIsNativeFullscreen(false);
         setIsRotated(false);
         return;
       }
