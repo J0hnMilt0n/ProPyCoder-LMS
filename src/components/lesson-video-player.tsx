@@ -300,7 +300,7 @@ export function LessonVideoPlayer({
   return (
     <div
       ref={rootRef}
-      className="lvp-root"
+      className={`lvp-root${isRotated ? " is-rotated" : ""}`}
       tabIndex={0}
       aria-label={`Video player: ${title}`}
       onMouseMove={revealControls}
