@@ -5172,17 +5172,19 @@ html[data-theme="light"] .lab-frame {
   aspect-ratio: auto;
 }
 
-.lvp-root.is-rotated {
-  position: fixed;
-  inset: auto;
-  top: 50%;
-  left: 50%;
-  width: 100dvh;
-  height: 100vw;
-  max-width: none;
-  aspect-ratio: auto;
-  transform: translate(-50%, -50%) rotate(90deg);
-  transform-origin: center;
+@media (max-width: 1024px) and (orientation: portrait) {
+  .lvp-root:fullscreen {
+    position: fixed;
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    width: 100dvh;
+    height: 100vw;
+    max-width: none;
+    aspect-ratio: auto;
+    transform: translate(-50%, -50%) rotate(90deg);
+    transform-origin: center;
+  }
 }
 .lvp-rate-menu {
   position: relative;
