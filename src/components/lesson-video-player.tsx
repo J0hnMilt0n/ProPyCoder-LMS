@@ -60,6 +60,7 @@ export function LessonVideoPlayer({
   const [isMuted, setIsMuted] = useState(false);
   const [rateIndex, setRateIndex] = useState(2);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -177,16 +178,21 @@ export function LessonVideoPlayer({
 
   useEffect(() => {
     const syncFullscreen = () => {
-      if (isMobile) return;
       const fullscreen = document.fullscreenElement === rootRef.current;
+
+      // Mobile can also use the CSS fullscreen overlay. Only let browser
+      // fullscreen events update that state when native fullscreen was used.
+      if (isMobile && !isNativeFullscreen) return;
+
       setIsFullscreen(fullscreen);
+      setIsNativeFullscreen(fullscreen);
       if (!fullscreen) setIsRotated(false);
     };
     document.addEventListener("fullscreenchange", syncFullscreen);
     return () => {
       document.removeEventListener("fullscreenchange", syncFullscreen);
     };
-  }, [isMobile]);
+  }, [isMobile, isNativeFullscreen]);
 
   useEffect(() => {
     if (!isMobile || !isFullscreen) return;
@@ -259,8 +265,37 @@ export function LessonVideoPlayer({
 
   const toggleFullscreen = useCallback(async () => {
     if (isMobile) {
-      setIsFullscreen((fullscreen) => !fullscreen);
+      if (isFullscreen) {
+        if (isNativeFullscreen && document.fullscreenElement) {
+          await document.exitFullscreen().catch(() => undefined);
+        } else {
+          setIsFullscreen(false);
+          setIsNativeFullscreen(false);
+        }
+        setIsRotated(false);
+        return;
+      }
+
       setIsRotated(false);
+
+      // Request native fullscreen directly from the tap when the phone is
+      // already landscape. Fall back to the working CSS overlay if denied.
+      if (!isPortrait && rootRef.current?.requestFullscreen) {
+        setIsNativeFullscreen(true);
+        try {
+          await rootRef.current.requestFullscreen();
+          if (document.fullscreenElement === rootRef.current) {
+            setIsFullscreen(true);
+            revealControls();
+            return;
+          }
+        } catch {
+          // Native fullscreen may be unavailable in this browser/context.
+        }
+        setIsNativeFullscreen(false);
+      }
+
+      setIsFullscreen(true);
       revealControls();
       return;
     }
@@ -278,7 +313,7 @@ export function LessonVideoPlayer({
     if (document.fullscreenElement === root) {
       setIsRotated(false);
     }
-  }, [isMobile, revealControls]);
+  }, [isFullscreen, isMobile, isNativeFullscreen, isPortrait, revealControls]);
 
   const togglePlayerRotation = useCallback(() => {
     if (!window.matchMedia("(orientation: portrait)").matches) {
