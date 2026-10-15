@@ -164,6 +164,7 @@ export function LessonVideoPlayer({
 
   useEffect(() => {
     const syncFullscreen = () => {
+      if (isMobile) return;
       const fullscreen = document.fullscreenElement === rootRef.current;
       setIsFullscreen(fullscreen);
       if (!fullscreen) setIsRotated(false);
@@ -172,7 +173,21 @@ export function LessonVideoPlayer({
     return () => {
       document.removeEventListener("fullscreenchange", syncFullscreen);
     };
-  }, []);
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (!isMobile || !isFullscreen) return;
+
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsFullscreen(false);
+        setIsRotated(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isFullscreen, isMobile]);
 
   const revealControls = useCallback(() => {
     setControlsVisible(true);
@@ -230,6 +245,13 @@ export function LessonVideoPlayer({
   }, [revealControls]);
 
   const toggleFullscreen = useCallback(async () => {
+    if (isMobile) {
+      setIsFullscreen((fullscreen) => !fullscreen);
+      setIsRotated(false);
+      revealControls();
+      return;
+    }
+
     if (document.fullscreenElement) {
       await document.exitFullscreen().catch(() => undefined);
       setIsRotated(false);
@@ -243,7 +265,7 @@ export function LessonVideoPlayer({
     if (document.fullscreenElement === root) {
       setIsRotated(false);
     }
-  }, []);
+  }, [isMobile, revealControls]);
 
   const togglePlayerRotation = useCallback(() => {
     setIsRotated((rotated) => !rotated);
@@ -317,7 +339,7 @@ export function LessonVideoPlayer({
   return (
     <div
       ref={rootRef}
-      className={`lvp-root ${controlsVisible ? "is-active" : ""} ${isRotated ? "is-rotated" : ""}`}
+      className={`lvp-root ${controlsVisible ? "is-active" : ""} ${isFullscreen && isMobile ? "is-mobile-fullscreen" : ""} ${isRotated ? "is-rotated" : ""}`}
       tabIndex={0}
       aria-label={`Video player: ${title}`}
       onMouseMove={revealControls}
@@ -545,8 +567,9 @@ export function LessonVideoPlayer({
           {isMobile && isFullscreen && (
   <button
     type="button"
-    className="lvp-btn"
+    className={`lvp-btn ${isRotated ? "is-active" : ""}`}
     aria-label={isRotated ? "Restore player orientation" : "Rotate player"}
+    aria-pressed={isRotated}
     onClick={togglePlayerRotation}
   >
     ↻
@@ -554,8 +577,9 @@ export function LessonVideoPlayer({
 )}
           <button
             type="button"
-            className="lvp-btn"
+            className={`lvp-btn ${isFullscreen ? "is-active" : ""}`}
             aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            aria-pressed={isFullscreen}
             onClick={toggleFullscreen}
           >
             {isFullscreen ? <Minimize size={15} /> : <Maximize size={15} />}
