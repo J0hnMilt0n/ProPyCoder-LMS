@@ -5065,7 +5065,7 @@ html[data-theme="light"] .lab-frame {
 .lvp-root {
   position: relative;
   container-type: inline-size;
-  overflow: hidden;
+  overflow: visible;
   aspect-ratio: 16 / 9;
   border: 1px solid #17181c;
   border-radius: 5px;
@@ -5296,6 +5296,16 @@ html[data-theme="light"] .lab-frame {
 }
 .lvp-progress {
   width: 100%;
+}
+.lvp-root:fullscreen.is-rotated {
+  position: fixed;
+  inset: 0;
+  width: 100vh;
+  height: 100vw;
+  max-width: none;
+  aspect-ratio: auto;
+  transform: rotate(90deg) translateY(-100%);
+  transform-origin: top left;
 }
 .lvp-volume {
   flex: 0 0 auto;

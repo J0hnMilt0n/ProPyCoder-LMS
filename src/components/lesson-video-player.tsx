@@ -63,20 +63,30 @@ export function LessonVideoPlayer({
   const [isBuffering, setIsBuffering] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [isRotated, setIsRotated] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
-useEffect(() => {
-  try {
-    const savedRate = Number(localStorage.getItem(RATE_KEY));
-    const savedIndex = RATES.indexOf(savedRate);
-
-    if (savedIndex !== -1) {
-      setRateIndex(savedIndex);
-      if (videoRef.current) videoRef.current.playbackRate = savedRate;
-    }
-  } catch {
-    // Storage unavailable; use the default rate.
-  }
+  useEffect(() => {
+  const media = window.matchMedia("(max-width: 1024px)");
+  const update = () => setIsMobile(media.matches);
+  update();
+  media.addEventListener("change", update);
+  return () => media.removeEventListener("change", update);
 }, []);
+
+  useEffect(() => {
+    try {
+      const savedRate = Number(localStorage.getItem(RATE_KEY));
+      const savedIndex = RATES.indexOf(savedRate);
+
+      if (savedIndex !== -1) {
+        setRateIndex(savedIndex);
+        if (videoRef.current) videoRef.current.playbackRate = savedRate;
+      }
+    } catch {
+      // Storage unavailable; use the default rate.
+    }
+  }, []);
 
   // Resolve the obfuscated source after mount so the server render and the
   // first client render always agree (avoids a hydration mismatch).
@@ -515,6 +525,16 @@ useEffect(() => {
     </div>
   )}
 </div>
+          {isMobile && isFullscreen && (
+  <button
+    type="button"
+    className="lvp-btn"
+    aria-label={isRotated ? "Restore player orientation" : "Rotate player"}
+    onClick={() => setIsRotated((rotated) => !rotated)}
+  >
+    ↻
+  </button>
+)}
           <button
             type="button"
             className="lvp-btn"
