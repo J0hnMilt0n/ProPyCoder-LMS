@@ -227,15 +227,6 @@ export function LessonVideoPlayer({
 
   const toggleFullscreen = useCallback(async () => {
     if (document.fullscreenElement) {
-      try {
-        const orientation = window.screen.orientation as ScreenOrientation & {
-          lock?: (orientation: "landscape") => Promise<void>;
-          unlock?: () => void;
-        };
-        orientation.unlock?.();
-      } catch {
-        // Orientation locking is optional and unsupported in some browsers.
-      }
       await document.exitFullscreen().catch(() => undefined);
       setIsRotated(false);
       return;
@@ -245,35 +236,11 @@ export function LessonVideoPlayer({
     if (!root) return;
 
     await root.requestFullscreen().catch(() => undefined);
-    if (!document.fullscreenElement) return;
-
-    try {
-      const orientation = window.screen.orientation as ScreenOrientation & {
-        lock?: (orientation: "landscape") => Promise<void>;
-      };
-      await orientation.lock?.("landscape");
-    } catch {
-      // Keep the player usable; the on-screen rotate control is the fallback.
-    }
   }, []);
 
-  const togglePlayerRotation = useCallback(async () => {
-    const nextRotated = !isRotated;
-    setIsRotated(nextRotated);
-    try {
-      const orientation = window.screen.orientation as ScreenOrientation & {
-        lock?: (orientation: "landscape") => Promise<void>;
-        unlock?: () => void;
-      };
-      if (nextRotated) {
-        await orientation.lock?.("landscape");
-      } else {
-        orientation.unlock?.();
-      }
-    } catch {
-      // CSS rotation below still works when native orientation lock is denied.
-    }
-  }, [isRotated]);
+  const togglePlayerRotation = useCallback(() => {
+    setIsRotated((rotated) => !rotated);
+  }, []);
 
   const cycleRate = useCallback(() => {
     const video = videoRef.current;
@@ -572,7 +539,7 @@ export function LessonVideoPlayer({
     type="button"
     className="lvp-btn"
     aria-label={isRotated ? "Restore player orientation" : "Rotate player"}
-    onClick={() => void togglePlayerRotation()}
+    onClick={togglePlayerRotation}
   >
     ↻
   </button>
