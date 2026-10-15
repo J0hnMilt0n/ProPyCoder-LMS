@@ -225,7 +225,11 @@ useEffect(() => {
 
   if (window.matchMedia("(max-width: 767px)").matches) {
     try {
-      await screen.orientation.lock("landscape");
+      const orientation = screen.orientation as ScreenOrientation & {
+  lock?: (orientation: "landscape") => Promise<void>;
+};
+
+await orientation.lock?.("landscape");
     } catch {
       // The browser may not support orientation locking.
     }
