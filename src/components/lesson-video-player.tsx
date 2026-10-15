@@ -180,10 +180,12 @@ export function LessonVideoPlayer({
     const syncFullscreen = () => {
       const fullscreen = document.fullscreenElement === rootRef.current;
 
-      // Mobile can also use the CSS fullscreen overlay. Only let browser
-      // fullscreen events update that state when native fullscreen was used.
       if (isMobile) {
         setIsNativeFullscreen(fullscreen);
+        if (!fullscreen) {
+          setIsFullscreen(false);
+          setIsRotated(false);
+        }
         return;
       }
 
@@ -195,33 +197,6 @@ export function LessonVideoPlayer({
       document.removeEventListener("fullscreenchange", syncFullscreen);
     };
   }, [isMobile, isNativeFullscreen]);
-
-  useEffect(() => {
-    if (!isMobile || !isFullscreen) return;
-
-    const root = rootRef.current;
-    if (!root) return;
-
-    if (!isPortrait && !isNativeFullscreen && root.requestFullscreen) {
-      // Browsers may reject fullscreen without a fresh user gesture. If they
-      // do, leave the mobile CSS fullscreen overlay active.
-      void root.requestFullscreen().then(
-        () => {
-          if (document.fullscreenElement === root) {
-            setIsNativeFullscreen(true);
-          }
-        },
-        () => undefined,
-      );
-      return;
-    }
-
-    if (isPortrait && isNativeFullscreen && document.fullscreenElement === root) {
-      // Keep app fullscreen active; only leave the browser's native mode.
-      setIsNativeFullscreen(false);
-      void document.exitFullscreen().catch(() => undefined);
-    }
-  }, [isFullscreen, isMobile, isNativeFullscreen, isPortrait]);
 
   useEffect(() => {
     if (!isMobile || !isFullscreen) return;
@@ -305,14 +280,17 @@ export function LessonVideoPlayer({
       }
 
       setIsRotated(false);
+      const root = rootRef.current;
+      if (!root) return;
 
-      // Request native fullscreen directly from the tap when the phone is
-      // already landscape. Fall back to the working CSS overlay if denied.
-      if (!isPortrait && rootRef.current?.requestFullscreen) {
+      // Request native fullscreen directly from the tap in either orientation.
+      // The rotate control can then rotate the fullscreen element with CSS.
+      // Fall back to the working CSS overlay if the browser denies the request.
+      if (root.requestFullscreen) {
         setIsNativeFullscreen(true);
         try {
-          await rootRef.current.requestFullscreen();
-          if (document.fullscreenElement === rootRef.current) {
+          await root.requestFullscreen();
+          if (document.fullscreenElement === root) {
             setIsFullscreen(true);
             revealControls();
             return;
@@ -323,6 +301,7 @@ export function LessonVideoPlayer({
         setIsNativeFullscreen(false);
       }
 
+      setIsNativeFullscreen(false);
       setIsFullscreen(true);
       revealControls();
       return;
@@ -344,10 +323,6 @@ export function LessonVideoPlayer({
   }, [isFullscreen, isMobile, isNativeFullscreen, isPortrait, revealControls]);
 
   const togglePlayerRotation = useCallback(() => {
-    if (!window.matchMedia("(orientation: portrait)").matches) {
-      setIsRotated(false);
-      return;
-    }
     setIsRotated((rotated) => !rotated);
     revealControls();
   }, [revealControls]);
@@ -644,7 +619,7 @@ export function LessonVideoPlayer({
     </div>
   )}
 </div>
-          {isMobile && isFullscreen && isPortrait && (
+          {isMobile && isFullscreen && (
   <button
     type="button"
     className={`lvp-btn ${isRotated ? "is-active" : ""}`}
