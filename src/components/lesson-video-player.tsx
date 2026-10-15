@@ -163,6 +163,12 @@ export function LessonVideoPlayer({
   }, []);
 
   useEffect(() => {
+    const portraitQuery = window.matchMedia("(orientation: portrait)");
+    const syncPlayerOrientation = () => {
+      if (document.fullscreenElement === rootRef.current) {
+        setIsRotated(portraitQuery.matches);
+      }
+    };
     const syncFullscreen = () => {
       const fullscreen = document.fullscreenElement === rootRef.current;
       setIsFullscreen(fullscreen);
@@ -173,18 +179,16 @@ export function LessonVideoPlayer({
 
       // Follow the device orientation; use CSS rotation when fullscreen stays
       // portrait and the browser does not rotate the viewport itself.
-      setIsRotated(window.innerHeight > window.innerWidth);
-    };
-    const onOrientationChange = () => {
-      if (document.fullscreenElement === rootRef.current) {
-        setIsRotated(window.innerHeight > window.innerWidth);
-      }
+      syncPlayerOrientation();
+      window.requestAnimationFrame(syncPlayerOrientation);
     };
     document.addEventListener("fullscreenchange", syncFullscreen);
-    window.addEventListener("orientationchange", onOrientationChange);
+    window.addEventListener("orientationchange", syncPlayerOrientation);
+    portraitQuery.addEventListener("change", syncPlayerOrientation);
     return () => {
       document.removeEventListener("fullscreenchange", syncFullscreen);
-      window.removeEventListener("orientationchange", onOrientationChange);
+      window.removeEventListener("orientationchange", syncPlayerOrientation);
+      portraitQuery.removeEventListener("change", syncPlayerOrientation);
     };
   }, []);
 
@@ -255,7 +259,7 @@ export function LessonVideoPlayer({
 
     await root.requestFullscreen().catch(() => undefined);
     if (document.fullscreenElement === root) {
-      setIsRotated(window.innerHeight > window.innerWidth);
+      setIsRotated(window.matchMedia("(orientation: portrait)").matches);
     }
   }, []);
 
