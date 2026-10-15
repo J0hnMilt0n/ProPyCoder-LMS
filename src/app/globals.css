@@ -5166,23 +5166,24 @@ html[data-theme="light"] .lab-frame {
     height: 10px;
   }
 }
-@media (max-width: 767px) {
-
+@media (max-width: 1024px) {
   .lvp-root:fullscreen {
     width: 100vw;
-    height: 100vh;
+    height: 100dvh;
+    aspect-ratio: auto;
   }
 
-  /* Fallback for mobile browsers that do not support orientation locking. */
-  @media (orientation: portrait) {
-    .lvp-root:fullscreen {
-      position: fixed;
-      inset: 0;
-      width: 100vh;
-      height: 100vw;
-      transform: rotate(90deg) translateY(-100%);
-      transform-origin: top left;
-    }
+  .lvp-root:fullscreen.is-rotated {
+    position: fixed;
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    width: 100dvh;
+    height: 100vw;
+    max-width: none;
+    aspect-ratio: auto;
+    transform: translate(-50%, -50%) rotate(90deg);
+    transform-origin: center;
   }
 }
 .lvp-rate-menu {
