@@ -229,6 +229,7 @@ export function LessonVideoPlayer({
     if (document.fullscreenElement) {
       try {
         const orientation = window.screen.orientation as ScreenOrientation & {
+          lock?: (orientation: "landscape") => Promise<void>;
           unlock?: () => void;
         };
         orientation.unlock?.();
@@ -247,7 +248,10 @@ export function LessonVideoPlayer({
     if (!document.fullscreenElement) return;
 
     try {
-      await window.screen.orientation.lock("landscape");
+      const orientation = window.screen.orientation as ScreenOrientation & {
+        lock?: (orientation: "landscape") => Promise<void>;
+      };
+      await orientation.lock?.("landscape");
     } catch {
       // Keep the player usable; the on-screen rotate control is the fallback.
     }
@@ -258,10 +262,11 @@ export function LessonVideoPlayer({
     setIsRotated(nextRotated);
     try {
       const orientation = window.screen.orientation as ScreenOrientation & {
+        lock?: (orientation: "landscape") => Promise<void>;
         unlock?: () => void;
       };
       if (nextRotated) {
-        await orientation.lock("landscape");
+        await orientation.lock?.("landscape");
       } else {
         orientation.unlock?.();
       }
