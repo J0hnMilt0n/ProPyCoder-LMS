@@ -225,13 +225,50 @@ export function LessonVideoPlayer({
     revealControls();
   }, [revealControls]);
 
-  const toggleFullscreen = useCallback(() => {
-  if (document.fullscreenElement) {
-    void document.exitFullscreen().catch(() => undefined);
-  } else {
-    void rootRef.current?.requestFullscreen().catch(() => undefined);
-  }
-}, []);
+  const toggleFullscreen = useCallback(async () => {
+    if (document.fullscreenElement) {
+      try {
+        const orientation = window.screen.orientation as ScreenOrientation & {
+          unlock?: () => void;
+        };
+        orientation.unlock?.();
+      } catch {
+        // Orientation locking is optional and unsupported in some browsers.
+      }
+      await document.exitFullscreen().catch(() => undefined);
+      setIsRotated(false);
+      return;
+    }
+
+    const root = rootRef.current;
+    if (!root) return;
+
+    await root.requestFullscreen().catch(() => undefined);
+    if (!document.fullscreenElement) return;
+
+    try {
+      await window.screen.orientation.lock("landscape");
+    } catch {
+      // Keep the player usable; the on-screen rotate control is the fallback.
+    }
+  }, []);
+
+  const togglePlayerRotation = useCallback(async () => {
+    const nextRotated = !isRotated;
+    setIsRotated(nextRotated);
+    try {
+      const orientation = window.screen.orientation as ScreenOrientation & {
+        unlock?: () => void;
+      };
+      if (nextRotated) {
+        await orientation.lock("landscape");
+      } else {
+        orientation.unlock?.();
+      }
+    } catch {
+      // CSS rotation below still works when native orientation lock is denied.
+    }
+  }, [isRotated]);
 
   const cycleRate = useCallback(() => {
     const video = videoRef.current;
@@ -300,7 +337,7 @@ export function LessonVideoPlayer({
   return (
     <div
       ref={rootRef}
-      className={`lvp-root${isRotated ? " is-rotated" : ""}`}
+      className={`lvp-root ${controlsVisible ? "is-active" : ""} ${isRotated ? "is-rotated" : ""}`}
       tabIndex={0}
       aria-label={`Video player: ${title}`}
       onMouseMove={revealControls}
@@ -530,7 +567,7 @@ export function LessonVideoPlayer({
     type="button"
     className="lvp-btn"
     aria-label={isRotated ? "Restore player orientation" : "Rotate player"}
-    onClick={() => setIsRotated((rotated) => !rotated)}
+    onClick={() => void togglePlayerRotation()}
   >
     ↻
   </button>
