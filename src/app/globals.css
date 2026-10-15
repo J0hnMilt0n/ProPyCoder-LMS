@@ -7795,6 +7795,11 @@ html[data-theme="dark"] .certificate-logo .site-brand {
     line-height: 1.2;
   }
 
+  .live-row{
+display: flex;
+flex-direction: column;
+  }
+
   .home-section-heading h2,
   .live-manager-head h2 {
     font-size: clamp(1.3rem, 5vw, 1.7rem);

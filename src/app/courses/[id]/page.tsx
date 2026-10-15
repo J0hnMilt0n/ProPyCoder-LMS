@@ -80,35 +80,59 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-// Use the actual scrolling surface. Some layouts scroll the window, while
-// others place the course page inside an overflow-y container.
+// Detect the real scrolling surface each time; the page may become scrollable
+// only after the course modules/video player have rendered.
 type CourseScrollTarget = Window | HTMLElement;
 
+function isScrollableElement(element: HTMLElement): boolean {
+  const style = window.getComputedStyle(element);
+  return (
+    ["auto", "scroll", "overlay"].includes(style.overflowY) &&
+    element.scrollHeight > element.clientHeight + 1
+  );
+}
+
 function getCourseScrollTarget(): CourseScrollTarget {
-  let element = document.querySelector<HTMLElement>(".course-detail-page");
-  while (element && element !== document.body) {
-    const overflowY = window.getComputedStyle(element).overflowY;
-    if (
-      (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") &&
-      element.scrollHeight > element.clientHeight + 1
-    ) {
-      return element;
-    }
-    element = element.parentElement;
+  const page = document.querySelector<HTMLElement>(".course-detail-page");
+  if (!page) return window;
+
+  // First prefer a scrollable ancestor of the course page.
+  let ancestor: HTMLElement | null = page;
+  while (ancestor && ancestor !== document.body && ancestor !== document.documentElement) {
+    if (isScrollableElement(ancestor)) return ancestor;
+    ancestor = ancestor.parentElement;
   }
+
+  // Some layouts scroll an element inside the page instead of the window.
+  const descendants = Array.from(
+    page.querySelectorAll<HTMLElement>("*")
+  ).filter(isScrollableElement);
+  if (descendants.length > 0) {
+    return descendants.reduce((largest, current) => {
+      const currentRange = current.scrollHeight - current.clientHeight;
+      const largestRange = largest.scrollHeight - largest.clientHeight;
+      return currentRange > largestRange ? current : largest;
+    });
+  }
+
   return window;
 }
 
+function isWindowScrollTarget(target: CourseScrollTarget): target is Window {
+  return target === window;
+}
+
 function readCourseScrollPosition(target: CourseScrollTarget): number {
-  return target === window ? window.scrollY : target.scrollTop;
+  return isWindowScrollTarget(target) ? window.scrollY : target.scrollTop;
 }
 
 function writeCourseScrollPosition(target: CourseScrollTarget, top: number): void {
-  if (target === window) {
+  if (isWindowScrollTarget(target)) {
     window.scrollTo({ top, left: 0, behavior: "auto" });
-  } else {
-    target.scrollTo({ top, left: 0, behavior: "auto" });
+    return;
   }
+
+  target.scrollTop = top;
 }
 
 interface LiveClassItem {
@@ -369,17 +393,18 @@ export default function CourseDetailPage({ params }: Props) {
     }
   }, [courseId, selectedLesson]);
 
-  // Persist and restore the actual scroll surface (window or an overflow container).
+  // Save the exact scroll position per course. Listen in capture phase as well,
+  // because scroll events from nested overflow containers do not bubble normally.
   useEffect(() => {
     if (!courseId) return;
     const storageKey = `propycoder-course-scroll:${courseId}`;
-    const target = getCourseScrollTarget();
     let frame = 0;
 
     const persist = () => {
       frame = 0;
       if (isRestoringScroll.current) return;
       try {
+        const target = getCourseScrollTarget();
         window.sessionStorage.setItem(
           storageKey,
           String(readCourseScrollPosition(target)),
@@ -394,21 +419,30 @@ export default function CourseDetailPage({ params }: Props) {
       frame = window.requestAnimationFrame(persist);
     };
 
-    target.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
+    document.addEventListener("scroll", onScroll, { passive: true, capture: true });
     window.addEventListener("pagehide", persist);
+
     return () => {
-      target.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", onScroll);
+      document.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("pagehide", persist);
       if (frame) window.cancelAnimationFrame(frame);
+
+      // Save the last non-zero position before route unmount/navigation.
       if (!isRestoringScroll.current) {
-        const current = readCourseScrollPosition(target);
-        if (current > 0) {
-          try { window.sessionStorage.setItem(storageKey, String(current)); } catch { /* Storage unavailable. */ }
+        try {
+          const current = readCourseScrollPosition(getCourseScrollTarget());
+          if (current > 0) window.sessionStorage.setItem(storageKey, String(current));
+        } catch {
+          // Storage unavailable.
         }
       }
     };
   }, [courseId]);
 
+  // Restore after navigation/refresh. Re-detect the scroll surface on every
+  // retry because the actual container may not be scrollable on the first paint.
   useEffect(() => {
     if (!courseId) return;
 
@@ -425,7 +459,6 @@ export default function CourseDetailPage({ params }: Props) {
     let stopped = false;
     let timeoutId: number | undefined;
     const startedAt = Date.now();
-    const target = getCourseScrollTarget();
     isRestoringScroll.current = true;
 
     const finish = () => {
@@ -439,21 +472,34 @@ export default function CourseDetailPage({ params }: Props) {
 
     const tick = () => {
       if (stopped) return;
+      const target = getCourseScrollTarget();
       writeCourseScrollPosition(target, saved);
       const position = readCourseScrollPosition(target);
-      const enoughContent = target === window
+      const enoughContent = isWindowScrollTarget(target)
         ? document.documentElement.scrollHeight >= saved + window.innerHeight
         : target.scrollHeight >= saved + target.clientHeight;
-      if (Math.abs(position - saved) <= 1 && enoughContent) {
+
+      if (Math.abs(position - saved) <= 2 && enoughContent) {
+        // Let one more frame pass so late layout shifts can settle.
+        timeoutId = window.setTimeout(() => {
+          if (stopped) return;
+          const currentTarget = getCourseScrollTarget();
+          const currentPosition = readCourseScrollPosition(currentTarget);
+          if (Math.abs(currentPosition - saved) > 2) {
+            tick();
+          } else {
+            finish();
+          }
+        }, 150);
+        return;
+      }
+
+      if (Date.now() - startedAt >= 10000) {
+        writeCourseScrollPosition(getCourseScrollTarget(), saved);
         finish();
         return;
       }
-      if (Date.now() - startedAt >= 8000) {
-        writeCourseScrollPosition(target, saved);
-        finish();
-        return;
-      }
-      timeoutId = window.setTimeout(tick, 80);
+      timeoutId = window.setTimeout(tick, 100);
     };
 
     const observer = typeof MutationObserver !== "undefined"
@@ -463,9 +509,15 @@ export default function CourseDetailPage({ params }: Props) {
       ? new ResizeObserver(() => tick())
       : null;
     observer?.observe(document.documentElement, { childList: true, subtree: true });
-    resizeObserver?.observe(target === window ? document.documentElement : target);
-    window.requestAnimationFrame(() => window.requestAnimationFrame(tick));
+    // ResizeObserver.observe accepts an Element. Observe the detected element
+    // when it is an HTMLElement; otherwise observe the document root for window scrolling.
+    const detectedTarget = getCourseScrollTarget();
+    const resizeTarget: Element = detectedTarget instanceof HTMLElement
+      ? detectedTarget
+      : document.documentElement;
+    resizeObserver?.observe(resizeTarget);
 
+    window.requestAnimationFrame(() => window.requestAnimationFrame(tick));
     const onPageshow = () => {
       if (document.visibilityState === "visible") tick();
     };
