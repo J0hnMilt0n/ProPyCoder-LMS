@@ -5174,6 +5174,7 @@ html[data-theme="light"] .lab-frame {
 
 .lvp-root.is-rotated {
   position: fixed;
+  inset: auto;
   top: 50%;
   left: 50%;
   width: 100dvh;

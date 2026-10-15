@@ -163,32 +163,14 @@ export function LessonVideoPlayer({
   }, []);
 
   useEffect(() => {
-    const portraitQuery = window.matchMedia("(orientation: portrait)");
-    const syncPlayerOrientation = () => {
-      if (document.fullscreenElement === rootRef.current) {
-        setIsRotated(portraitQuery.matches);
-      }
-    };
     const syncFullscreen = () => {
       const fullscreen = document.fullscreenElement === rootRef.current;
       setIsFullscreen(fullscreen);
-      if (!fullscreen) {
-        setIsRotated(false);
-        return;
-      }
-
-      // Follow the device orientation; use CSS rotation when fullscreen stays
-      // portrait and the browser does not rotate the viewport itself.
-      syncPlayerOrientation();
-      window.requestAnimationFrame(syncPlayerOrientation);
+      if (!fullscreen) setIsRotated(false);
     };
     document.addEventListener("fullscreenchange", syncFullscreen);
-    window.addEventListener("orientationchange", syncPlayerOrientation);
-    portraitQuery.addEventListener("change", syncPlayerOrientation);
     return () => {
       document.removeEventListener("fullscreenchange", syncFullscreen);
-      window.removeEventListener("orientationchange", syncPlayerOrientation);
-      portraitQuery.removeEventListener("change", syncPlayerOrientation);
     };
   }, []);
 
@@ -259,13 +241,14 @@ export function LessonVideoPlayer({
 
     await root.requestFullscreen().catch(() => undefined);
     if (document.fullscreenElement === root) {
-      setIsRotated(window.matchMedia("(orientation: portrait)").matches);
+      setIsRotated(false);
     }
   }, []);
 
   const togglePlayerRotation = useCallback(() => {
     setIsRotated((rotated) => !rotated);
-  }, []);
+    revealControls();
+  }, [revealControls]);
 
   const cycleRate = useCallback(() => {
     const video = videoRef.current;
