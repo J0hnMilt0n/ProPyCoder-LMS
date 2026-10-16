@@ -143,7 +143,7 @@ export default function CertificatesPage() {
                   <span className="cert-item-meta">
                     Issued {new Date(verifyResult.issueDate).toLocaleDateString()} · {verifyResult.certificateNumber}
                   </span>
-                  <Link href={`/certificates/${verifyResult.id}`} className="auth-submit">
+                  <Link href={`/certificates/${verifyResult.certificateNumber}`} className="auth-submit">
                     View certificate
                   </Link>
                 </div>
@@ -182,7 +182,7 @@ export default function CertificatesPage() {
                 {certificates.map((certificate) => (
                   <li key={certificate.id} className="cert-item">
                     <Link
-                      href={`/certificates/${certificate.id}`}
+                      href={`/certificates/${certificate.certificateNumber}`}
                       className="cert-item-link"
                     >
                       <span className="cert-item-icon" aria-hidden="true">

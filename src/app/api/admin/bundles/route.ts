@@ -1,10 +1,24 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { getAdminBundles, invalidateBundles } from "@/lib/page-cache";
+import { MAX_SLUG_LENGTH, SLUG_PATTERN } from "@/lib/slug";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const bundleInput = z.object({
+  // Optional author-chosen slug, stored as the bundle id (permanent).
+  id: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(3)
+    .max(MAX_SLUG_LENGTH)
+    .regex(
+      SLUG_PATTERN,
+      "Slug may only contain lowercase letters, numbers and hyphens",
+    )
+    .optional()
+    .or(z.literal("")),
   title: z.string().trim().min(4).max(120),
   description: z.string().trim().min(20).max(5000),
   image: z.union([z.string().url(), z.literal("")]).optional(),
@@ -98,13 +112,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { id: slugId, ...bundleFields } = parsed.data;
     const bundle = await prisma.bundle.create({
       data: {
-        title: parsed.data.title,
-        description: parsed.data.description,
-        image: parsed.data.image || null,
-        price: parsed.data.price,
-        status: parsed.data.status ?? "DRAFT",
+        // Empty/absent slug falls back to the auto-generated cuid default.
+        ...(slugId ? { id: slugId } : {}),
+        title: bundleFields.title,
+        description: bundleFields.description,
+        image: bundleFields.image || null,
+        price: bundleFields.price,
+        status: bundleFields.status ?? "DRAFT",
         courses: {
           create: uniqueIds.map((courseId, index) => ({
             courseId,
@@ -117,6 +134,18 @@ export async function POST(request: NextRequest) {
     invalidateBundles();
     return NextResponse.json({ bundle }, { status: 201 });
   } catch (error) {
+    // A taken slug surfaces as a unique-constraint violation — report it
+    // as a 409 so the form can ask for a different one.
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      (error as { code?: string }).code === "P2002"
+    ) {
+      return NextResponse.json(
+        { error: "That bundle URL is already taken, try another" },
+        { status: 409 },
+      );
+    }
     console.error("Create bundle error:", error);
     return NextResponse.json(
       { error: "Failed to create bundle" },

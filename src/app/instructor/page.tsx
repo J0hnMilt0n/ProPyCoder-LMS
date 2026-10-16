@@ -19,6 +19,7 @@ import toast from "react-hot-toast";
 import { CourseContentManager } from "@/components/course-content-manager";
 import { LiveClassManager } from "@/components/live-class-manager";
 import { ImageUploadField } from "@/components/image-upload-field";
+import { slugify } from "@/lib/slug";
 import { useResource } from "@/lib/use-resource";
 
 interface InstructorCourse {
@@ -35,6 +36,7 @@ interface InstructorCourse {
 
 const emptyForm = {
   title: "",
+  slug: "",
   description: "",
   category: "Python",
   level: "BEGINNER",
@@ -84,6 +86,7 @@ export default function InstructorPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          id: form.slug.trim().toLowerCase(),
           price: Number(form.price),
           offerPrice:
             form.offerPrice.trim() === "" || Number(form.offerPrice) <= 0
@@ -269,11 +272,40 @@ export default function InstructorPage() {
                   value={form.title}
                   minLength={4}
                   maxLength={120}
-                  onChange={(event) =>
-                    setForm({ ...form, title: event.target.value })
-                  }
+                  onChange={(event) => {
+                    const nextTitle = event.target.value;
+                    setForm((current) => {
+                      const autoSlug = slugify(nextTitle);
+                      const wasAuto =
+                        current.slug === "" ||
+                        current.slug === slugify(current.title);
+                      return {
+                        ...current,
+                        title: nextTitle,
+                        slug: wasAuto ? autoSlug : current.slug,
+                      };
+                    });
+                  }}
                   required
                   placeholder="e.g. Python for automation"
+                />
+              </label>
+              <label>
+                Course URL
+                <input
+                  value={form.slug}
+                  minLength={3}
+                  maxLength={60}
+                  pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                  title="Lowercase letters, numbers and hyphens only"
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      slug: event.target.value.toLowerCase(),
+                    })
+                  }
+                  required
+                  placeholder="e.g. python-for-automation"
                 />
               </label>
               <label>

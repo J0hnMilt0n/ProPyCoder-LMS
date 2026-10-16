@@ -19,6 +19,9 @@ import toast from "react-hot-toast";
 // Demo bank list for the "Net banking" option.
 const BANKS = ["HDFC Bank", "ICICI Bank", "SBI", "Axis Bank", "Kotak Bank"];
 
+// A stalled payment fetch must never leave the checkout spinning forever.
+const REQUEST_TIMEOUT_MS = 15_000;
+
 interface Payment {
   id: string;
   amount: number;
@@ -72,7 +75,9 @@ export default function CheckoutPage({ params }: Props) {
   const loadPayment = useCallback(async () => {
     if (!paymentId) return;
     try {
-      const response = await fetch(`/api/payments/${paymentId}/complete`);
+      const response = await fetch(`/api/payments/${paymentId}/complete`, {
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
       if (response.ok) {
         const data = await response.json();
         setPayment(data);

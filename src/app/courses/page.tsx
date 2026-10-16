@@ -1,13 +1,15 @@
 "use client";
 
 
-import { useEffect, useState } from "react";import { useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { ArrowLeft, ArrowRight, BookOpen, Search, Users } from "lucide-react";
 import toast from "react-hot-toast";
 import { InstructorAvatar } from "@/components/instructor-avatar";
 import { PriceTag } from "@/components/price-tag";
+import { primeResourceCache, readResourceCache } from "@/lib/use-resource";
 
 interface Course {
   id: string;
@@ -67,8 +69,12 @@ function warmCourse(id: string) {
 
 export default function CoursesPage() {
   const { data: session } = useSession();
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [courses, setCourses] = useState<Course[]>(() =>
+    readResourceCache<Course[]>("courses-list:1:::", "public") ?? [],
+  );
+  const [isLoading, setIsLoading] = useState(() => {
+    return readResourceCache<Course[]>("courses-list:1:::", "public") === null;
+  });
   const [isFiltering, setIsFiltering] = useState(false);
   const [error, setError] = useState(false);
   const [searchInput, setSearchInput] = useState("");
@@ -79,40 +85,85 @@ export default function CoursesPage() {
   const [pageCount, setPageCount] = useState(1);
   const [retry, setRetry] = useState(0);
   const hasSearched = searchQuery.trim().length > 0;
+  const activeCacheKey = `courses-list:${page}:${searchQuery.trim()}:${selectedCategory}:${selectedLevel}`;
+
+  useEffect(() => {
+    function retryCatalogLoad() {
+      setIsLoading(false);
+      setIsFiltering(false);
+      setRetry((current) => current + 1);
+    }
+
+    // Next.js navigation uses popstate; a full browser restore uses pageshow.
+    window.addEventListener("popstate", retryCatalogLoad);
+    window.addEventListener("pageshow", retryCatalogLoad);
+    return () => {
+      window.removeEventListener("popstate", retryCatalogLoad);
+      window.removeEventListener("pageshow", retryCatalogLoad);
+    };
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
     const isFirstLoad = courses.length === 0 && !error && !hasSearched;
-    if (isFirstLoad) setIsLoading(true);
+    if (isFirstLoad && isLoading) setIsLoading(true);
     else setIsFiltering(true);
     setError(false);
     // Instant for typing (bundle-style): short debounce keeps keystrokes
     // snappy, and we keep old results on screen instead of flashing
     // the skeleton on every keystroke.
+    // The catalog payload can take a while on a cold server cache with a
+    // remote DB; never let one hung request hold the page in its loading
+    // state forever (a fresh first visit has no cache to fall back on).
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
     const timer = window.setTimeout(async () => {
       const params = new URLSearchParams({ page: String(page), limit: "9" });
       if (searchQuery.trim()) params.set("title", searchQuery.trim());
       if (selectedCategory) params.set("category", selectedCategory);
       if (selectedLevel) params.set("level", selectedLevel);
-
+      const cacheKey = activeCacheKey;
+      const cached = readResourceCache<Course[]>(cacheKey, "public");
+      if (cached) {
+        setCourses(cached);
+        setIsLoading(false);
+      }
       try {
         const response = await fetch(`/api/courses?${params}`, {
           signal: controller.signal,
         });
         if (!response.ok) throw new Error("Course request failed");
         const result = await response.json();
-        setCourses(Array.isArray(result.data) ? result.data : []);
+        const nextCourses: Course[] = Array.isArray(result.data)
+          ? result.data
+          : [];
+        setCourses(nextCourses);
         setPageCount(Math.max(1, result.pagination?.pages ?? 1));
+        primeResourceCache(cacheKey, "public", nextCourses);
       } catch (requestError) {
         if (
           requestError instanceof DOMException &&
           requestError.name === "AbortError"
-        )
+        ) {
+          // Timeout or superseded filter change: show the empty state (with
+          // Retry) instead of spinning forever. A cached copy, if any, is
+          // already on screen from the read above.
+          if (!cached && courses.length === 0) {
+            setIsLoading(false);
+            setError(true);
+          }
           return;
-        setError(true);
-        toast.error("Could not load the course catalog");
+        }
+        if (!cached && courses.length === 0) {
+          setError(true);
+          toast.error("Could not load the course catalog");
+        }
       } finally {
+        window.clearTimeout(timeout);
         if (!controller.signal.aborted) {
+          // Always release the blocking skeleton: success, empty results,
+          // server errors, timeouts. Without this the catalog spins forever
+          // whenever the fetch fails with no cache to fall back on (e.g. a
+          // fresh first visit to /courses).
           setIsLoading(false);
           setIsFiltering(false);
         }
@@ -121,10 +172,11 @@ export default function CoursesPage() {
 
     return () => {
       window.clearTimeout(timer);
+      window.clearTimeout(timeout);
       controller.abort();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, retry, searchQuery, selectedCategory, selectedLevel]);
+  }, [page, retry, searchQuery, selectedCategory, selectedLevel, activeCacheKey]);
 
   function runSearch(value: string) {
     setSearchQuery(value);
@@ -274,7 +326,7 @@ export default function CoursesPage() {
         ) : (
           <div className="catalog-grid">
             {courses.map((course, index) => (
-              <article className="catalog-card cursor-pointer" key={course.id} onClick={() => window.location.href = `/courses/${course.id}`}>
+              <article className="catalog-card" key={course.id}>
                 <Link
                   href={`/courses/${course.id}`}
                   className={`catalog-art catalog-art-${index % 3}`}

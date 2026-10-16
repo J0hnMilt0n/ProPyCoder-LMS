@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { PriceTag } from "@/components/price-tag";
 import { formatINR } from "@/lib/currency";
+import { slugify } from "@/lib/slug";
 import {
   ArrowDownToLine,
   ArrowUpRight,
@@ -134,6 +135,7 @@ const viewIcons: Record<View, typeof Users> = {
 
 type CourseForm = {
   title: string;
+  slug: string;
   description: string;
   category: string;
   level: string;
@@ -147,6 +149,7 @@ type CourseForm = {
 
 const EMPTY_COURSE_FORM: CourseForm = {
   title: "",
+  slug: "",
   description: "",
   category: "Python",
   level: "BEGINNER",
@@ -400,6 +403,7 @@ export default function AdminPage() {
       });
       if (!response.ok) throw new Error("Course load failed");
       const course = (await response.json()) as {
+        id: string;
         title: string;
         description: string;
         category: string;
@@ -413,6 +417,7 @@ export default function AdminPage() {
       };
       setCourseForm({
         title: course.title,
+        slug: course.id,
         description: course.description,
         category: course.category,
         level: course.level,
@@ -439,6 +444,7 @@ export default function AdminPage() {
     setIsSavingCourse(true);
     try {
       const payload = {
+        ...(editing ? {} : { id: courseForm.slug.trim().toLowerCase() }),
         title: courseForm.title.trim(),
         description: courseForm.description.trim(),
         category: courseForm.category.trim(),
@@ -1079,10 +1085,41 @@ export default function AdminPage() {
                         minLength={4}
                         maxLength={120}
                         required
+                        onChange={(event) => {
+                          const nextTitle = event.target.value;
+                          setCourseForm((current) => {
+                            const autoSlug = slugify(nextTitle);
+                            // In create mode keep the slug in sync until the
+                            // author edits it by hand; in edit mode the slug
+                            // is permanent and never auto-updates.
+                            const wasAuto =
+                              courseModal?.mode !== "edit" &&
+                              (current.slug === "" ||
+                                current.slug === slugify(current.title));
+                            return {
+                              ...current,
+                              title: nextTitle,
+                              slug: wasAuto ? autoSlug : current.slug,
+                            };
+                          });
+                        }}
+                      />
+                    </label>
+                    <label>
+                      Course URL
+                      <input
+                        value={courseForm.slug}
+                        minLength={3}
+                        maxLength={60}
+                        pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                        title="Lowercase letters, numbers and hyphens only"
+                        required
+                        readOnly={courseModal?.mode === "edit"}
+                        placeholder="e.g. python-for-automation"
                         onChange={(event) =>
                           setCourseForm({
                             ...courseForm,
-                            title: event.target.value,
+                            slug: event.target.value.toLowerCase(),
                           })
                         }
                       />

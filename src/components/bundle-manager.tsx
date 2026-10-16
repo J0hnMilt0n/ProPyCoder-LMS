@@ -15,6 +15,7 @@ import { formatINR } from "@/lib/currency";
 import { bundleMrpTotal, discountPercent } from "@/lib/pricing";
 import { ImageUploadField } from "@/components/image-upload-field";
 import { useConfirm } from "@/components/confirm-dialog";
+import { slugify } from "@/lib/slug";
 interface BundleCourse {
   order: number;
   course: {
@@ -51,6 +52,7 @@ interface Props {
 
 const EMPTY_FORM = {
   title: "",
+  slug: "",
   description: "",
   image: "",
   price: "",
@@ -107,6 +109,7 @@ export function BundleManager({ courses }: Props) {
     if (!bundle) return;
     setForm({
       title: bundle.title,
+      slug: bundle.id,
       description: bundle.description,
       image: bundle.image ?? "",
       price: String(bundle.price),
@@ -134,7 +137,9 @@ export function BundleManager({ courses }: Props) {
     }
     setIsSaving(true);
     try {
+      const editing = modal.mode === "edit";
       const payload = {
+        ...(editing ? {} : { id: form.slug.trim().toLowerCase() }),
         title: form.title.trim(),
         description: form.description.trim(),
         image: form.image.trim(),
@@ -142,7 +147,6 @@ export function BundleManager({ courses }: Props) {
         status: form.status,
         courseIds: form.courseIds,
       };
-      const editing = modal.mode === "edit";
       const response = await fetch(
         editing ? `/api/admin/bundles/${modal.bundleId}` : "/api/admin/bundles",
         {
@@ -365,10 +369,43 @@ export function BundleManager({ courses }: Props) {
                   minLength={4}
                   maxLength={120}
                   value={form.title}
-                  onChange={(event) =>
-                    setForm({ ...form, title: event.target.value })
-                  }
+                  onChange={(event) => {
+                    const nextTitle = event.target.value;
+                    setForm((current) => {
+                      const autoSlug = slugify(nextTitle);
+                      // In create mode keep the slug in sync until the author
+                      // edits it by hand; in edit mode the slug is permanent.
+                      const wasAuto =
+                        modal?.mode !== "edit" &&
+                        (current.slug === "" ||
+                          current.slug === slugify(current.title));
+                      return {
+                        ...current,
+                        title: nextTitle,
+                        slug: wasAuto ? autoSlug : current.slug,
+                      };
+                    });
+                  }}
                   placeholder="Python + Web Development bundle"
+                />
+              </label>
+              <label>
+                Bundle URL
+                <input
+                  required
+                  minLength={3}
+                  maxLength={60}
+                  pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                  title="Lowercase letters, numbers and hyphens only"
+                  readOnly={modal?.mode === "edit"}
+                  value={form.slug}
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      slug: event.target.value.toLowerCase(),
+                    })
+                  }
+                  placeholder="e.g. python-web-development-bundle"
                 />
               </label>
               <label>

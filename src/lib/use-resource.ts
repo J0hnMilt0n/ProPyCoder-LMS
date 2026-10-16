@@ -28,6 +28,7 @@ const PREFIX = "propycoder-resource:";
 // Entries older than this are ignored (the next page load refreshes them).
 // Writes invalidate server-side immediately, so this is only a safety bound.
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const inFlightRequests = new Map<string, Promise<unknown>>();
 
 interface CacheEnvelope<T> {
   v: 1;
@@ -114,6 +115,28 @@ function writeCache<T>(key: string, scope: string, data: T): void {
       // Storage unavailable — caching is best-effort.
     }
   }
+}
+
+/** Deduplicate identical API requests shared by separate mounted components. */
+function fetchResource<T>(url: string, scope: string): Promise<T> {
+  const requestKey = `${scope}\u0000${url}`;
+  const existing = inFlightRequests.get(requestKey);
+  if (existing) return existing as Promise<T>;
+
+  const request = (async () => {
+    const response = await fetch(url, { credentials: "same-origin" });
+    if (!response.ok) throw new Error("Request failed");
+    return (await response.json()) as T;
+  })();
+
+  inFlightRequests.set(requestKey, request);
+  void request.finally(() => {
+    if (inFlightRequests.get(requestKey) === request) {
+      inFlightRequests.delete(requestKey);
+    }
+  }).catch(() => undefined);
+
+  return request;
 }
 
 /**
@@ -220,9 +243,7 @@ export function useResource<T>(options: UseResourceOptions): UseResourceResult<T
       inFlightRef.current = true;
       if (background) setIsRevalidating(true);
       try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("Request failed");
-        const json = await response.json();
+        const json = await fetchResource<unknown>(url, scope);
         const next = (selectRef.current
           ? selectRef.current(json)
           : json) as T;
@@ -232,8 +253,10 @@ export function useResource<T>(options: UseResourceOptions): UseResourceResult<T
         if (signature !== shownRef.current) {
           shownRef.current = signature;
           setData(next);
-          writeCache(key, scope, next);
         }
+        // Refresh the TTL even when the payload is unchanged, so frequently
+        // visited resources don't expire from local storage unnecessarily.
+        writeCache(key, scope, next);
         setError(false);
       } catch {
         // Keep showing cached content on a failed background refresh; only

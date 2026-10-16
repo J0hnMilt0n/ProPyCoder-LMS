@@ -3,12 +3,27 @@ import { prisma } from "@/lib/prisma";
 import { invalidateCatalog } from "@/lib/course-cache";
 import { invalidateAdminOverview, invalidateHome } from "@/lib/page-cache";
 import { isValidOffer } from "@/lib/pricing";
+import { MAX_SLUG_LENGTH, SLUG_PATTERN } from "@/lib/slug";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const courseStatuses = ["DRAFT", "PUBLISHED"] as const;
 
 const courseInput = z.object({
+  // Optional author-chosen slug, stored as the course id (permanent).
+  // Empty/absent keeps the auto-generated cuid behaviour.
+  id: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .min(3)
+    .max(MAX_SLUG_LENGTH)
+    .regex(
+      SLUG_PATTERN,
+      "Slug may only contain lowercase letters, numbers and hyphens",
+    )
+    .optional()
+    .or(z.literal("")),
   title: z.string().trim().min(4).max(120),
   description: z.string().trim().min(20).max(5000),
   category: z.string().trim().min(2).max(60),
@@ -65,6 +80,7 @@ export async function POST(request: NextRequest) {
 
     const course = await prisma.course.create({
       data: {
+        ...(parsed.data.id ? { id: parsed.data.id } : {}),
         title: parsed.data.title,
         description: parsed.data.description,
         category: parsed.data.category,
@@ -86,6 +102,18 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(course, { status: 201 });
   } catch (error) {
+    // A taken slug surfaces as a unique-constraint violation — report it
+    // as a 409 so the form can ask for a different one.
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      (error as { code?: string }).code === "P2002"
+    ) {
+      return NextResponse.json(
+        { error: "That course URL is already taken, try another" },
+        { status: 409 },
+      );
+    }
     console.error("Admin course creation error:", error);
     return NextResponse.json(
       { error: "Failed to create course" },

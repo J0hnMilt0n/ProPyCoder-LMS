@@ -1,6 +1,6 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
-import { serializeLiveClass } from "@/lib/live-classes";
+import { effectiveStatus, serializeLiveClass } from "@/lib/live-classes";
 import { LIVE_CACHE, NS, invalidateUser, userCached } from "@/lib/page-cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -22,19 +22,54 @@ const liveClassInclude = {
   instructor: { select: { id: true, firstName: true, lastName: true } },
 } as const;
 
+// Public listings intentionally exclude every field that could expose a
+// meeting URL, meeting ID, or passcode. Meeting access remains authenticated.
+const publicLiveClassSelect = {
+  id: true,
+  title: true,
+  description: true,
+  provider: true,
+  startsAt: true,
+  endsAt: true,
+  status: true,
+  courseId: true,
+  course: { select: { id: true, title: true } },
+  instructor: { select: { firstName: true, lastName: true } },
+} as const;
+
 // GET /api/live-classes?scope=manage   → instructor's own / all (admin)
 // GET /api/live-classes?scope=mine     → classes in my enrolled courses
 // GET /api/live-classes?courseId=...   → classes for one course (access-checked)
 export async function GET(request: NextRequest) {
   try {
+    const url = new URL(request.url);
+    const scope = url.searchParams.get("scope");
+    const courseId = url.searchParams.get("courseId");
+    if (scope === "public") {
+      const rows = await prisma.liveClass.findMany({
+        where: {
+          status: { not: "CANCELLED" },
+          endsAt: { gte: new Date() },
+          course: { status: "PUBLISHED" },
+        },
+        select: publicLiveClassSelect,
+        orderBy: { startsAt: "asc" },
+        take: 100,
+      });
+      const data = rows.map((row) => ({
+        ...row,
+        startsAt: row.startsAt.toISOString(),
+        endsAt: row.endsAt.toISOString(),
+        status: effectiveStatus(row),
+      }));
+      return NextResponse.json({ data });
+    }
+
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const url = new URL(request.url);
-    const scope = url.searchParams.get("scope");
-    const courseId = url.searchParams.get("courseId");
     const role = session.user.role;
 
     if (courseId) {

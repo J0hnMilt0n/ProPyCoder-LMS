@@ -88,6 +88,9 @@ export function Navbar() {
           <Link href="/bundles" onClick={() => setIsOpen(false)}>
             Bundles
           </Link>
+          <Link href="/live-classes" onClick={() => setIsOpen(false)}>
+            Live classes
+          </Link>
           {user && (
             <>
               {user.role === "ADMIN" && (
