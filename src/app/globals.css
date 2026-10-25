@@ -4820,7 +4820,7 @@ html[data-theme="dark"] .course-detail-cover > span {
   border-color: var(--line);
   color: var(--foreground);
 }
-html[data-theme="dark"] .course-detail-cover > strong {
+html[data-theme="dark"] .course-detail-cover > strong, html[data-theme="dark"] .catalog-empty h2 {
   color: var(--muted);
 }
 html[data-theme="dark"] .bundle-store-card,

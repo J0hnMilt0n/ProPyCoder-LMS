@@ -73,7 +73,7 @@ export default function LiveClassesPage() {
           <div className="catalog-empty">
             <CalendarDays /><h2>No upcoming live classes just yet.</h2>
             <p>Check back soon, or explore our courses in the meantime.</p>
-            <Link href="/courses">Browse courses <ArrowRight size={15} /></Link>
+            {/* <Link href="/courses" className="flex items-center mt-1 gap-3">Browse courses <ArrowRight size={15} /></Link> */}
           </div>
         ) : (
           <div className="bundle-store live-class-grid pl-5 pt-2">
