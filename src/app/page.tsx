@@ -14,10 +14,12 @@ import { BrandLogo } from "@/components/brand-logo";
 import { prisma } from "@/lib/prisma";
 import { getHomeData } from "@/lib/page-cache";
 import { PriceTag } from "@/components/price-tag";
+import { auth } from "@/app/api/auth/[...nextauth]/route";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
+  const session = await auth();
   // Public marketing page — cache the featured courses + counts globally.
   // Course/enrollment writes invalidate the "home" tag, so the numbers stay
   // fresh without every visit hitting the remote database.
@@ -45,6 +47,16 @@ export default async function Home() {
       prisma.enrollment.count(),
     ]),
   );
+  const purchasedCourseIds = session?.user?.id
+    ? new Set(
+        (
+          await prisma.enrollment.findMany({
+            where: { studentId: session.user.id },
+            select: { courseId: true },
+          })
+        ).map(({ courseId }) => courseId),
+      )
+    : new Set<string>();
 
   return (
     <main className="site-home">
@@ -202,10 +214,14 @@ export default async function Home() {
                     </span>
                   </div>
                   <div className="home-course-bottom">
-                    <PriceTag
-                      price={course.price}
-                      offerPrice={course.offerPrice ?? null}
-                    />
+                    {purchasedCourseIds.has(course.id) ? (
+                      <span className="purchased-pill">Purchased</span>
+                    ) : (
+                      <PriceTag
+                        price={course.price}
+                        offerPrice={course.offerPrice ?? null}
+                      />
+                    )}
                     <span>
                       View course <ArrowRight size={15} />
                     </span>

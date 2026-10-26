@@ -39,6 +39,9 @@ export default function BundleDetailPage() {
   const [bundle, setBundle] = useState<DetailBundle | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isBuying, setIsBuying] = useState(false);
+  const [purchasedCourseIds, setPurchasedCourseIds] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   useEffect(() => {
     if (!id) return;
@@ -61,6 +64,31 @@ export default function BundleDetailPage() {
       active = false;
     };
   }, [id]);
+
+  useEffect(() => {
+    if (!id || status !== "authenticated") {
+      setPurchasedCourseIds(new Set());
+      return;
+    }
+
+    let active = true;
+    void (async () => {
+      try {
+        const response = await fetch(`/api/bundles/${id}/purchases`, {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const data = (await response.json()) as { courseIds: string[] };
+        if (active) setPurchasedCourseIds(new Set(data.courseIds));
+      } catch {
+        // Keep the public bundle pricing visible if ownership lookup fails.
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [id, status]);
 
   async function buyBundle() {
     if (!bundle) return;
@@ -124,10 +152,22 @@ export default function BundleDetailPage() {
   }
 
   const courses = bundle.courses.map((entry) => entry.course);
-  const mrp = bundleMrpTotal(courses);
+  const remainingCourses = courses.filter(
+    (course) => !purchasedCourseIds.has(course.id),
+  );
+  const purchasedValue = courses.reduce(
+    (total, course) =>
+      total +
+      (purchasedCourseIds.has(course.id)
+        ? (course.offerPrice ?? course.price)
+        : 0),
+    0,
+  );
+  const bundlePrice = Math.max(0, bundle.price - purchasedValue);
+  const mrp = bundleMrpTotal(remainingCourses);
   const off = discountPercent({
     price: mrp,
-    offerPrice: bundle.price > 0 && bundle.price < mrp ? bundle.price : null,
+    offerPrice: bundlePrice > 0 && bundlePrice < mrp ? bundlePrice : null,
   });
 
   return (
@@ -169,7 +209,14 @@ export default function BundleDetailPage() {
                           ` · by ${course.instructor.firstName} ${course.instructor.lastName}`}
                       </p>
                     </div>
-                    <span className="bundle-mrp">{formatINR(course.price)}</span>
+                    {purchasedCourseIds.has(course.id) ? (
+                      <span className="purchased-pill">Purchased</span>
+                    ) : (
+                      <span className="bundle-mrp">
+                        {/* {formatINR(course.offerPrice ?? course.price)} */}
+                        {formatINR( course.price)}
+                      </span>
+                    )}
                   </Link>
                 </li>
               ))}
@@ -179,24 +226,26 @@ export default function BundleDetailPage() {
               <div className="bundle-pricing mb-3">
                 <span className="bundle-mrp">{formatINR(mrp)}</span>
                 <strong className="bundle-price" style={{ fontSize: "1.7rem" }}>
-                  {formatINR(bundle.price)}
+                  {formatINR(bundlePrice)}
                 </strong>
                 {off > 0 && <span className="price-tag-badge">{off}% OFF</span>}
               </div>
               <p className="text-sm text-gray-600 mb-4">
-                You save {formatINR(mrp - bundle.price)} — all{" "}
-                {courses.length} courses, one payment.
+                {remainingCourses.length === 0
+                  ? "You already own every course in this bundle."
+                  : `You save ${formatINR(Math.max(0, mrp - bundlePrice))} — ${remainingCourses.length} remaining course${remainingCourses.length === 1 ? "" : "s"}, one payment.`}
               </p>
               <button
                 className="bundle-buy w-50 flex justify-center"
                 onClick={() => void buyBundle()}
-                disabled={isBuying}
+                disabled={isBuying || remainingCourses.length === 0}
               >
                 {isBuying ? (
                   <LoaderCircle size={16} className="animate-spin" />
                 ) : (
                   <>
-                    <ShoppingCart size={15} /> Get this bundle
+                    <ShoppingCart size={15} />
+                    {remainingCourses.length === 0 ? "All courses purchased" : "Get this bundle"}
                   </>
                 )}
               </button>

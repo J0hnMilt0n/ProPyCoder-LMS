@@ -69,6 +69,9 @@ function warmCourse(id: string) {
 
 export default function CoursesPage() {
   const { data: session } = useSession();
+  const [purchasedCourseIds, setPurchasedCourseIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [courses, setCourses] = useState<Course[]>(() =>
     readResourceCache<Course[]>("courses-list:1:::", "public") ?? [],
   );
@@ -86,6 +89,30 @@ export default function CoursesPage() {
   const [retry, setRetry] = useState(0);
   const hasSearched = searchQuery.trim().length > 0;
   const activeCacheKey = `courses-list:${page}:${searchQuery.trim()}:${selectedCategory}:${selectedLevel}`;
+
+  useEffect(() => {
+    if (!session?.user) {
+      setPurchasedCourseIds(new Set());
+      return;
+    }
+
+    let active = true;
+    void fetch("/api/enrollments/purchased", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const result = (await response.json()) as { courseIds?: string[] };
+        if (active) {
+          setPurchasedCourseIds(new Set(result.courseIds ?? []));
+        }
+      })
+      .catch(() => {
+        // Keep the public catalog usable if the ownership lookup fails.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [session?.user]);
 
   useEffect(() => {
     function retryCatalogLoad() {
@@ -382,10 +409,14 @@ export default function CoursesPage() {
                     </span>
                   </div>
                   <div className="catalog-card-footer">
-                    <PriceTag
-                      price={course.price}
-                      offerPrice={course.offerPrice ?? null}
-                    />
+                    {purchasedCourseIds.has(course.id) ? (
+                      <span className="purchased-pill">Purchased</span>
+                    ) : (
+                      <PriceTag
+                        price={course.price}
+                        offerPrice={course.offerPrice ?? null}
+                      />
+                    )}
                     <Link
                       href={
                         session?.user
