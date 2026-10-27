@@ -52,7 +52,18 @@ export async function GET(request: NextRequest) {
       courseId,
     );
 
-    return NextResponse.json({ data });
+    const totalLessons = await prisma.lesson.count({
+      where: { module: { courseId } },
+    });
+    const completedLessons = data.filter(
+      (progress) => progress.status === "COMPLETED",
+    ).length;
+    const certificateId =
+      totalLessons > 0 && completedLessons >= totalLessons
+        ? await issueCertificateForCourse(session.user.id, courseId)
+        : null;
+
+    return NextResponse.json({ data, certificateId });
   } catch (error) {
     console.error("Progress fetch error:", error);
     return NextResponse.json(

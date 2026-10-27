@@ -156,6 +156,7 @@ export default function CoursesPage() {
 
   useEffect(() => {
     const controller = new AbortController();
+    let isCurrentRequest = true;
     const isFirstLoad = courses.length === 0 && !error && !hasSearched;
     if (isFirstLoad && isLoading) setIsLoading(true);
     else setIsFiltering(true);
@@ -179,11 +180,14 @@ export default function CoursesPage() {
         setIsLoading(false);
       }
       try {
+        setError(false);
         const response = await fetch(`/api/courses?${params}`, {
           signal: controller.signal,
+          cache: "no-store",
         });
         if (!response.ok) throw new Error("Course request failed");
         const result = await response.json();
+        if (!isCurrentRequest) return;
         const nextCourses: Course[] = Array.isArray(result.data)
           ? result.data
           : [];
@@ -191,6 +195,7 @@ export default function CoursesPage() {
         setPageCount(Math.max(1, result.pagination?.pages ?? 1));
         primeResourceCache(cacheKey, "public", nextCourses);
       } catch (requestError) {
+        if (!isCurrentRequest) return;
         if (
           requestError instanceof DOMException &&
           requestError.name === "AbortError"
@@ -222,6 +227,7 @@ export default function CoursesPage() {
     }, 120);
 
     return () => {
+      isCurrentRequest = false;
       window.clearTimeout(timer);
       window.clearTimeout(timeout);
       controller.abort();

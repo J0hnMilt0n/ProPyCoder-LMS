@@ -3,9 +3,7 @@ import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
-import { cached } from "@/lib/data-cache";
 import {
-  COURSE_CACHE,
   CATALOG_TAG,
   invalidateCatalog,
   preloadCourse,
@@ -52,7 +50,6 @@ export async function GET(request: NextRequest) {
     // revalidate in the background (the database is remote). The persistent
     // Data Cache layer is shared across instances; the in-process layer in
     // front gives instant reads and background revalidation.
-    const cacheKey = `catalog:${category ?? ""}:${level ?? ""}:${title ?? ""}:${page}:${limit}:`;
     const loader = unstable_cache(
       async () => {
         const [courses, total] = await Promise.all([
@@ -90,7 +87,9 @@ export async function GET(request: NextRequest) {
       ["catalog", category ?? "", level ?? "", title ?? "", String(page), String(limit)],
       { tags: [CATALOG_TAG] },
     );
-    const payload = await cached(cacheKey, () => loader(), COURSE_CACHE);
+    // Read directly through `unstable_cache` so a client revalidation can
+    // observe the persistent cache after course/catalog invalidation.
+    const payload = await loader();
 
     // Warm the detail + content caches for the first page of results in the
     // background, so opening a course from this list skips the database.

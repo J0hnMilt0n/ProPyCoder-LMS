@@ -437,7 +437,11 @@ export default function CourseDetailPage({ params }: Props) {
               if (!res?.ok) return [];
               const progressJson = (await res.json()) as {
                 data?: unknown;
+                certificateId?: unknown;
               };
+              if (typeof progressJson.certificateId === "string") {
+                setCertificateId(progressJson.certificateId);
+              }
               if (!Array.isArray(progressJson.data)) return [];
               return (progressJson.data as { status?: string }[])
                 .filter((item) => item.status === "COMPLETED")
@@ -793,10 +797,18 @@ export default function CourseDetailPage({ params }: Props) {
         const error = await response.json();
         throw new Error(error.error || "Could not save lesson progress");
       }
+      const progressResult = (await response.json()) as {
+        certificateId?: unknown;
+      };
       setCompletedLessonIds((current) =>
         new Set(current).add(selectedLesson.id),
       );
       toast.success("Lesson marked complete");
+
+      if (typeof progressResult.certificateId === "string") {
+        setCertificateId(progressResult.certificateId);
+        return;
+      }
 
       // If this completion finished the course, a certificate was issued
       // server-side ÔÇö fetch it so the certificate card unlocks right away.
