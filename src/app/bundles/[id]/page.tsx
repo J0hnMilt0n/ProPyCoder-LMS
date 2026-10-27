@@ -165,6 +165,11 @@ export default function BundleDetailPage() {
   );
   const bundlePrice = Math.max(0, bundle.price - purchasedValue);
   const mrp = bundleMrpTotal(courses);
+  const courseOfferTotal = courses.reduce(
+    (total, course) => total + effectiveCoursePrice(course),
+    0,
+  );
+  const courseSavings = Math.max(0, mrp - courseOfferTotal);
   const purchaseCredit = Math.min(bundle.price, purchasedValue);
   const off = discountPercent({
     price: mrp,
@@ -214,8 +219,15 @@ export default function BundleDetailPage() {
                       <span className="purchased-pill">Purchased</span>
                     ) : (
                       <span className="bundle-mrp">
-                        {/* {formatINR(course.offerPrice ?? course.price)} */}
-                        {formatINR( course.price)}
+                        {course.offerPrice !== null &&
+                        effectiveCoursePrice(course) < course.price ? (
+                          <>
+                            <del>{formatINR(course.price)}</del>{" "}
+                            {/* <strong>{formatINR(effectiveCoursePrice(course))}</strong> */}
+                          </>
+                        ) : (
+                          formatINR(course.price)
+                        )}
                       </span>
                     )}
                   </Link>
@@ -226,9 +238,23 @@ export default function BundleDetailPage() {
             <aside className="bundle-buy-card flex flex-col items-center">
               <div className="bundle-purchase-breakdown">
                 <div className="bundle-purchase-row">
-                  <span>Bundle price</span>
+                  <span>Original course prices</span>
+                  <span>{formatINR(mrp)}</span>
+                </div>
+                {/* <div className="bundle-purchase-row">
+                  <span>Course offer prices</span>
+                  <span>{formatINR(courseOfferTotal)}</span>
+                </div> */}
+                <div className="bundle-purchase-row">
+                  <span>Bundle offer</span>
                   <span>{formatINR(bundle.price)}</span>
                 </div>
+                {/* {courseSavings > 0 && (
+                  <div className="bundle-purchase-row is-credit">
+                    <span>Course offer savings</span>
+                    <span>− {formatINR(courseSavings)}</span>
+                  </div>
+                )} */}
                 {purchaseCredit > 0 && (
                   <div className="bundle-purchase-row is-credit">
                     <span>Purchased</span>
