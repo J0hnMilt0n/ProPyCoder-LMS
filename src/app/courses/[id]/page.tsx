@@ -176,12 +176,14 @@ export default function CourseDetailPage({ params }: Props) {
     // normalize once here so the render can trust the shape.
     return cached ? { ...cached, modules: cached.modules ?? [] } : null;
   });
-  const [modules, setModules] = useState<Module[]>(
-    () =>
-      (courseId
-        ? readResourceCache<Module[]>("course-modules", `public:${courseId}`)
-        : null) ?? [],
-  );
+  const [modules, setModules] = useState<Module[]>(() => {
+    if (!courseId) return [];
+    const cached = readResourceCache<Module[]>(
+      "course-modules",
+      `public:${courseId}`,
+    );
+    return cached ?? [];
+  });
   // Start unblocked when the first paint was primed from localStorage (back
   // navigation, lab -> courses return) so the cached content paints instantly
   // with no spinner flash. A true first visit still starts blocked.
@@ -319,6 +321,14 @@ export default function CourseDetailPage({ params }: Props) {
 
   const loadCourse = useCallback(async () => {
     try {
+      // Pull cached curriculum into the current course state immediately,
+      // then continue with the network request below to revalidate it.
+      const cachedModules = readResourceCache<Module[]>(
+        "course-modules",
+        `public:${courseId}`,
+      );
+      if (cachedModules) setModules(cachedModules);
+
       // All four requests are independent of each other. The database is
       // remote, so awaiting them one after another made the page wait for
       // the SUM of four round trips.
@@ -479,8 +489,8 @@ export default function CourseDetailPage({ params }: Props) {
         // Restore the lesson the user was last watching. Falls back to the
         // first free preview, then the first accessible lesson.
         const accessible = loadedModules
-          .flatMap((m: Module) => m.lessons)
-          .filter((l: Lesson) => lessonsData.isEnrolled || l.isFree);
+          .flatMap((module) => module.lessons)
+          .filter((lesson) => lessonsData.isEnrolled || lesson.isFree);
         setSelectedLesson((current) => {
           try {
             const savedId = window.sessionStorage.getItem(
@@ -497,7 +507,7 @@ export default function CourseDetailPage({ params }: Props) {
             current &&
             accessible.some((l: Lesson) => l.id === current.id)
           ) {
-            return current;
+            return accessible.find((l: Lesson) => l.id === current.id) ?? current;
           }
           const firstFree = loadedModules
             .flatMap((m: Module) => m.lessons)
@@ -527,6 +537,15 @@ export default function CourseDetailPage({ params }: Props) {
     // Otherwise (true first visit) keep the spinner until data lands.
     if (course) setIsLoading(false);
     void loadCourse();
+    const revalidate = () => {
+      if (document.visibilityState === "visible") void loadCourse();
+    };
+    window.addEventListener("focus", revalidate);
+    document.addEventListener("visibilitychange", revalidate);
+    return () => {
+      window.removeEventListener("focus", revalidate);
+      document.removeEventListener("visibilitychange", revalidate);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId, loadCourse]);
 

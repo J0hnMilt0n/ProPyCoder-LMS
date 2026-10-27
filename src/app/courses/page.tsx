@@ -91,6 +91,20 @@ export default function CoursesPage() {
   const activeCacheKey = `courses-list:${page}:${searchQuery.trim()}:${selectedCategory}:${selectedLevel}`;
 
   useEffect(() => {
+    const revalidate = () => {
+      if (document.visibilityState === "visible") {
+        setRetry((current) => current + 1);
+      }
+    };
+    window.addEventListener("focus", revalidate);
+    document.addEventListener("visibilitychange", revalidate);
+    return () => {
+      window.removeEventListener("focus", revalidate);
+      document.removeEventListener("visibilitychange", revalidate);
+    };
+  }, []);
+
+  useEffect(() => {
     const userId = session?.user?.id;
     if (!userId) {
       setPurchasedCourseIds(new Set());

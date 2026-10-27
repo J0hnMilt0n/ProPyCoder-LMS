@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 import { Navbar } from "@/components/navbar";
 import { formatINR } from "@/lib/currency";
 import { bundleMrpTotal, discountPercent, effectiveCoursePrice } from "@/lib/pricing";
+import { useResource } from "@/lib/use-resource";
 
 interface DetailBundle {
   id: string;
@@ -35,60 +36,25 @@ interface DetailBundle {
 export default function BundleDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { status } = useSession();
-  const [bundle, setBundle] = useState<DetailBundle | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: session, status } = useSession();
+  const bundleRes = useResource<DetailBundle>({
+    key: `bundle-detail:${id}`,
+    url: `/api/bundles/${id}`,
+    scope: "public",
+    enabled: Boolean(id),
+    select: (json) => (json as { bundle: DetailBundle }).bundle,
+  });
+  const bundle = bundleRes.data;
+  const isLoading = bundleRes.isLoading;
   const [isBuying, setIsBuying] = useState(false);
-  const [purchasedCourseIds, setPurchasedCourseIds] = useState<Set<string>>(
-    () => new Set(),
-  );
-
-  useEffect(() => {
-    if (!id) return;
-    let active = true;
-    void (async () => {
-      try {
-        const response = await fetch(`/api/bundles/${id}`, {
-          cache: "no-store",
-        });
-        if (!response.ok) throw new Error("Bundle not found");
-        const data = (await response.json()) as { bundle: DetailBundle };
-        if (active) setBundle(data.bundle);
-      } catch {
-        toast.error("Bundle not found");
-      } finally {
-        if (active) setIsLoading(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [id]);
-
-  useEffect(() => {
-    if (!id || status !== "authenticated") {
-      setPurchasedCourseIds(new Set());
-      return;
-    }
-
-    let active = true;
-    void (async () => {
-      try {
-        const response = await fetch(`/api/bundles/${id}/purchases`, {
-          cache: "no-store",
-        });
-        if (!response.ok) return;
-        const data = (await response.json()) as { courseIds: string[] };
-        if (active) setPurchasedCourseIds(new Set(data.courseIds));
-      } catch {
-        // Keep the public bundle pricing visible if ownership lookup fails.
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [id, status]);
+  const purchaseRes = useResource<string[]>({
+    key: `bundle-purchases:${id}`,
+    url: `/api/bundles/${id}/purchases`,
+    scope: session?.user?.id ?? "",
+    enabled: Boolean(id) && status === "authenticated",
+    select: (json) => (json as { courseIds?: string[] }).courseIds ?? [],
+  });
+  const purchasedCourseIds = new Set(purchaseRes.data ?? []);
 
   async function buyBundle() {
     if (!bundle) return;
@@ -165,11 +131,6 @@ export default function BundleDetailPage() {
   );
   const bundlePrice = Math.max(0, bundle.price - purchasedValue);
   const mrp = bundleMrpTotal(courses);
-  const courseOfferTotal = courses.reduce(
-    (total, course) => total + effectiveCoursePrice(course),
-    0,
-  );
-  const courseSavings = Math.max(0, mrp - courseOfferTotal);
   const purchaseCredit = Math.min(bundle.price, purchasedValue);
   const off = discountPercent({
     price: mrp,

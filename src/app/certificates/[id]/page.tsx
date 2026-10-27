@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { ArrowLeft, Download, LoaderCircle } from "lucide-react";
 import html2canvas from "html2canvas";
+import { useResource } from "@/lib/use-resource";
 
 interface CertificateView {
   id: string;
@@ -19,27 +20,16 @@ interface CertificateView {
 export default function CertificateViewPage() {
   const params = useParams<{ id: string }>();
   const certificateId = params?.id ?? null;
-  const [certificate, setCertificate] = useState<CertificateView | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
+  const certificateRes = useResource<CertificateView>({
+    key: `certificate-detail:${certificateId}`,
+    url: `/api/certificates/${certificateId}`,
+    scope: "public",
+    enabled: Boolean(certificateId),
+  });
+  const certificate = certificateRes.data;
+  const isLoading = certificateRes.isLoading;
+  const notFound = certificateRes.error && !certificate;
   const [isDownloading, setIsDownloading] = useState(false);
-
-  const load = useCallback(async () => {
-    if (!certificateId) return;
-    try {
-      const response = await fetch(`/api/certificates/${certificateId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setCertificate(data);
-      } else {
-        setNotFound(true);
-      }
-    } catch {
-      setNotFound(true);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [certificateId]);
 
   // Download the certificate as a PNG image of exactly the certificate
   // frame (no buttons, no page chrome).
@@ -80,12 +70,6 @@ export default function CertificateViewPage() {
     }
   };
 
-  useEffect(() => {
-    if (certificateId) {
-      void load();
-    }
-  }, [load, certificateId]);
-
   if (isLoading) {
     return (
       <div className="certificate-view">
@@ -112,7 +96,6 @@ export default function CertificateViewPage() {
             <Link
               href="/certificates"
               className="certificate-view-back"
-              onClick={() => setIsLoading(false)}
             >
               <ArrowLeft size={18} /> Back to certificates
             </Link>

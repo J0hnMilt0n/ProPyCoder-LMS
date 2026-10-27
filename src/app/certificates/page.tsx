@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { Award, LoaderCircle, Lock } from "lucide-react";
 import toast from "react-hot-toast";
+import { useResource } from "@/lib/use-resource";
 
 interface Certificate {
   id: string;
@@ -16,8 +17,15 @@ interface Certificate {
 
 export default function CertificatesPage() {
   const { status } = useSession();
-  const [certificates, setCertificates] = useState<Certificate[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const certificatesRes = useResource<Certificate[]>({
+    key: "certificates",
+    url: "/api/certificates",
+    scope: "me",
+    enabled: status === "authenticated",
+    select: (json) => (json as { data?: Certificate[] }).data ?? [],
+  });
+  const certificates = certificatesRes.data ?? [];
+  const isLoading = certificatesRes.isLoading;
 
   const [verifyNumber, setVerifyNumber] = useState("");
   const [verifyResult, setVerifyResult] = useState<Certificate | null>(null);
@@ -47,27 +55,11 @@ export default function CertificatesPage() {
     }
   }
 
-  const load = useCallback(async () => {
-    try {
-      const response = await fetch("/api/certificates", { cache: "no-store" });
-      if (response.ok) {
-        const data = await response.json();
-        setCertificates(data.data ?? []);
-      } else {
-        toast.error("Could not load your certificates");
-      }
-    } catch {
-      toast.error("Could not load your certificates");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  // Public page: the verify tool works without an account; personal
-  // certificates only load once signed in.
   useEffect(() => {
-    if (status === "authenticated") void load();
-  }, [status, load]);
+    if (status === "authenticated" && certificatesRes.error) {
+      toast.error("Could not load your certificates");
+    }
+  }, [status, certificatesRes.error]);
 
   if (status === "loading" || (status === "authenticated" && isLoading)) {
     return (

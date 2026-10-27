@@ -225,25 +225,22 @@ export function useResource<T>(options: UseResourceOptions): UseResourceResult<T
 
   // Track what's currently shown so we only setState on a real change.
   const shownRef = useRef<string>(data === null ? "" : stable(data));
-  const activeScopeRef = useRef(scope);
+  const activeResourceRef = useRef(`${key}\u0000${scope}\u0000${url}`);
   // Latest transform held by ref so the fetcher below stays referentially
   // stable and effects depending on it don't re-fire on render.
   const selectRef = useRef(select);
   selectRef.current = select;
-  // One fetch per hook instance at a time — an in-flight guard so rapid
-  // re-renders (scroll, theme, parent updates) can never stack up requests.
-  // Each running request still completes; later triggers just don't start a
-  // second one on top.
-  const inFlightRef = useRef(false);
+  const resourceIdentity = `${key}\u0000${scope}\u0000${url}`;
+  const activeRequestRef = useRef(0);
 
   const load = useCallback(
     async (background: boolean) => {
       if (!enabled) return;
-      if (inFlightRef.current) return;
-      inFlightRef.current = true;
+      const requestId = ++activeRequestRef.current;
       if (background) setIsRevalidating(true);
       try {
         const json = await fetchResource<unknown>(url, scope);
+        if (requestId !== activeRequestRef.current) return;
         const next = (selectRef.current
           ? selectRef.current(json)
           : json) as T;
@@ -259,26 +256,30 @@ export function useResource<T>(options: UseResourceOptions): UseResourceResult<T
         writeCache(key, scope, next);
         setError(false);
       } catch {
+        if (requestId !== activeRequestRef.current) return;
         // Keep showing cached content on a failed background refresh; only
         // surface an error when we truly have nothing to show.
         if (shownRef.current === "") setError(true);
       } finally {
-        inFlightRef.current = false;
-        if (background) setIsRevalidating(false);
+        if (requestId === activeRequestRef.current && background) {
+          setIsRevalidating(false);
+        }
       }
     },
     [enabled, url, key, scope],
   );
 
-  // Reset when the scope (user) changes so a different user starts clean.
+  // Reset when the resource key or scope changes, so route changes and
+  // account switches never briefly show data from the previous resource.
   useEffect(() => {
-    if (activeScopeRef.current === scope) return;
-    activeScopeRef.current = scope;
+    if (activeResourceRef.current === resourceIdentity) return;
+    activeResourceRef.current = resourceIdentity;
+    activeRequestRef.current += 1;
     const cached = enabled ? readCache<T>(key, scope) : null;
     shownRef.current = cached === null ? "" : stable(cached);
     setData(cached);
     setError(false);
-  }, [scope, key, enabled]);
+  }, [scope, key, enabled, resourceIdentity]);
 
   // Initial (and per-scope) fetch. With no cache this is the first paint's
   // blocking load; otherwise it's a silent background refresh.
@@ -291,9 +292,16 @@ export function useResource<T>(options: UseResourceOptions): UseResourceResult<T
   // Revalidate on focus to pick up changes made in other tabs / by staff.
   useEffect(() => {
     if (!enabled || !revalidateOnFocus || typeof window === "undefined") return;
-    const onFocus = () => void load(true);
+    const revalidate = () => {
+      if (document.visibilityState === "visible") void load(true);
+    };
+    const onFocus = () => revalidate();
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", revalidate);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", revalidate);
+    };
   }, [enabled, revalidateOnFocus, load]);
 
   const refresh = useCallback(() => {
