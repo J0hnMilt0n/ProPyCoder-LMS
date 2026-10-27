@@ -20,12 +20,13 @@ function generateCertificateNumber(): string {
 
 /**
  * Ensures a certificate exists for a completed course. Returns the certificate
- * id, or null if the course has no lessons / is not yet fully completed.
+ * public certificate number, or null if the course has no lessons / is not
+ * yet fully completed. The opaque database id remains internal.
  */
 export async function issueCertificateForCourse(
   studentId: string,
   courseId: string,
-): Promise<string | null> {
+): Promise<{ id: string; certificateNumber: string } | null> {
   const course = await prisma.course.findUnique({
     where: { id: courseId },
     select: { title: true },
@@ -43,7 +44,7 @@ export async function issueCertificateForCourse(
     }),
     prisma.certificate.findFirst({
       where: { studentId, course: course.title },
-      select: { id: true },
+      select: { id: true, certificateNumber: true },
     }),
   ]);
 
@@ -51,7 +52,7 @@ export async function issueCertificateForCourse(
     return null;
   }
 
-  if (existing) return existing.id;
+  if (existing) return existing;
 
   const certificate = await prisma.certificate.create({
     data: {
@@ -61,8 +62,8 @@ export async function issueCertificateForCourse(
       // A stable, opaque validation token (no PII, safe to verify later).
       credentials: `${courseId}:${studentId}:${Date.now().toString(36)}`,
     },
-    select: { id: true },
+    select: { id: true, certificateNumber: true },
   });
 
-  return certificate.id;
+  return certificate;
 }

@@ -92,6 +92,16 @@ export async function GET(request: NextRequest, { params }: Props) {
 // POST complete payment (simulate payment success)
 export async function POST(request: NextRequest, { params }: Props) {
   try {
+    // This endpoint simulates payment success and has no provider-side
+    // verification. Never allow the demo flow to grant paid enrollments in
+    // production until a trusted gateway/webhook integration is configured.
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json(
+        { error: "Payment processing is not configured" },
+        { status: 503 },
+      );
+    }
+
     const session = await auth();
 
     if (!session) {

@@ -58,12 +58,15 @@ export async function GET(request: NextRequest) {
     const completedLessons = data.filter(
       (progress) => progress.status === "COMPLETED",
     ).length;
-    const certificateId =
+    const certificate =
       totalLessons > 0 && completedLessons >= totalLessons
         ? await issueCertificateForCourse(session.user.id, courseId)
         : null;
 
-    return NextResponse.json({ data, certificateId });
+    return NextResponse.json({
+      data,
+      certificateNumber: certificate?.certificateNumber ?? null,
+    });
   } catch (error) {
     console.error("Progress fetch error:", error);
     return NextResponse.json(
@@ -179,9 +182,10 @@ export async function POST(request: NextRequest) {
     });
 
     // Issue the certificate the moment the course is fully completed.
-    let certificateId: string | null = null;
+    let certificate: Awaited<ReturnType<typeof issueCertificateForCourse>> =
+      null;
     if (enrollmentProgress === 100) {
-      certificateId = await issueCertificateForCourse(
+      certificate = await issueCertificateForCourse(
         session.user.id,
         lesson.module.courseId,
       );
@@ -194,7 +198,10 @@ export async function POST(request: NextRequest) {
     invalidateUser(NS.certificates, session.user.id);
     invalidateAdminOverview();
 
-    return NextResponse.json({ ...progress, certificateId });
+    return NextResponse.json({
+      ...progress,
+      certificateNumber: certificate?.certificateNumber ?? null,
+    });
   } catch (error) {
     console.error("Progress update error:", error);
     return NextResponse.json(

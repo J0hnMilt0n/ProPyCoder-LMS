@@ -437,10 +437,10 @@ export default function CourseDetailPage({ params }: Props) {
               if (!res?.ok) return [];
               const progressJson = (await res.json()) as {
                 data?: unknown;
-                certificateId?: unknown;
+                certificateNumber?: unknown;
               };
-              if (typeof progressJson.certificateId === "string") {
-                setCertificateId(progressJson.certificateId);
+              if (typeof progressJson.certificateNumber === "string") {
+                setCertificateId(progressJson.certificateNumber);
               }
               if (!Array.isArray(progressJson.data)) return [];
               return (progressJson.data as { status?: string }[])
@@ -798,15 +798,15 @@ export default function CourseDetailPage({ params }: Props) {
         throw new Error(error.error || "Could not save lesson progress");
       }
       const progressResult = (await response.json()) as {
-        certificateId?: unknown;
+        certificateNumber?: unknown;
       };
       setCompletedLessonIds((current) =>
         new Set(current).add(selectedLesson.id),
       );
       toast.success("Lesson marked complete");
 
-      if (typeof progressResult.certificateId === "string") {
-        setCertificateId(progressResult.certificateId);
+      if (typeof progressResult.certificateNumber === "string") {
+        setCertificateId(progressResult.certificateNumber);
         return;
       }
 
