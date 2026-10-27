@@ -76,7 +76,7 @@ export default function LiveClassesPage() {
             {/* <Link href="/courses" className="flex items-center mt-1 gap-3">Browse courses <ArrowRight size={15} /></Link> */}
           </div>
         ) : (
-          <div className="bundle-store live-class-grid pl-5 pt-2">
+          <div className="bundle-store live-class-grid pl-5 pr-5 pt-2">
             {classes.map((liveClass) => (
               <article key={liveClass.id} className="bundle-store-card">
                 <div className="bundle-store-cover live-class-cover">

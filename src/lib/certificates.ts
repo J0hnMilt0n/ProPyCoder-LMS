@@ -33,7 +33,7 @@ export async function issueCertificateForCourse(
   });
   if (!course) return null;
 
-  const [totalLessons, completedLessons, existing] = await Promise.all([
+  const [totalLessons, completedLessons, existing, enrollment] = await Promise.all([
     prisma.lesson.count({ where: { module: { courseId } } }),
     prisma.progress.count({
       where: {
@@ -43,27 +43,44 @@ export async function issueCertificateForCourse(
       },
     }),
     prisma.certificate.findFirst({
-      where: { studentId, course: course.title },
+      where: { studentId, credentials: { startsWith: `${courseId}:${studentId}:` } },
       select: { id: true, certificateNumber: true },
+    }),
+    prisma.enrollment.findUnique({
+      where: { studentId_courseId: { studentId, courseId } },
+      select: { id: true },
     }),
   ]);
 
-  if (totalLessons === 0 || completedLessons < totalLessons) {
+  if (!enrollment || totalLessons === 0 || completedLessons < totalLessons) {
     return null;
   }
 
   if (existing) return existing;
 
-  const certificate = await prisma.certificate.create({
-    data: {
-      studentId,
-      course: course.title,
-      certificateNumber: generateCertificateNumber(),
-      // A stable, opaque validation token (no PII, safe to verify later).
-      credentials: `${courseId}:${studentId}:${Date.now().toString(36)}`,
-    },
-    select: { id: true, certificateNumber: true },
-  });
+  // Course identity is embedded in credentials, allowing concurrent requests
+  // to find the winning certificate without relying on non-unique course titles.
+  let certificate;
+  try {
+    certificate = await prisma.certificate.create({
+      data: {
+        studentId,
+        course: course.title,
+        certificateNumber: generateCertificateNumber(),
+        // A stable, opaque validation token (no PII, safe to verify later).
+        credentials: `${courseId}:${studentId}:${Date.now().toString(36)}`,
+      },
+      select: { id: true, certificateNumber: true },
+    });
+  } catch (error) {
+    // Another request may have issued the same learner/course certificate.
+    const concurrent = await prisma.certificate.findFirst({
+      where: { studentId, credentials: { startsWith: `${courseId}:${studentId}:` } },
+      select: { id: true, certificateNumber: true },
+    });
+    if (concurrent) return concurrent;
+    throw error;
+  }
 
   return certificate;
 }

@@ -53,7 +53,7 @@ export function LessonVideoPlayer({
   const progressRestoredRef = useRef(false);
   const lastSavedTimeRef = useRef(0);
   const [rateMenuOpen, setRateMenuOpen] = useState(false);
-  const [src, setSrc] = useState<string | null>(null);
+  const src = getLessonVideoSource(videoId);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -88,25 +88,29 @@ export function LessonVideoPlayer({
   }, []);
 
   useEffect(() => {
+    let frame = 0;
     try {
       const savedRate = Number(localStorage.getItem(RATE_KEY));
       const savedIndex = RATES.indexOf(savedRate);
-
       if (savedIndex !== -1) {
-        setRateIndex(savedIndex);
-        if (videoRef.current) videoRef.current.playbackRate = savedRate;
+        frame = window.requestAnimationFrame(() => {
+          setRateIndex(savedIndex);
+          if (videoRef.current) videoRef.current.playbackRate = savedRate;
+        });
       }
     } catch {
       // Storage unavailable; use the default rate.
     }
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+    };
   }, []);
 
-  // Resolve the obfuscated source after mount so the server render and the
-  // first client render always agree (avoids a hydration mismatch).
+  // Reset non-React playback bookkeeping when the lesson changes; the media
+  // element reload is scheduled after the new source has rendered.
   useEffect(() => {
     progressRestoredRef.current = false;
     lastSavedTimeRef.current = 0;
-    setSrc(getLessonVideoSource(videoId));
   }, [videoId]);
 
   const saveProgress = useCallback(() => {
@@ -142,27 +146,24 @@ export function LessonVideoPlayer({
     };
   }, [saveProgress]);
 
-  // Restore saved volume + mute state once on mount.
+  // Restore saved volume + mute state on the mounted media element.
   useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
     try {
       const rawVolume = window.localStorage.getItem(VOLUME_KEY);
       const rawMuted = window.localStorage.getItem(MUTED_KEY);
-      let restoredMuted = false;
+      let restoredMuted = rawMuted === "1";
       if (rawVolume !== null) {
         const value = Number(rawVolume);
         if (Number.isFinite(value)) {
           const clamped = Math.min(1, Math.max(0, value));
-          setVolume(clamped);
-          restoredMuted = clamped === 0;
-          if (videoRef.current) videoRef.current.volume = clamped;
+          restoredMuted = clamped === 0 || restoredMuted;
+          video.volume = clamped;
         }
       }
-      if (rawMuted !== null) {
-        restoredMuted = rawMuted === "1" || restoredMuted;
-      }
       if (restoredMuted) {
-        setIsMuted(true);
-        if (videoRef.current) videoRef.current.muted = true;
+        video.muted = true;
       }
     } catch {
       // Storage unavailable — keep defaults.
@@ -373,14 +374,6 @@ export function LessonVideoPlayer({
     revealControls();
   }, [isOrientationLocked, revealControls]);
 
-  const cycleRate = useCallback(() => {
-    const video = videoRef.current;
-    const next = (rateIndex + 1) % RATES.length;
-    setRateIndex(next);
-    if (video) video.playbackRate = RATES[next];
-    revealControls();
-  }, [rateIndex, revealControls]);
-
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement | null;
     if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA"))
@@ -536,10 +529,7 @@ export function LessonVideoPlayer({
           onClick={() => {
             // Drop and re-resolve the source to force a fresh load attempt.
             setHasError(false);
-            setSrc(null);
-            window.setTimeout(() => {
-              setSrc(getLessonVideoSource(videoId));
-            }, 150);
+            videoRef.current?.load();
           }}
         >
           This video could not be loaded. Click to retry.

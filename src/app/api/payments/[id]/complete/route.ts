@@ -17,6 +17,12 @@ interface Props {
 // GET payment status
 export async function GET(request: NextRequest, { params }: Props) {
   try {
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json(
+        { error: "Payment processing is not configured" },
+        { status: 503 },
+      );
+    }
     const session = await auth();
 
     if (!session) {
