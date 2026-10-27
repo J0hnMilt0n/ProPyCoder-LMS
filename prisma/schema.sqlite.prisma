@@ -117,6 +117,7 @@ model Enrollment {
   completedAt DateTime?
   payment     Payment? // Optional - can be null for free courses or manual enrollments
   updatedAt   DateTime  @updatedAt
+  @@unique([studentId, courseId])
   @@index([studentId])
   @@index([courseId])
   @@index([status])
