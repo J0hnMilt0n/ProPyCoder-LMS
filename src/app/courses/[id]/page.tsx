@@ -188,6 +188,7 @@ export default function CourseDetailPage({ params }: Props) {
   const [isLoading, setIsLoading] = useState<boolean>(() => !course);
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isEnrolled, setIsEnrolled] = useState(false);
+  const [accessResolvedCourseId, setAccessResolvedCourseId] = useState("");
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(
     new Set(),
@@ -408,6 +409,7 @@ export default function CourseDetailPage({ params }: Props) {
         const loadedModules: Module[] = lessonsData.modules ?? [];
         setModules(loadedModules);
         setIsEnrolled(lessonsData.isEnrolled ?? false);
+        setAccessResolvedCourseId(courseId);
         primeResourceCache<Module[]>(
           "course-modules",
           `public:${courseId}`,
@@ -502,6 +504,12 @@ export default function CourseDetailPage({ params }: Props) {
             .find((l: Lesson) => l.isFree && l.videoId);
           return firstFree ?? accessible[0] ?? null;
         });
+      }
+      if (!lessonsData) {
+        // The ownership request failed or timed out. Resolve to the safe
+        // locked/unenrolled state rather than keeping the whole page blocked.
+        setIsEnrolled(false);
+        setAccessResolvedCourseId(courseId);
       }
     } catch {
       // Gatekeeper: a failure BEFORE the gating course response settled
@@ -863,7 +871,11 @@ export default function CourseDetailPage({ params }: Props) {
     );
   }
 
-  if (!course) {
+  const isAccessLoading =
+    status === "loading" ||
+    (status === "authenticated" && accessResolvedCourseId !== courseId);
+
+  if (!course || isAccessLoading) {
     return (
       <div className="course-detail-page">
         <Navbar />

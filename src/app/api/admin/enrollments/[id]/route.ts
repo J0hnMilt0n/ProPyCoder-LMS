@@ -47,6 +47,7 @@ export async function DELETE(
     invalidateAdminOverview();
     invalidateHome();
     invalidateUser(NS.enrollments, enrollment.studentId);
+    invalidateUser(NS.purchasedCourses, enrollment.studentId);
 
     return NextResponse.json({ id: enrollment.id });
   } catch (error) {

@@ -203,6 +203,7 @@ export async function POST(request: NextRequest, { params }: Props) {
     // The buyer's dashboard just gained courses; platform-wide enrollment and
     // revenue totals on the admin dashboard and home page changed too.
     invalidateUser(NS.enrollments, session.user.id);
+    invalidateUser(NS.purchasedCourses, session.user.id);
     invalidateAdminOverview();
     invalidateHome();
 

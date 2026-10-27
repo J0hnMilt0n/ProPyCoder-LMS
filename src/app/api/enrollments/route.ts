@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
     invalidateCatalog();
     // The enrolling student's dashboard list just changed.
     invalidateUser(NS.enrollments, session.user.id);
+    invalidateUser(NS.purchasedCourses, session.user.id);
 
     return NextResponse.json(enrollment, { status: 201 });
   } catch (error) {

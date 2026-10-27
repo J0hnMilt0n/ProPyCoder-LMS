@@ -91,28 +91,38 @@ export default function CoursesPage() {
   const activeCacheKey = `courses-list:${page}:${searchQuery.trim()}:${selectedCategory}:${selectedLevel}`;
 
   useEffect(() => {
-    if (!session?.user) {
+    const userId = session?.user?.id;
+    if (!userId) {
       setPurchasedCourseIds(new Set());
       return;
     }
 
     let active = true;
-    void fetch("/api/enrollments/purchased", { cache: "no-store" })
-      .then(async (response) => {
+    const refreshPurchasedCourses = async () => {
+      try {
+        const response = await fetch("/api/enrollments/purchased", {
+          cache: "no-store",
+        });
         if (!response.ok) return;
         const result = (await response.json()) as { courseIds?: string[] };
         if (active) {
           setPurchasedCourseIds(new Set(result.courseIds ?? []));
         }
-      })
-      .catch(() => {
+      } catch {
         // Keep the public catalog usable if the ownership lookup fails.
-      });
+      }
+    };
+
+    void refreshPurchasedCourses();
+    window.addEventListener("focus", refreshPurchasedCourses);
+    window.addEventListener("pageshow", refreshPurchasedCourses);
 
     return () => {
       active = false;
+      window.removeEventListener("focus", refreshPurchasedCourses);
+      window.removeEventListener("pageshow", refreshPurchasedCourses);
     };
-  }, [session?.user]);
+  }, [session?.user?.id]);
 
   useEffect(() => {
     function retryCatalogLoad() {

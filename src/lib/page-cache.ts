@@ -45,6 +45,7 @@ export const CERTIFICATE_TAG = "certificates";
 /** Per-user cache namespaces (in-process only). */
 export const NS = {
   enrollments: "enrollments",
+  purchasedCourses: "purchased-courses",
   notifications: "notifications",
   progress: "progress",
   certificates: "certificates-list",
