@@ -17,7 +17,6 @@ export async function GET(
         select: {
           id: true,
           title: true,
-          description: true,
           image: true,
           price: true,
           courses: {
@@ -27,10 +26,8 @@ export async function GET(
                 select: {
                   id: true,
                   title: true,
-                  description: true,
                   price: true,
                   offerPrice: true,
-                  image: true,
                   category: true,
                   level: true,
                   duration: true,
