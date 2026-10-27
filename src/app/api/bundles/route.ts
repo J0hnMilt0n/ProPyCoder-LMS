@@ -1,14 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { getBundles } from "@/lib/page-cache";
+import { cached } from "@/lib/data-cache";
+import { GLOBAL_CACHE } from "@/lib/page-cache";
 
 // GET published bundles — public, no auth required.
 export async function GET() {
   try {
-    // Public and identical for every visitor — cache it globally. Bundle
-    // writes call invalidateBundles() so the storefront refreshes on change.
-    const { bundles } = await getBundles(async () => ({
-      bundles: await prisma.bundle.findMany({
+    // Bundle images can exceed Next.js's 2 MB persistent Data Cache limit.
+    // Keep the full response in the existing per-process SWR cache instead.
+    const bundles = await cached(
+      "bundles:list:",
+      () => prisma.bundle.findMany({
         where: { status: "PUBLISHED" },
         select: {
           id: true,
@@ -34,7 +36,8 @@ export async function GET() {
         },
         orderBy: { updatedAt: "desc" },
       }),
-    }));
+      GLOBAL_CACHE,
+    );
     return NextResponse.json({ bundles });
   } catch (error) {
     console.error("Public bundles error:", error);
