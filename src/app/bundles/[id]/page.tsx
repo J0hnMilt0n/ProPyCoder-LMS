@@ -8,7 +8,7 @@ import { LoaderCircle, Package, ShoppingCart, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 import { Navbar } from "@/components/navbar";
 import { formatINR } from "@/lib/currency";
-import { bundleMrpTotal, discountPercent } from "@/lib/pricing";
+import { bundleMrpTotal, discountPercent, effectiveCoursePrice } from "@/lib/pricing";
 
 interface DetailBundle {
   id: string;
@@ -159,12 +159,13 @@ export default function BundleDetailPage() {
     (total, course) =>
       total +
       (purchasedCourseIds.has(course.id)
-        ? (course.offerPrice ?? course.price)
+        ? effectiveCoursePrice(course)
         : 0),
     0,
   );
   const bundlePrice = Math.max(0, bundle.price - purchasedValue);
-  const mrp = bundleMrpTotal(remainingCourses);
+  const mrp = bundleMrpTotal(courses);
+  const purchaseCredit = Math.min(bundle.price, purchasedValue);
   const off = discountPercent({
     price: mrp,
     offerPrice: bundlePrice > 0 && bundlePrice < mrp ? bundlePrice : null,
@@ -223,17 +224,29 @@ export default function BundleDetailPage() {
             </ul>
 
             <aside className="bundle-buy-card flex flex-col items-center">
-              <div className="bundle-pricing mb-3">
-                <span className="bundle-mrp">{formatINR(mrp)}</span>
-                <strong className="bundle-price" style={{ fontSize: "1.7rem" }}>
-                  {formatINR(bundlePrice)}
-                </strong>
+              <div className="bundle-purchase-breakdown">
+                <div className="bundle-purchase-row">
+                  <span>Bundle price</span>
+                  <span>{formatINR(bundle.price)}</span>
+                </div>
+                {purchaseCredit > 0 && (
+                  <div className="bundle-purchase-row is-credit">
+                    <span>Purchased</span>
+                    <span>− {formatINR(purchaseCredit)}</span>
+                  </div>
+                )}
+                <div className="bundle-purchase-total">
+                  <span>You pay</span>
+                  <strong>{formatINR(bundlePrice)}</strong>
+                </div>
                 {off > 0 && <span className="price-tag-badge">{off}% OFF</span>}
               </div>
               <p className="text-sm text-gray-600 mb-4">
                 {remainingCourses.length === 0
                   ? "You already own every course in this bundle."
-                  : `You save ${formatINR(Math.max(0, mrp - bundlePrice))} — ${remainingCourses.length} remaining course${remainingCourses.length === 1 ? "" : "s"}, one payment.`}
+                  : purchaseCredit > 0
+                    ? `${formatINR(purchaseCredit)} has been deducted because you already purchased ${courses.filter((course) => purchasedCourseIds.has(course.id)).length} course${courses.filter((course) => purchasedCourseIds.has(course.id)).length === 1 ? "" : "s"}.`
+                    : `${remainingCourses.length} course${remainingCourses.length === 1 ? "" : "s"} included in one payment.`}
               </p>
               <button
                 className="bundle-buy w-50 flex justify-center"

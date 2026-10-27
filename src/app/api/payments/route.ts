@@ -166,7 +166,12 @@ export async function POST(request: NextRequest) {
         id: true,
         title: true,
         price: true,
-        courses: { select: { courseId: true } },
+        courses: {
+          select: {
+            courseId: true,
+            course: { select: { price: true, offerPrice: true } },
+          },
+        },
       },
     });
 
@@ -184,16 +189,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Skip courses the buyer already owns — only enroll the rest.
-    const owned = await prisma.enrollment.count({
+    // Subtract the effective standalone price for courses already owned,
+    // matching the personalized bundle price shown on the detail page.
+    const ownedEnrollments = await prisma.enrollment.findMany({
       where: {
         studentId: session.user.id,
         courseId: { in: bundle.courses.map((c) => c.courseId) },
       },
+      select: { courseId: true },
     });
-    if (owned === bundle.courses.length) {
+    if (ownedEnrollments.length === bundle.courses.length) {
       return NextResponse.json(
         { error: "You already have every course in this bundle" },
+        { status: 400 }
+      );
+    }
+
+    const ownedCourseIds = new Set(ownedEnrollments.map(({ courseId }) => courseId));
+    const ownedValue = bundle.courses.reduce(
+      (total, { courseId, course }) =>
+        total +
+        (ownedCourseIds.has(courseId) ? effectiveCoursePrice(course) : 0),
+      0,
+    );
+    const amount = Math.max(0, bundle.price - ownedValue);
+    if (amount <= 0) {
+      return NextResponse.json(
+        { error: "There is no remaining balance for this bundle" },
         { status: 400 }
       );
     }
@@ -203,11 +225,18 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingBundlePayment) {
+      const refreshedPayment =
+        existingBundlePayment.amount === amount
+          ? existingBundlePayment
+          : await prisma.payment.update({
+              where: { id: existingBundlePayment.id },
+              data: { amount },
+            });
       return NextResponse.json({
-        id: existingBundlePayment.id,
+        id: refreshedPayment.id,
         courseId: null,
         bundleId: bundle.id,
-        amount: existingBundlePayment.amount,
+        amount: refreshedPayment.amount,
         status: "PENDING",
         isBundle: true,
         message: "Payment already initiated",
@@ -219,7 +248,7 @@ export async function POST(request: NextRequest) {
       data: {
         userId: session.user.id,
         bundleId: bundle.id,
-        amount: bundle.price,
+        amount,
         currency: "INR",
         status: "PENDING",
         paymentMethod,

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
+import { effectiveCoursePrice } from "@/lib/pricing";
 import { invalidateCatalog, invalidateCourse } from "@/lib/course-cache";
 import {
   NS,
@@ -47,6 +48,35 @@ export async function GET(request: NextRequest, { params }: Props) {
         { error: "Unauthorized" },
         { status: 403 }
       );
+    }
+
+    if (payment.bundle) {
+      const ownedCourses = await prisma.enrollment.findMany({
+        where: {
+          studentId: session.user.id,
+          courseId: { in: payment.bundle.courses.map(({ courseId }) => courseId) },
+        },
+        select: { courseId: true },
+      });
+      const ownedIds = new Set(ownedCourses.map(({ courseId }) => courseId));
+      const purchaseCredit = Math.min(
+        payment.bundle.price,
+        payment.bundle.courses.reduce(
+          (total, { course }) =>
+            total + (ownedIds.has(course.id) ? effectiveCoursePrice(course) : 0),
+          0,
+        ),
+      );
+
+      return NextResponse.json({
+        ...payment,
+        pricingBreakdown: {
+          originalBundlePrice: payment.bundle.price,
+          purchaseCredit,
+          amountDue: payment.amount,
+        },
+        purchasedCourseIds: [...ownedIds],
+      });
     }
 
     return NextResponse.json(payment);

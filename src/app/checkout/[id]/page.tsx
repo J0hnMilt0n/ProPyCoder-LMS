@@ -25,6 +25,12 @@ const REQUEST_TIMEOUT_MS = 15_000;
 interface Payment {
   id: string;
   amount: number;
+  pricingBreakdown?: {
+    originalBundlePrice: number;
+    purchaseCredit: number;
+    amountDue: number;
+  };
+  purchasedCourseIds?: string[];
   currency: string;
   status: "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED";
   course: {
@@ -414,8 +420,11 @@ export default function CheckoutPage({ params }: Props) {
                     Bundle · {payment.bundle.courses.length} courses included
                   </p>
                   {payment.bundle.courses.map(({ course }) => (
-                    <p key={course.id} className="text-sm text-gray-600 dark:text-[#a7a5ae]">
-                      · {course.title}
+                    <p key={course.id} className="flex items-center gap-2 text-sm text-gray-600 dark:text-[#a7a5ae]">
+                      <span>· {course.title}</span>
+                      {payment.purchasedCourseIds?.includes(course.id) && (
+                        <span className="purchased-pill">Purchased</span>
+                      )}
                     </p>
                   ))}
                 </div>
@@ -435,19 +444,32 @@ export default function CheckoutPage({ params }: Props) {
               )}
 
               <dl className="space-y-2 border-t border-gray-100 dark:border-[#232329] pt-4 text-sm">
-                <div className="flex justify-between text-gray-600 dark:text-[#a7a5ae]">
-                  <dt>
-                    {payment.bundle ? "Bundle price" : "Course price"}
-                  </dt>
-                  <dd>{formatINR(payment.amount, 2)}</dd>
-                </div>
+                {payment.bundle && payment.pricingBreakdown ? (
+                  <>
+                    <div className="flex justify-between text-gray-600 dark:text-[#a7a5ae]">
+                      <dt>Original Bundle Price</dt>
+                      <dd>{formatINR(payment.pricingBreakdown.originalBundlePrice, 2)}</dd>
+                    </div>
+                    {payment.pricingBreakdown.purchaseCredit > 0 && (
+                      <div className="flex justify-between text-green-700 dark:text-green-400">
+                        <dt>Purchased</dt>
+                        <dd>− {formatINR(payment.pricingBreakdown.purchaseCredit, 2)}</dd>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex justify-between text-gray-600 dark:text-[#a7a5ae]">
+                    <dt>{payment.bundle ? "Bundle price" : "Course price"}</dt>
+                    <dd>{formatINR(payment.amount, 2)}</dd>
+                  </div>
+                )}
               <div className="flex justify-between text-gray-600 dark:text-[#a7a5ae]">
                 <dt>Lifetime access</dt>
                 <dd>Included</dd>
               </div>
               <div className="flex justify-between font-semibold text-gray-900 dark:text-[#f1f0f2] text-base pt-2 border-t border-gray-100 dark:border-[#232329]">
-                <dt>Total due today</dt>
-                <dd>{formatINR(payment.amount, 2)}</dd>
+                <dt>{payment.bundle ? "Final Bundle Price" : "Total due today"}</dt>
+                <dd>{formatINR(payment.pricingBreakdown?.amountDue ?? payment.amount, 2)}</dd>
               </div>
             </dl>
 

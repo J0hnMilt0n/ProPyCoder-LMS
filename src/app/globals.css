@@ -6050,6 +6050,8 @@ html[data-theme="dark"] .text-emerald-600 {
 }
 
 .price-tag-badge {
+  width: fit-content;
+  margin-left: auto;
   background: #dcfce7;
   color: #15803d;
   border-radius: 999px;
@@ -6159,6 +6161,44 @@ html[data-theme="dark"] .text-emerald-600 {
   display: inline-flex;
   align-items: baseline;
   gap: 8px;
+}
+
+.bundle-purchase-breakdown {
+  display: grid;
+  width: 100%;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--line, #e7e7e7);
+  border-radius: 12px;
+  background: var(--background, #f8f8f5);
+  font-size: 0.84rem;
+}
+.bundle-purchase-row,
+.bundle-purchase-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted, #707070);
+}
+.bundle-purchase-row > :last-child {
+  font-weight: 650;
+  color: var(--foreground, #1f1f1f);
+}
+.bundle-purchase-row.is-credit,
+.bundle-purchase-row.is-credit > :last-child {
+  color: #15803d;
+}
+.bundle-purchase-total {
+  padding-top: 8px;
+  border-top: 1px solid var(--line, #e7e7e7);
+  color: var(--foreground, #1f1f1f);
+  font-weight: 700;
+}
+.bundle-purchase-total strong {
+  color: #e95f32;
+  font-size: 1.3rem;
 }
 
 .bundle-mrp {
