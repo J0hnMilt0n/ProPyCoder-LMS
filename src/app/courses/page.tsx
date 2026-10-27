@@ -363,7 +363,7 @@ export default function CoursesPage() {
         ) : (
           <div className="catalog-grid">
             {courses.map((course, index) => (
-              <article className="catalog-card" key={course.id}>
+              <article className="catalog-card cursor-pointer" key={course.id} onClick={() => (window.location.href = `/courses/${course.id}`)}>
                 <Link
                   href={`/courses/${course.id}`}
                   className={`catalog-art catalog-art-${index % 3}`}

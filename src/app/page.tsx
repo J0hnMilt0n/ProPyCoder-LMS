@@ -222,7 +222,7 @@ export default async function Home() {
                         offerPrice={course.offerPrice ?? null}
                       />
                     )}
-                    <span>
+                    <span className="course-view">
                       View course <ArrowRight size={15} />
                     </span>
                   </div>

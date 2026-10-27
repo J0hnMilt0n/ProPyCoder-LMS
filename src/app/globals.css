@@ -755,7 +755,7 @@ button {
   color: #353535;
   font-size: 13px;
 }
-.home-course-bottom span {
+.home-course-bottom span.course-view {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -8521,7 +8521,6 @@ html[data-theme="dark"] .site-user-avatar {
 }
 html[data-theme="dark"] .site-bell {
   background: #141416;
-  color: var(--muted);
 }
 
 /* Home code-window syntax tokens are tuned for the light card */
@@ -8905,4 +8904,8 @@ html[data-theme="dark"] .price-tag-mrp {
   line-height: 1.2;
   text-decoration: none;
   white-space: nowrap;
+}
+html[data-theme="dark"] .purchased-pill {
+  color: #86efac;
+  background: #14351f;
 }
