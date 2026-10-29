@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { effectiveCoursePrice } from "@/lib/pricing";
+import { createPhonePeOrder } from "@/lib/phonepe";
 
 // GET user's payment history
 export async function GET(request: NextRequest) {
@@ -57,11 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const {
-      courseId,
-      bundleId,
-      paymentMethod = "STRIPE",
-    }: { courseId?: string; bundleId?: string; paymentMethod?: string } = body;
+    const { courseId, bundleId }: { courseId?: string; bundleId?: string } = body;
 
     if ((!courseId && !bundleId) || (courseId && bundleId)) {
       return NextResponse.json(
@@ -115,7 +112,12 @@ export async function POST(request: NextRequest) {
         where: { ...where, courseId },
       });
 
-      if (existingPayment) {
+      if (existingPayment && existingPayment.amount === effectiveAmount && existingPayment.paymentMethod === "PHONEPE") {
+        const checkout = await createPhonePeOrder({
+          paymentId: existingPayment.id,
+          amountRupees: existingPayment.amount,
+          redirectUrl: new URL(`/checkout/${existingPayment.id}?phonepe=return`, request.url).toString(),
+        });
         return NextResponse.json({
           id: existingPayment.id,
           courseId,
@@ -124,18 +126,26 @@ export async function POST(request: NextRequest) {
           status: "PENDING",
           isBundle: false,
           message: "Payment already initiated",
-          checkoutUrl: `/checkout/${existingPayment.id}`,
+          checkoutUrl: checkout.redirectUrl,
         });
       }
-
-      const payment = await prisma.payment.create({
+      const payment = existingPayment
+        ? await prisma.payment.update({
+            where: { id: existingPayment.id },
+            data: { amount: effectiveAmount, paymentMethod: "PHONEPE", transactionId: null },
+            include: {
+              course: true,
+              bundle: { include: { courses: { include: { course: true } } } },
+            },
+          })
+        : await prisma.payment.create({
         data: {
           userId: session.user.id,
           courseId,
           amount: effectiveAmount,
           currency: "INR",
           status: "PENDING",
-          paymentMethod,
+          paymentMethod: "PHONEPE",
         },
         include: {
           course: true,
@@ -143,8 +153,13 @@ export async function POST(request: NextRequest) {
             include: { courses: { include: { course: true } } },
           },
         },
-      });
+          });
 
+      const checkout = await createPhonePeOrder({
+        paymentId: payment.id,
+        amountRupees: payment.amount,
+        redirectUrl: new URL(`/checkout/${payment.id}?phonepe=return`, request.url).toString(),
+      });
       return NextResponse.json({
         id: payment.id,
         courseId: payment.courseId,
@@ -152,10 +167,7 @@ export async function POST(request: NextRequest) {
         amount: payment.amount,
         status: payment.status,
         isBundle: false,
-        // Send the buyer to the checkout UI page, which loads this payment and
-        // collects card details before calling POST .../complete to enroll them.
-        // In production, you would return a hosted gateway URL (Stripe/PayPal).
-        checkoutUrl: `/checkout/${payment.id}`,
+        checkoutUrl: checkout.redirectUrl,
       });
     }
 
@@ -232,6 +244,11 @@ export async function POST(request: NextRequest) {
               where: { id: existingBundlePayment.id },
               data: { amount },
             });
+      const checkout = await createPhonePeOrder({
+        paymentId: refreshedPayment.id,
+        amountRupees: refreshedPayment.amount,
+        redirectUrl: new URL(`/checkout/${refreshedPayment.id}?phonepe=return`, request.url).toString(),
+      });
       return NextResponse.json({
         id: refreshedPayment.id,
         courseId: null,
@@ -240,7 +257,7 @@ export async function POST(request: NextRequest) {
         status: "PENDING",
         isBundle: true,
         message: "Payment already initiated",
-        checkoutUrl: `/checkout/${existingBundlePayment.id}`,
+        checkoutUrl: checkout.redirectUrl,
       });
     }
 
@@ -251,7 +268,7 @@ export async function POST(request: NextRequest) {
         amount,
         currency: "INR",
         status: "PENDING",
-        paymentMethod,
+        paymentMethod: "PHONEPE",
       },
       include: {
         course: true,
@@ -261,6 +278,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    const checkout = await createPhonePeOrder({
+      paymentId: payment.id,
+      amountRupees: payment.amount,
+      redirectUrl: new URL(`/checkout/${payment.id}?phonepe=return`, request.url).toString(),
+    });
     return NextResponse.json({
       id: payment.id,
       courseId: null,
@@ -268,7 +290,7 @@ export async function POST(request: NextRequest) {
       amount: payment.amount,
       status: payment.status,
       isBundle: true,
-      checkoutUrl: `/checkout/${payment.id}`,
+      checkoutUrl: checkout.redirectUrl,
     });
   } catch (error) {
     console.error("Payment creation error:", error);

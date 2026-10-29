@@ -2,13 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { effectiveCoursePrice } from "@/lib/pricing";
-import { invalidateCatalog, invalidateCourse } from "@/lib/course-cache";
-import {
-  NS,
-  invalidateAdminOverview,
-  invalidateHome,
-  invalidateUser,
-} from "@/lib/page-cache";
+import { getPhonePeOrderStatus } from "@/lib/phonepe";
+import { completePhonePePayment } from "@/lib/payment-completion";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -17,12 +12,6 @@ interface Props {
 // GET payment status
 export async function GET(request: NextRequest, { params }: Props) {
   try {
-    if (process.env.NODE_ENV === "production") {
-      return NextResponse.json(
-        { error: "Payment processing is not configured" },
-        { status: 503 },
-      );
-    }
     const session = await auth();
 
     if (!session) {
@@ -54,6 +43,25 @@ export async function GET(request: NextRequest, { params }: Props) {
         { error: "Unauthorized" },
         { status: 403 }
       );
+    }
+
+    if (payment.status === "PENDING" && payment.paymentMethod === "PHONEPE") {
+      const provider = await getPhonePeOrderStatus(payment.id);
+      const amountInPaise = Math.round(payment.amount * 100);
+      if (provider.amount !== amountInPaise) {
+        return NextResponse.json({ error: "Payment amount verification failed" }, { status: 502 });
+      }
+      if (provider.state === "COMPLETED") {
+        await completePhonePePayment(payment.id, session.user.id, provider);
+        const refreshed = await prisma.payment.findUnique({
+          where: { id },
+          include: { course: true, bundle: { include: { courses: { include: { course: true } } } }, enrollment: true },
+        });
+        if (refreshed) return NextResponse.json(refreshed);
+      } else if (provider.state === "FAILED") {
+        await prisma.payment.updateMany({ where: { id, status: "PENDING" }, data: { status: "FAILED" } });
+        payment.status = "FAILED";
+      }
     }
 
     if (payment.bundle) {
@@ -95,19 +103,9 @@ export async function GET(request: NextRequest, { params }: Props) {
   }
 }
 
-// POST complete payment (simulate payment success)
+// POST verifies PhonePe with the provider before granting enrollment.
 export async function POST(request: NextRequest, { params }: Props) {
   try {
-    // This endpoint simulates payment success and has no provider-side
-    // verification. Never allow the demo flow to grant paid enrollments in
-    // production until a trusted gateway/webhook integration is configured.
-    if (process.env.NODE_ENV === "production") {
-      return NextResponse.json(
-        { error: "Payment processing is not configured" },
-        { status: 503 },
-      );
-    }
-
     const session = await auth();
 
     if (!session) {
@@ -115,9 +113,6 @@ export async function POST(request: NextRequest, { params }: Props) {
     }
 
     const { id } = await params;
-    const body = await request.json();
-    const { transactionId, paymentMethod } = body;
-
     const payment = await prisma.payment.findUnique({
       where: { id },
       include: {
@@ -140,6 +135,9 @@ export async function POST(request: NextRequest, { params }: Props) {
       );
     }
 
+    if (payment.status === "COMPLETED") {
+      return NextResponse.json({ success: true, alreadyCompleted: true });
+    }
     if (payment.status !== "PENDING") {
       return NextResponse.json(
         { error: "Payment already processed" },
@@ -147,98 +145,23 @@ export async function POST(request: NextRequest, { params }: Props) {
       );
     }
 
-    // In production, verify payment with Stripe/PayPal using transactionId
-    // For demo purposes, we'll mark it as completed
-
-    // Start a transaction to create enrollment(s) and update payment
-    const result = await prisma.$transaction(async (tx) => {
-      // Update payment status
-      const updatedPayment = await tx.payment.update({
-        where: { id },
-        data: {
-          status: "COMPLETED",
-          transactionId: transactionId || `TXN_${Date.now()}`,
-          // Record how the buyer paid (CARD / UPI / NETBANKING from checkout).
-          paymentMethod:
-            typeof paymentMethod === "string" && paymentMethod.trim()
-              ? paymentMethod.trim()
-              : payment.paymentMethod ?? "CARD",
-        },
-      });
-
-      let enrollments: { id: string; courseId: string }[] = [];
-
-      if (payment.bundleId && payment.bundle) {
-        // Bundle purchase → enroll in every course the buyer doesn't own yet.
-        const courseIds = payment.bundle.courses.map((c) => c.courseId);
-        await tx.enrollment.createMany({
-          data: courseIds.map((courseId) => ({
-            studentId: session.user!.id,
-            courseId,
-            status: "ACTIVE",
-          })),
-          skipDuplicates: true,
-        });
-        enrollments = await tx.enrollment.findMany({
-          where: {
-            studentId: session.user!.id,
-            courseId: { in: courseIds },
-          },
-          select: { id: true, courseId: true },
-        });
-      } else if (payment.courseId) {
-        const enrollment = await tx.enrollment.create({
-          data: {
-            studentId: session.user!.id,
-            courseId: payment.courseId,
-            status: "ACTIVE",
-          },
-          select: { id: true, courseId: true },
-        });
-        enrollments = [enrollment];
-      } else {
-        throw new Error("Payment has neither course nor bundle");
+    if (payment.paymentMethod !== "PHONEPE") {
+      return NextResponse.json({ error: "Payment provider is not configured" }, { status: 409 });
+    }
+    const provider = await getPhonePeOrderStatus(payment.id);
+    if (provider.amount !== Math.round(payment.amount * 100)) {
+      return NextResponse.json({ error: "Payment amount verification failed" }, { status: 409 });
+    }
+    if (provider.state !== "COMPLETED") {
+      if (provider.state === "FAILED") {
+        await prisma.payment.updateMany({ where: { id, status: "PENDING" }, data: { status: "FAILED" } });
       }
+      return NextResponse.json({ error: "PhonePe has not confirmed this payment" }, { status: 409 });
+    }
 
-      // Link payment to the first enrollment (back-compat for single-course)
-      await tx.payment.update({
-        where: { id },
-        data: {
-          enrollmentId: enrollments[0]?.id ?? null,
-        },
-      });
-
-      return { payment: updatedPayment, enrollments };
-    });
-
-    // New enrollments bump the enrollment count cached on the course
-    // detail and in the public catalog — refresh both.
-    const affectedCourseIds = new Set(result.enrollments.map((e) => e.courseId));
-    for (const courseId of affectedCourseIds) invalidateCourse(courseId);
-    invalidateCatalog();
-    // The buyer's dashboard just gained courses; platform-wide enrollment and
-    // revenue totals on the admin dashboard and home page changed too.
-    invalidateUser(NS.enrollments, session.user.id);
-    invalidateUser(NS.purchasedCourses, session.user.id);
-    invalidateAdminOverview();
-    invalidateHome();
-
-    const message = payment.bundleId
-      ? "Payment successful! Your courses are unlocked."
-      : "Payment successful! You are now enrolled in the course.";
-
-    return NextResponse.json({
-      success: true,
-      payment: result.payment,
-      enrollments: result.enrollments,
-      enrollment: result.enrollments[0] ?? null,
-      message,
-    });
+    return NextResponse.json(await completePhonePePayment(id, session.user.id, provider));
   } catch (error) {
-    console.error("Payment completion error:", error);
-    return NextResponse.json(
-      { error: "Failed to complete payment" },
-      { status: 500 }
-    );
+    console.error("Payment verification error:", error);
+    return NextResponse.json({ error: "Failed to verify payment" }, { status: 502 });
   }
 }

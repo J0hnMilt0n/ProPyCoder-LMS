@@ -2,53 +2,26 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { formatINR } from "@/lib/currency";
-import {
-  CreditCard,
-  Landmark,
-  Lock,
-  ArrowLeft,
-  LoaderCircle,
-  ShieldCheck,
-  Smartphone,
-} from "lucide-react";
+import { ArrowLeft, Lock, ShieldCheck, Smartphone } from "lucide-react";
 import toast from "react-hot-toast";
 
-// Demo bank list for the "Net banking" option.
-const BANKS = ["HDFC Bank", "ICICI Bank", "SBI", "Axis Bank", "Kotak Bank"];
-
-// A stalled payment fetch must never leave the checkout spinning forever.
 const REQUEST_TIMEOUT_MS = 15_000;
 
 interface Payment {
   id: string;
   amount: number;
-  pricingBreakdown?: {
-    originalBundlePrice: number;
-    purchaseCredit: number;
-    amountDue: number;
-  };
-  purchasedCourseIds?: string[];
   currency: string;
   status: "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED";
-  course: {
-    id: string;
-    title: string;
-    description: string | null;
-    category: string | null;
-    image: string | null;
-    instructor?: { firstName: string; lastName: string } | null;
-  } | null;
+  course: { id: string; title: string; category: string | null; image: string | null } | null;
   bundle?: {
     id: string;
     title: string;
-    description: string | null;
     image: string | null;
     courses: { course: { id: string; title: string } }[];
   } | null;
-  enrollment?: { id: string } | null;
 }
 
 interface Props {
@@ -57,25 +30,15 @@ interface Props {
 
 export default function CheckoutPage({ params }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { status } = useSession();
-  const [paymentId, setPaymentId] = useState<string>("");
+  const [paymentId, setPaymentId] = useState("");
   const [payment, setPayment] = useState<Payment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPaying, setIsPaying] = useState(false);
 
-  // Card form fields (demo only — no real processor is wired up).
-  const [cardName, setCardName] = useState("");
-  const [cardNumber, setCardNumber] = useState("");
-  const [expiry, setExpiry] = useState("");
-  const [cvc, setCvc] = useState("");
-
-  // Payment method: CARD | UPI | NETBANKING (demo only).
-  const [method, setMethod] = useState<"CARD" | "UPI" | "NETBANKING">("CARD");
-  const [upiId, setUpiId] = useState("");
-  const [selectedBank, setSelectedBank] = useState(BANKS[0]);
-
   useEffect(() => {
-    params.then((p) => setPaymentId(p.id));
+    params.then(({ id }) => setPaymentId(id));
   }, [params]);
 
   const loadPayment = useCallback(async () => {
@@ -84,404 +47,99 @@ export default function CheckoutPage({ params }: Props) {
       const response = await fetch(`/api/payments/${paymentId}/complete`, {
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
-      if (response.ok) {
-        const data = await response.json();
-        setPayment(data);
-        // Already paid → send them to their courses (bundle or single course).
-        if (data.status === "COMPLETED" && data.enrollment) {
-          toast.success("Payment already completed");
-          router.push(
-            data.course ? `/courses/${data.course.id}` : "/dashboard",
-          );
-        }
-      } else {
-        const error = await response.json();
-        toast.error(error.error || "Payment not found");
-        router.push("/courses");
+      if (!response.ok) throw new Error("Payment not found");
+      const data = (await response.json()) as Payment;
+      setPayment(data);
+      if (data.status === "COMPLETED") {
+        toast.success("Payment already completed");
+        router.push(data.course ? `/courses/${data.course.id}` : "/dashboard");
       }
-    } catch {
-      toast.error("Failed to load checkout");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to load checkout");
+      router.push("/courses");
     } finally {
       setIsLoading(false);
     }
   }, [paymentId, router]);
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/login");
-      return;
-    }
-    if (status === "authenticated") {
-      void loadPayment();
-    }
+    if (status === "unauthenticated") router.push("/auth/login");
+    else if (status === "authenticated") void loadPayment();
   }, [status, loadPayment, router]);
 
-  const formatCardNumber = (value: string) => {
-    const digits = value.replace(/\D/g, "").slice(0, 16);
-    return digits.replace(/(.{4})/g, "$1 ").trim();
-  };
+  useEffect(() => {
+    if (searchParams.get("phonepe") !== "return" || status !== "authenticated" || payment?.status !== "PENDING") return;
+    let cancelled = false;
+    const verify = async () => {
+      setIsPaying(true);
+      try {
+        const response = await fetch(`/api/payments/${payment.id}/complete`, {
+          method: "POST",
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        });
+        const data = await response.json();
+        if (cancelled) return;
+        if (response.ok) {
+          toast.success("Payment successful! Your access is ready.");
+          router.push(payment.course ? `/courses/${payment.course.id}` : "/dashboard");
+        } else {
+          toast(data.error || "Payment is not confirmed yet. Try again shortly.");
+          await loadPayment();
+        }
+      } catch {
+        if (!cancelled) toast.error("Could not verify payment yet. Please try again shortly.");
+      } finally {
+        if (!cancelled) setIsPaying(false);
+      }
+    };
+    void verify();
+    return () => { cancelled = true; };
+  }, [searchParams, status, payment, router, loadPayment]);
 
-  const formatExpiry = (value: string) => {
-    const digits = value.replace(/\D/g, "").slice(0, 4);
-    if (digits.length <= 2) return digits;
-    return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-  };
-
-  const handlePay = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!payment || isPaying) return;
-
-    // Validate the fields relevant to the selected method (demo only).
-    if (method === "CARD") {
-      const digits = cardNumber.replace(/\D/g, "");
-      if (digits.length < 15) {
-        toast.error("Enter a valid card number");
-        return;
-      }
-      if (!/^\d{2}\/\d{2}$/.test(expiry)) {
-        toast.error("Enter a valid expiry date (MM/YY)");
-        return;
-      }
-      if (cvc.replace(/\D/g, "").length < 3) {
-        toast.error("Enter a valid security code");
-        return;
-      }
-    } else if (method === "UPI") {
-      if (!/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(upiId.trim())) {
-        toast.error("Enter a valid UPI ID (e.g. name@bank)");
-        return;
-      }
-    }
-
-    setIsPaying(true);
-    try {
-      const response = await fetch(`/api/payments/${payment.id}/complete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          transactionId: `TXN_${Date.now()}`,
-          paymentMethod: method,
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        toast.error(data.error || "Payment failed");
-        return;
-      }
-      toast.success("Payment successful! You are now enrolled.");
-      // Bundle purchases unlock several courses → land on the dashboard.
-      router.push(
-        payment?.course ? `/courses/${payment.course.id}` : "/dashboard",
-      );
-    } catch {
-      toast.error("An error occurred while processing payment");
-    } finally {
-      setIsPaying(false);
-    }
+  const continueToPhonePe = () => {
+    if (!payment || payment.status !== "PENDING" || isPaying) return;
+    toast.error("Start a new payment from the course or bundle page to open PhonePe checkout.");
   };
 
   if (isLoading || status !== "authenticated") {
-    return (
-      <div className="min-h-screen bg-gray-50 check-out-page">
-        <Navbar />
-        <div className="flex items-center justify-center h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#e95f32] border-t-transparent" />
-        </div>
-      </div>
-    );
+    return <div className="min-h-screen bg-gray-50 check-out-page"><Navbar /><div className="flex h-96 items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-4 border-[#e95f32] border-t-transparent" /></div></div>;
   }
 
   if (!payment) {
-    return (
-      <div className="min-h-screen bg-gray-50 check-out-page">
-        <Navbar />
-        <div className="max-w-xl mx-auto py-20 px-4 text-center">
-          <p className="text-gray-600 dark:text-[#a7a5ae]">Checkout not found.</p>
-          <button
-            onClick={() => router.push("/courses")}
-            className="mt-4 text-[#e95f32] font-semibold"
-          >
-            Back to courses
-          </button>
-        </div>
-      </div>
-    );
+    return <div className="min-h-screen bg-gray-50 check-out-page"><Navbar /><div className="max-w-xl mx-auto py-20 px-4 text-center"><p className="text-gray-600 dark:text-[#a7a5ae]">Checkout not found.</p><button onClick={() => router.push("/courses")} className="mt-4 text-[#e95f32] font-semibold">Back to courses</button></div></div>;
   }
 
+  const title = payment.bundle?.title ?? payment.course?.title ?? "Order";
   return (
     <div className="min-h-screen bg-gray-50 check-out-page">
       <Navbar />
-
-      <main className="max-w-5xl mx-auto px-4 py-10 check-out-page">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 dark:text-[#a7a5ae] dark:hover:text-[#f1f0f2] mb-6"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back
-        </button>
-
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-[#f1f0f2] mb-6">Checkout</h1>
-
-        <div className="grid md:grid-cols-[1fr_380px] gap-6">
-          {/* Payment form */}
-          <form
-            onSubmit={handlePay}
-            className="bg-white dark:bg-[#0c0c0e] rounded-xl border border-gray-200 dark:border-[#232329] p-6"
-          >
-            <div className="flex items-center gap-2 mb-5">
-              <CreditCard className="h-5 w-5 text-[#e95f32]" />
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-[#f1f0f2]">
-                Payment method
-              </h2>
+      <main className="max-w-5xl mx-auto px-4 py-10">
+        <button type="button" onClick={() => router.back()} className="mb-6 inline-flex items-center gap-2 text-sm text-gray-500 dark:text-[#a7a5ae]"><ArrowLeft className="h-4 w-4" />Back</button>
+        <h1 className="mb-6 text-2xl font-bold text-gray-900 dark:text-[#f1f0f2]">Checkout</h1>
+        <div className="grid gap-6 md:grid-cols-[1fr_380px]">
+          <section className="rounded-xl border border-gray-200 bg-white p-6 dark:border-[#232329] dark:bg-[#0c0c0e]">
+            <div className="flex items-center gap-3">
+              <Smartphone className="h-6 w-6 text-[#e95f32]" />
+              <div><h2 className="font-semibold text-gray-900 dark:text-[#f1f0f2]">Secure PhonePe checkout</h2><p className="text-sm text-gray-600 dark:text-[#a7a5ae]">UPI, cards and net banking are handled securely by PhonePe.</p></div>
             </div>
-
-            {/* Method tabs: Card / UPI / Net banking */}
-            <div className="grid grid-cols-3 gap-2 mb-6" role="tablist">
-              {(
-                [
-                  { key: "CARD", label: "Card", Icon: CreditCard },
-                  { key: "UPI", label: "UPI", Icon: Smartphone },
-                  { key: "NETBANKING", label: "Net banking", Icon: Landmark },
-                ] as const
-              ).map(({ key, label, Icon }) => (
-                <button
-                  key={key}
-                  type="button"
-                  role="tab"
-                  aria-selected={method === key}
-                  onClick={() => setMethod(key)}
-                  className={`flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 text-xs font-semibold transition ${
-                    method === key
-                      ? "border-[#e95f32] bg-[#fdf3ef] text-[#e95f32] dark:bg-[#2a1a14]"
-                      : "border-gray-200 text-gray-500 hover:border-gray-300 dark:border-[#232329] dark:text-[#a7a5ae] dark:hover:border-[#3a3a42]"
-                  }`}
-                >
-                  <Icon className="h-5 w-5" />
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {method === "CARD" && (
-              <>
-                <label className="block mb-4">
-                  <span className="text-sm font-medium text-gray-700 dark:text-[#d6d5db]">
-                    Name on card
-                  </span>
-                  <input
-                    type="text"
-                    value={cardName}
-                    onChange={(e) => setCardName(e.target.value)}
-                    placeholder="Alex Johnson"
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white dark:bg-[#0c0c0e] dark:border-[#3a3a42] dark:text-[#f1f0f2] focus:border-[#e95f32] focus:outline-none"
-                  />
-                </label>
-
-            <label className="block mb-4">
-              <span className="text-sm font-medium text-gray-700 dark:text-[#d6d5db]">
-                Card number
-              </span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={cardNumber}
-                onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                placeholder="4242 4242 4242 4242"
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm tracking-wider bg-white dark:bg-[#0c0c0e] dark:border-[#3a3a42] dark:text-[#f1f0f2] focus:border-[#e95f32] focus:outline-none"
-              />
-            </label>
-
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <label className="block">
-                <span className="text-sm font-medium text-gray-700 dark:text-[#d6d5db]">Expiry</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={expiry}
-                  onChange={(e) => setExpiry(formatExpiry(e.target.value))}
-                  placeholder="MM/YY"
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white dark:bg-[#0c0c0e] dark:border-[#3a3a42] dark:text-[#f1f0f2] focus:border-[#e95f32] focus:outline-none"
-                />
-              </label>
-              <label className="block">
-                <span className="text-sm font-medium text-gray-700 dark:text-[#d6d5db]">CVC</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={cvc}
-                  onChange={(e) =>
-                    setCvc(e.target.value.replace(/\D/g, "").slice(0, 4))
-                  }
-                  placeholder="123"
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white dark:bg-[#0c0c0e] dark:border-[#3a3a42] dark:text-[#f1f0f2] focus:border-[#e95f32] focus:outline-none"
-                />
-              </label>
-                </div>
-              </>
-            )}
-
-            {method === "UPI" && (
-              <div className="mb-6">
-                <label className="block">
-                  <span className="text-sm font-medium text-gray-700 dark:text-[#d6d5db]">
-                    UPI ID
-                  </span>
-                  <input
-                    type="text"
-                    value={upiId}
-                    onChange={(e) => setUpiId(e.target.value)}
-                    placeholder="yourname@bank"
-                    className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white dark:bg-[#0c0c0e] dark:border-[#3a3a42] dark:text-[#f1f0f2] focus:border-[#e95f32] focus:outline-none"
-                  />
-                </label>
-                <p className="mt-2 text-xs text-gray-400 dark:text-[#8b8992]">
-                  Pay from any UPI app (Google Pay, PhonePe, Paytm, etc.).
-                </p>
-              </div>
-            )}
-
-            {method === "NETBANKING" && (
-              <div className="mb-6">
-                <span className="text-sm font-medium text-gray-700 dark:text-[#d6d5db]">
-                  Choose your bank
-                </span>
-                <div className="mt-2 space-y-2">
-                  {BANKS.map((bank) => (
-                    <label
-                      key={bank}
-                      className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-2.5 text-sm transition ${
-                        selectedBank === bank
-                          ? "border-[#e95f32] bg-[#fdf3ef] text-gray-900 dark:bg-[#2a1a14] dark:text-[#f1f0f2]"
-                          : "border-gray-200 text-gray-600 hover:border-gray-300 dark:border-[#232329] dark:text-[#a7a5ae] dark:hover:border-[#3a3a42]"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="bank"
-                        className="accent-[#e95f32]"
-                        checked={selectedBank === bank}
-                        onChange={() => setSelectedBank(bank)}
-                      />
-                      {bank}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isPaying}
-              className="w-full py-3 rounded-lg bg-[#e95f32] text-white font-semibold hover:bg-[#d94c20] transition flex items-center justify-center gap-2 disabled:opacity-60"
-            >
-              {isPaying ? (
-                <>
-                  <LoaderCircle className="h-5 w-5 animate-spin" /> Processing...
-                </>
-              ) : (
-                <>
-                  <Lock className="h-4 w-4" /> Pay {formatINR(payment.amount, 2)}
-                </>
-              )}
+            {searchParams.get("phonepe") === "return" && payment.status === "PENDING" && <p className="mt-4 text-sm text-amber-700">We’re checking your payment with PhonePe. If it remains pending, use the button below to return to checkout.</p>}
+            <button type="button" onClick={continueToPhonePe} disabled={isPaying || payment.status !== "PENDING"} className="mt-6 w-full rounded-lg bg-[#e95f32] px-4 py-3 font-semibold text-white hover:bg-[#d9532a] disabled:opacity-60">
+              {isPaying ? "Verifying payment…" : payment.status === "PENDING" ? "Continue to PhonePe" : `Payment ${payment.status.toLowerCase()}`}
             </button>
-
-            <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-gray-400 dark:text-[#8b8992]">
-              <ShieldCheck className="h-4 w-4" /> Demo checkout — no real card
-              is charged.
-            </p>
-          </form>
-
-          {/* Order summary */}
-          <aside className="bg-white dark:bg-[#0c0c0e] rounded-xl border border-gray-200 dark:border-[#232329] p-6 h-fit">
-            <div className="flex items-center gap-2 mb-5">
-              <ShieldCheck className="h-5 w-5 text-[#e95f32]" />
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-[#f1f0f2]">
-                Order summary
-              </h2>
-            </div>
-
-              {(payment.bundle?.image || payment.course?.image) && (
-                <img
-                  src={payment.bundle?.image ?? payment.course?.image ?? ""}
-                  alt={
-                    payment.bundle?.title ?? payment.course?.title ?? "Cover"
-                  }
-                  className="w-full h-32 object-cover rounded-lg mb-4"
-                />
-              )}
-
-              <h3 className="font-semibold text-gray-900 dark:text-[#f1f0f2]">
-                {payment.bundle?.title ?? payment.course?.title ?? "Order"}
-              </h3>
-              {payment.bundle ? (
-                <div className="mt-2 mb-4 space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-[#e95f32]">
-                    Bundle · {payment.bundle.courses.length} courses included
-                  </p>
-                  {payment.bundle.courses.map(({ course }) => (
-                    <p key={course.id} className="flex items-center gap-2 text-sm text-gray-600 dark:text-[#a7a5ae]">
-                      <span>· {course.title}</span>
-                      {payment.purchasedCourseIds?.includes(course.id) && (
-                        <span className="purchased-pill">Purchased</span>
-                      )}
-                    </p>
-                  ))}
-                </div>
-              ) : (
-                payment.course?.category && (
-                  <p className="text-sm text-gray-500 mb-4 dark:text-[#a7a5ae]">
-                    {payment.course.category}
-                  </p>
-                )
-              )}
-
-              {payment.course?.instructor && (
-                <p className="text-sm text-gray-600 mb-4 dark:text-[#a7a5ae]">
-                  by {payment.course.instructor.firstName}{" "}
-                  {payment.course.instructor.lastName}
-                </p>
-              )}
-
-              <dl className="space-y-2 border-t border-gray-100 dark:border-[#232329] pt-4 text-sm">
-                {payment.bundle && payment.pricingBreakdown ? (
-                  <>
-                    <div className="flex justify-between text-gray-600 dark:text-[#a7a5ae]">
-                      <dt>Original Bundle Price</dt>
-                      <dd>{formatINR(payment.pricingBreakdown.originalBundlePrice, 2)}</dd>
-                    </div>
-                    {payment.pricingBreakdown.purchaseCredit > 0 && (
-                      <div className="flex justify-between text-green-700 dark:text-green-400">
-                        <dt>Purchased</dt>
-                        <dd>− {formatINR(payment.pricingBreakdown.purchaseCredit, 2)}</dd>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="flex justify-between text-gray-600 dark:text-[#a7a5ae]">
-                    <dt>{payment.bundle ? "Bundle price" : "Course price"}</dt>
-                    <dd>{formatINR(payment.amount, 2)}</dd>
-                  </div>
-                )}
-              <div className="flex justify-between text-gray-600 dark:text-[#a7a5ae]">
-                <dt>Lifetime access</dt>
-                <dd>Included</dd>
-              </div>
-              <div className="flex justify-between font-semibold text-gray-900 dark:text-[#f1f0f2] text-base pt-2 border-t border-gray-100 dark:border-[#232329]">
-                <dt>{payment.bundle ? "Final Bundle Price" : "Total due today"}</dt>
-                <dd>{formatINR(payment.pricingBreakdown?.amountDue ?? payment.amount, 2)}</dd>
-              </div>
-            </dl>
-
-            <p className="mt-5 text-xs text-gray-400 dark:text-[#8b8992] leading-relaxed">
-              This is a demonstration checkout. No real payment is processed and
-              no card is charged.
-            </p>
+            <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-gray-400"><ShieldCheck className="h-4 w-4" />Payment verified securely with PhonePe.</p>
+          </section>
+          <aside className="h-fit rounded-xl border border-gray-200 bg-white p-6 dark:border-[#232329] dark:bg-[#0c0c0e]">
+            <div className="mb-5 flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-[#e95f32]" /><h2 className="text-lg font-semibold text-gray-900 dark:text-[#f1f0f2]">Order summary</h2></div>
+            {(payment.bundle?.image || payment.course?.image) && <img src={payment.bundle?.image ?? payment.course?.image ?? ""} alt={title} className="mb-4 h-32 w-full rounded-lg object-cover" />}
+            <h3 className="font-semibold text-gray-900 dark:text-[#f1f0f2]">{title}</h3>
+            {payment.bundle && <div className="my-3 space-y-1">{payment.bundle.courses.map(({ course }) => <p key={course.id} className="text-sm text-gray-600 dark:text-[#a7a5ae]">· {course.title}</p>)}</div>}
+            {payment.course?.category && <p className="mb-4 text-sm text-gray-500">{payment.course.category}</p>}
+            <dl className="border-t border-gray-100 pt-4 dark:border-[#232329]"><div className="flex justify-between font-semibold text-gray-900 dark:text-[#f1f0f2]"><dt>Total due today</dt><dd>{formatINR(payment.amount, 2)}</dd></div></dl>
+            <p className="mt-5 text-xs leading-relaxed text-gray-400">You’ll complete your secure payment on PhonePe. Access is unlocked only after PhonePe confirms the payment.</p>
+            <span className="sr-only"><Lock /></span>
           </aside>
         </div>
       </main>
     </div>
   );
 }
-
-
