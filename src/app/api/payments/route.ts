@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { effectiveCoursePrice } from "@/lib/pricing";
-import { createPhonePeOrder } from "@/lib/phonepe";
+import { createPhonePeOrder, PhonePeApiError } from "@/lib/phonepe";
 
 // GET user's payment history
 export async function GET(request: NextRequest) {
@@ -67,8 +67,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const where = { userId: session.user.id, status: "PENDING" as const };
-
     if (courseId) {
       const course = await prisma.course.findUnique({
         where: { id: courseId },
@@ -108,37 +106,9 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const existingPayment = await prisma.payment.findFirst({
-        where: { ...where, courseId },
-      });
-
-      if (existingPayment && existingPayment.amount === effectiveAmount && existingPayment.paymentMethod === "PHONEPE") {
-        const checkout = await createPhonePeOrder({
-          paymentId: existingPayment.id,
-          amountRupees: existingPayment.amount,
-          redirectUrl: new URL(`/checkout/${existingPayment.id}?phonepe=return`, request.url).toString(),
-        });
-        return NextResponse.json({
-          id: existingPayment.id,
-          courseId,
-          bundleId: null,
-          amount: existingPayment.amount,
-          status: "PENDING",
-          isBundle: false,
-          message: "Payment already initiated",
-          checkoutUrl: checkout.redirectUrl,
-        });
-      }
-      const payment = existingPayment
-        ? await prisma.payment.update({
-            where: { id: existingPayment.id },
-            data: { amount: effectiveAmount, paymentMethod: "PHONEPE", transactionId: null },
-            include: {
-              course: true,
-              bundle: { include: { courses: { include: { course: true } } } },
-            },
-          })
-        : await prisma.payment.create({
+      // Create a fresh merchant order for each attempt. PhonePe won't let an
+      // existing merchantOrderId be reused after its order has been created.
+      const payment = await prisma.payment.create({
         data: {
           userId: session.user.id,
           courseId,
@@ -153,7 +123,7 @@ export async function POST(request: NextRequest) {
             include: { courses: { include: { course: true } } },
           },
         },
-          });
+      });
 
       const checkout = await createPhonePeOrder({
         paymentId: payment.id,
@@ -232,35 +202,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const existingBundlePayment = await prisma.payment.findFirst({
-      where: { ...where, bundleId: bundle.id },
-    });
-
-    if (existingBundlePayment) {
-      const refreshedPayment =
-        existingBundlePayment.amount === amount
-          ? existingBundlePayment
-          : await prisma.payment.update({
-              where: { id: existingBundlePayment.id },
-              data: { amount },
-            });
-      const checkout = await createPhonePeOrder({
-        paymentId: refreshedPayment.id,
-        amountRupees: refreshedPayment.amount,
-        redirectUrl: new URL(`/checkout/${refreshedPayment.id}?phonepe=return`, request.url).toString(),
-      });
-      return NextResponse.json({
-        id: refreshedPayment.id,
-        courseId: null,
-        bundleId: bundle.id,
-        amount: refreshedPayment.amount,
-        status: "PENDING",
-        isBundle: true,
-        message: "Payment already initiated",
-        checkoutUrl: checkout.redirectUrl,
-      });
-    }
-
+    // A new PhonePe merchantOrderId is needed for every checkout attempt.
     const payment = await prisma.payment.create({
       data: {
         userId: session.user.id,
@@ -294,6 +236,16 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Payment creation error:", error);
+    if (error instanceof PhonePeApiError) {
+      return NextResponse.json(
+        {
+          error: "PhonePe could not create the checkout order",
+          providerCode: error.providerCode,
+          providerMessage: error.providerMessage,
+        },
+        { status: 502 },
+      );
+    }
     return NextResponse.json(
       { error: "Failed to create payment" },
       { status: 500 }

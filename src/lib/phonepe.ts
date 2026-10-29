@@ -27,6 +27,18 @@ export type PhonePeOrderStatus = {
   }>;
 };
 
+export class PhonePeApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly providerCode?: string,
+    readonly providerMessage?: string,
+  ) {
+    super(message);
+    this.name = "PhonePeApiError";
+  }
+}
+
 let tokenCache: { token: string; expiresAt: number } | null = null;
 
 function getConfig(): PhonePeConfig {
@@ -98,9 +110,21 @@ async function phonePeRequest<T>(path: string, init: RequestInit = {}): Promise<
   });
 
   if (!response.ok) {
-    // Do not include provider response bodies in logs/responses: they can carry
-    // sensitive payment or account metadata.
-    throw new Error(`PhonePe request failed (${response.status})`);
+    const errorBody = await response.json().catch(() => null) as
+      | { code?: unknown; message?: unknown; data?: { message?: unknown } }
+      | null;
+    const providerCode = typeof errorBody?.code === "string" ? errorBody.code : undefined;
+    const providerMessage = typeof errorBody?.message === "string"
+      ? errorBody.message
+      : typeof errorBody?.data?.message === "string"
+        ? errorBody.data.message
+        : undefined;
+    throw new PhonePeApiError(
+      `PhonePe request failed (${response.status})${providerCode ? ` ${providerCode}` : ""}${providerMessage ? `: ${providerMessage}` : ""}`,
+      response.status,
+      providerCode,
+      providerMessage,
+    );
   }
   return (await response.json()) as T;
 }
@@ -111,8 +135,15 @@ export async function createPhonePeOrder(input: {
   redirectUrl: string;
 }): Promise<{ redirectUrl: string }> {
   const amount = Math.round(input.amountRupees * 100);
-  if (!Number.isSafeInteger(amount) || amount <= 0) {
-    throw new Error("Payment amount must be a positive number of paise");
+  if (!Number.isSafeInteger(amount) || amount < 100) {
+    throw new Error("PhonePe requires an amount of at least ₹1.00");
+  }
+  if (!/^[A-Za-z0-9_-]{1,63}$/.test(input.paymentId)) {
+    throw new Error("Payment ID is not valid as a PhonePe merchantOrderId");
+  }
+  const redirect = new URL(input.redirectUrl);
+  if (redirect.protocol !== "https:" && redirect.hostname !== "localhost") {
+    throw new Error("PhonePe redirect URL must use HTTPS outside localhost");
   }
 
   const result = await phonePeRequest<{ redirectUrl?: string }>("/checkout/v2/pay", {
@@ -123,6 +154,7 @@ export async function createPhonePeOrder(input: {
       expireAfter: 1200,
       paymentFlow: {
         type: "PG_CHECKOUT",
+        message: "ProPyCoder course purchase",
         merchantUrls: { redirectUrl: input.redirectUrl },
       },
     }),
