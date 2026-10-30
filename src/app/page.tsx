@@ -283,6 +283,7 @@ export default async function Home() {
           {/* <Link href="/courses">Courses</Link>
           <Link href="/pycoder">PyCoder</Link>
           <Link href="/auth/register">Join the community</Link> */}
+          <Link href="/about">About</Link>
           <Link href="/terms">Terms</Link>
           <Link href="/privacy-policy">Privacy</Link>
           <Link href="/refund-policy">Refunds</Link>

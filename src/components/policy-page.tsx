@@ -12,25 +12,35 @@ const titles: Record<PolicyKind, string> = {
   contact: "Contact and Support",
 };
 
+const introductions: Record<PolicyKind, string> = {
+  terms: "Please review these terms before using the ProPyCoder learning platform or purchasing a course.",
+  privacy: "This notice explains what account and learning information ProPyCoder uses to provide the platform.",
+  refund: "Review the refund and cancellation terms for digital course and bundle purchases before ordering.",
+  contact: "Reach ProPyCoder for help with your account, courses, payments, privacy, or refunds.",
+};
+
 export function PolicyPage({ kind }: { kind: PolicyKind }) {
   return (
-    <main className="policy-page">
+    <main className="site-home policy-page">
       <Navbar />
-      <article className="policy-content">
-        <Link href="/" className="policy-back">← Back to ProPyCoder</Link>
-        <p className="policy-eyebrow">PRO PYCODER · WEBSITE POLICIES</p>
-        <h1>{titles[kind]}</h1>
-        <p className="policy-updated">Review these terms before purchasing. Last updated: October 30, 2026.</p>
-
-        {/* <section>
+      <header className="about-hero policy-hero">
+        <div className="about-hero-inner">
+          <div className="home-section-eyebrow">PRO PYCODER · WEBSITE INFORMATION</div>
+          <h1>{titles[kind]}</h1>
+          <p>{introductions[kind]}</p>
+          <p className="policy-updated">Last updated: October 30, 2026</p>
+        </div>
+      </header>
+      <article className="policy-content about-main-section">
+        <section className="policy-operator">
           <h2>Business operator</h2>
-          <p>Website and learning platform: ProPyCoder.</p>
-          <p>Business/operator name: {businessInfo.legalName}</p>
+          <p>Operator name: {businessInfo.legalName}</p>
           <p>Business location: {businessInfo.businessAddress}</p>
           <p>Support email: <a href={`mailto:${businessInfo.supportEmail}`}>{businessInfo.supportEmail}</a></p>
           <p>Support phone: <a href={`tel:${businessInfo.supportPhone}`}>{businessInfo.supportPhone}</a></p>
-        </section> */}
+        </section>
 
+        <div className="policy-sections">
         {kind === "terms" && <>
           <section><h2>Courses and orders</h2><p>ProPyCoder offers online educational courses and related learning services. The course page describes the course content, level, instructor, estimated duration, and price. Please review that information before ordering. An order is accepted for processing after you submit it; course access is granted after successful payment confirmation.</p></section>
           <section><h2>Price and payment</h2><p>Prices are displayed in Indian rupees (INR). Any applicable discount and the amount payable are shown before you continue to the payment provider. Payments are processed by PhonePe or another payment provider presented at checkout and are subject to that provider&apos;s terms and your bank or payment method&apos;s rules. ProPyCoder records order and payment status to provide access and customer support; do not send card security codes, passwords, or UPI PINs to us.</p></section>
@@ -63,6 +73,7 @@ export function PolicyPage({ kind }: { kind: PolicyKind }) {
           <section><h2>Business and support details</h2><p>Operator: {businessInfo.legalName}</p><p>Location: {businessInfo.businessAddress}.</p><p>Email: <a href={`mailto:${businessInfo.supportEmail}`}>{businessInfo.supportEmail}</a></p><p>Phone: <a href={`tel:${businessInfo.supportPhone}`}>{businessInfo.supportPhone}</a></p><p>Contact us by email or phone for account, course, payment, privacy, or refund questions. We review support requests and respond as soon as practicable.</p></section>
           <section><h2>For payment or course-access issues</h2><p>Include your account email, course or bundle name, and payment/order reference if available so we can investigate. Do not send passwords, full card details, card security codes, or UPI PINs.</p></section>
         </>}
+        </div>
 
       </article>
       <footer className="home-footer">
@@ -72,6 +83,7 @@ export function PolicyPage({ kind }: { kind: PolicyKind }) {
         </Link>
         <span>Learn something real. Build something useful.</span>
         <div>
+          <Link href="/about">About</Link>
           <Link href="/terms">Terms</Link>
           <Link href="/privacy-policy">Privacy</Link>
           <Link href="/refund-policy">Refunds</Link>
