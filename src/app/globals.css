@@ -342,6 +342,46 @@ html[data-theme="dark"] .policy-eyebrow {
   font-weight: 650;
   text-decoration: none;
 }
+html[data-theme="dark"] .about-page {
+  background: var(--background);
+  color: var(--foreground);
+}
+html[data-theme="dark"] .about-hero {
+  background: #0c0c0e;
+  border-bottom-color: var(--line);
+}
+html[data-theme="dark"] .about-hero h1,
+html[data-theme="dark"] .about-section-heading h2,
+html[data-theme="dark"] .about-approach-section h2,
+html[data-theme="dark"] .about-contact-section h2,
+html[data-theme="dark"] .about-focus-card h3 {
+  color: var(--foreground);
+}
+html[data-theme="dark"] .about-hero-inner > p,
+html[data-theme="dark"] .about-section-heading > p,
+html[data-theme="dark"] .about-focus-card p,
+html[data-theme="dark"] .about-approach-copy,
+html[data-theme="dark"] .about-contact-section > div:first-child > p {
+  color: var(--muted);
+}
+html[data-theme="dark"] .about-focus-card {
+  background: var(--paper);
+  border-color: var(--line);
+}
+html[data-theme="dark"] .about-focus-icon {
+  background: #1d1410;
+}
+html[data-theme="dark"] .about-focus-number {
+  color: #89858a;
+}
+html[data-theme="dark"] .about-approach-section {
+  background: #0c0c0e;
+  border-color: var(--line);
+}
+html[data-theme="dark"] .about-contact-details a,
+html[data-theme="dark"] .about-contact-link {
+  color: #ff9a75;
+}
 .policy-page {
   min-height: 100vh;
   background: #f8f8f5;
@@ -415,6 +455,35 @@ html[data-theme="dark"] .policy-eyebrow {
 }
 .policy-sections > section a {
   color: #a94c2b;
+}
+html[data-theme="dark"] .policy-page {
+  background: var(--background);
+  color: var(--foreground);
+}
+html[data-theme="dark"] .policy-hero {
+  background: #0c0c0e;
+  border-bottom-color: var(--line);
+}
+html[data-theme="dark"] .policy-hero h1,
+html[data-theme="dark"] .policy-sections > section h2,
+html[data-theme="dark"] .policy-operator h2 {
+  color: var(--foreground);
+}
+html[data-theme="dark"] .policy-hero .about-hero-inner > p:not(.policy-updated),
+html[data-theme="dark"] .policy-updated,
+html[data-theme="dark"] .policy-sections > section p {
+  color: var(--muted);
+}
+html[data-theme="dark"] .policy-operator,
+html[data-theme="dark"] .policy-sections > section {
+  background: var(--paper);
+  border-color: var(--line);
+}
+html[data-theme="dark"] .policy-sections > section a {
+  color: #ff9a75;
+}
+html[data-theme="dark"] .policy-operator {
+  border-left-color: #e05a2a;
 }
 .policy-hero .policy-updated {
   margin-top: 7px;
@@ -5013,6 +5082,26 @@ html[data-theme="dark"]
   background-color: #0c0c0e;
   border-color: var(--line);
   color: var(--foreground);
+}
+html[data-theme="dark"] .policy-page .home-footer {
+  background: #0c0c0e;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+html[data-theme="dark"] .about-page .home-footer {
+  background: #0c0c0e;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+html[data-theme="dark"] .policy-page .home-footer-brand,
+html[data-theme="dark"] .policy-page .home-footer > div a,
+html[data-theme="dark"] .about-page .home-footer-brand,
+html[data-theme="dark"] .about-page .home-footer > div a {
+  color: var(--foreground);
+}
+html[data-theme="dark"] .policy-page .home-footer > div a:hover,
+html[data-theme="dark"] .about-page .home-footer > div a:hover {
+  color: #ff9a75;
 }
 html[data-theme="dark"]
   :is(
