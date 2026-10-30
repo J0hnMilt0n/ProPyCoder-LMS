@@ -1,5 +1,14 @@
 # Merchant website verification checklist
 
+## Signup email verification
+
+New student registrations require a one-time email confirmation before sign-in.
+Configure `BREVO_API_KEY`, `BREVO_SENDER_EMAIL` (a verified Brevo sender),
+`BREVO_SENDER_NAME`, and the public HTTPS `NEXTAUTH_URL` in the deployment
+environment. Apply the database changes with the deployment's normal Prisma
+schema update process. Verification links expire after 30 minutes; users can
+request another from `/auth/verify-email`.
+
 The policy pages are available at `/terms`, `/privacy-policy`, `/refund-policy`, and `/contact`, and are linked in the public homepage footer.
 
 Public policy pages use the supplied ProPyCoder contact details (support@propycoder.com, +91 73733 67802, Bangalore, India). The refund and course-access pages use the policy wording in `src/lib/business-info.ts`; environment variables can override it.

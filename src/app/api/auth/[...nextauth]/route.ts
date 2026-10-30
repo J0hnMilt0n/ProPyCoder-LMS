@@ -1,7 +1,20 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import { CredentialsSignin } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+
+class InvalidEmailSignin extends CredentialsSignin {
+  code = "invalid-email";
+}
+
+class InvalidPasswordSignin extends CredentialsSignin {
+  code = "invalid-password";
+}
+
+class EmailNotVerifiedSignin extends CredentialsSignin {
+  code = "email-not-verified";
+}
 
 // The session callback below runs on every auth() call — i.e. once per
 // authenticated API request. Reading the profile (including the full
@@ -38,10 +51,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           where: { email: email.trim().toLowerCase() },
         });
 
-        if (!user?.isActive) return null;
+        if (!user) throw new InvalidEmailSignin();
+        if (!user.isActive) throw new InvalidEmailSignin();
 
         const passwordMatch = await bcrypt.compare(password, user.password);
-        if (!passwordMatch) return null;
+        if (!passwordMatch) throw new InvalidPasswordSignin();
+        if (!user.emailVerified) throw new EmailNotVerifiedSignin();
 
         // IMPORTANT: never return `image` here. Profile avatars are uploaded as
         // base64 data-URLs (they can be hundreds of KB). NextAuth copies

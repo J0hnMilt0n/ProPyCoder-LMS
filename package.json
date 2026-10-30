@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "prisma generate --schema=prisma/schema.postgresql.prisma && next dev",
     "build": "prisma generate && next build",
     "build:dev": "prisma generate --schema=prisma/schema.sqlite.prisma && next build",
     "build:prod": "prisma generate --schema=prisma/schema.postgresql.prisma && next build",

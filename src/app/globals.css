@@ -2716,6 +2716,155 @@ html[data-theme="dark"] .policy-operator {
 .auth-switch a:hover {
   text-decoration: underline;
 }
+.auth-field-error {
+  margin: -2px 0 0;
+  color: #b42318;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.auth-input[aria-invalid="true"] {
+  border-color: #d92d20;
+}
+.auth-dialog-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 24px;
+  box-sizing: border-box;
+  background: rgba(20, 20, 20, 0.56);
+  backdrop-filter: blur(3px);
+}
+.auth-dialog {
+  position: relative;
+  flex: 0 0 auto;
+  width: min(440px, 100%);
+  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  padding: 34px;
+  border: 1px solid #e8e4de;
+  border-radius: 8px;
+  background: #fff;
+  color: #303030;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
+}
+.auth-dialog-close {
+  position: absolute;
+  top: 13px;
+  right: 13px;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid #e8e4de;
+  border-radius: 5px;
+  background: #fff;
+  color: #707070;
+  cursor: pointer;
+}
+.auth-dialog-close:hover {
+  background: #f8f6f2;
+  color: #292929;
+}
+.auth-dialog-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 20px;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff1e9;
+  color: #bd4e2b;
+}
+.auth-dialog h2 {
+  margin: 7px 0 9px;
+  color: #292929;
+  font-size: 23px;
+  font-weight: 720;
+}
+.auth-dialog-description,
+.auth-dialog-help {
+  color: #626262;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.auth-dialog-description {
+  margin: 0 0 20px;
+}
+.auth-dialog-description strong {
+  color: #303030;
+  overflow-wrap: anywhere;
+}
+.auth-dialog .auth-submit {
+  width: 100%;
+}
+.auth-dialog-success {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 13px;
+  border: 1px solid #b7e2c1;
+  border-radius: 5px;
+  background: #f0faf2;
+  color: #216e39;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.auth-dialog-success svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+.auth-dialog-error {
+  margin-top: 11px;
+}
+.auth-dialog-help {
+  margin: 17px 0 0;
+  color: #777;
+  font-size: 11px;
+}
+html[data-theme="dark"] .auth-dialog {
+  border-color: #343438;
+  background: #171719;
+  color: #ecebed;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.58);
+}
+html[data-theme="dark"] .auth-dialog-close {
+  border-color: #3a3a3f;
+  background: #222225;
+  color: #b8b7bc;
+}
+html[data-theme="dark"] .auth-dialog-close:hover {
+  border-color: #55545a;
+  background: #2c2b30;
+  color: #fff;
+}
+html[data-theme="dark"] .auth-dialog-icon {
+  background: #38231c;
+  color: #ff9a75;
+}
+html[data-theme="dark"] .auth-dialog h2,
+html[data-theme="dark"] .auth-dialog-description strong {
+  color: #f2f0f2;
+}
+html[data-theme="dark"] .auth-dialog-description {
+  color: #c0bec4;
+}
+html[data-theme="dark"] .auth-dialog-help {
+  color: #a5a2aa;
+}
+html[data-theme="dark"] .auth-dialog-success {
+  border-color: #28563a;
+  background: #17291e;
+  color: #a9e6b9;
+}
 @media (max-width: 700px) {
   .auth-layout {
     display: block;
@@ -9131,6 +9280,41 @@ html[data-theme="dark"] .learning-welcome-avatar {
 }
 
 /* Auth + profile (certificates/profile pages reuse auth-page shell) */
+html[data-theme="light"] .auth-story {
+  border: 1px solid #e8e4de;
+  background: #fff;
+  color: #303030;
+  box-shadow: 0 14px 36px rgba(48, 42, 36, 0.06);
+}
+html[data-theme="light"] .auth-story::before {
+  border-color: rgba(224, 111, 67, 0.2);
+  box-shadow:
+    0 0 0 42px rgba(224, 111, 67, 0.045),
+    0 0 0 89px rgba(224, 111, 67, 0.025);
+}
+html[data-theme="light"] .auth-story .auth-story-eyebrow {
+  color: #a94c2c;
+}
+html[data-theme="light"] .auth-story h2 {
+  color: #292929;
+}
+html[data-theme="light"] .auth-story > p {
+  color: #626262;
+}
+html[data-theme="light"] .auth-story .auth-story-code {
+  border-color: #e7e2dc;
+  background: #f8f6f2;
+  color: #393939;
+}
+html[data-theme="light"] .auth-story .auth-story-code span {
+  color: #a94c2c;
+}
+html[data-theme="light"] .auth-story .auth-story-code i {
+  background: #a4a09a;
+}
+html[data-theme="light"] .auth-story .auth-story-caption {
+  color: #74716c;
+}
 html[data-theme="dark"] .auth-story-caption {
   color: var(--muted);
 }

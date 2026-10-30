@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useEffect, useState, FormEvent, useRef } from "react";
+import { createPortal } from "react-dom";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { Navbar } from "@/components/navbar";
-import { ArrowRight, Eye, EyeOff, Lock, Mail, Loader } from "lucide-react";
+import { ArrowRight, CheckCircle2, Eye, EyeOff, Lock, Mail, Loader, X } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,10 +15,23 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
+  const [resendError, setResendError] = useState("");
+  const [dialogPortalRoot, setDialogPortalRoot] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setDialogPortalRoot(document.documentElement);
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setEmailError("");
+    setPasswordError("");
 
     try {
       const result = await signIn("credentials", {
@@ -27,7 +41,17 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        toast.error(result.error || "Login failed");
+        if (result.code === "invalid-email") {
+          setEmailError("No account was found with this email address.");
+        } else if (result.code === "invalid-password") {
+          setPasswordError("That password is incorrect. Please try again.");
+        } else if (result.code === "email-not-verified") {
+          setShowVerificationDialog(true);
+          setResendMessage("");
+          setResendError("");
+        } else {
+          toast.error("We couldn't sign you in. Please check your details and try again.");
+        }
       } else {
         toast.success("Login successful!");
         router.push("/dashboard");
@@ -36,6 +60,53 @@ export default function LoginPage() {
       toast.error("An unexpected error occurred");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const [resendCooldown, setResendCooldown] = useState<number | null>(null);
+  const resendCooldownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (resendCooldownTimer.current) clearInterval(resendCooldownTimer.current);
+    };
+  }, []);
+
+  const startResendCooldown = (durationSeconds: number) => {
+    if (resendCooldownTimer.current) clearInterval(resendCooldownTimer.current);
+    setResendCooldown(durationSeconds);
+    resendCooldownTimer.current = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev === null || prev <= 1) {
+          if (resendCooldownTimer.current) clearInterval(resendCooldownTimer.current);
+          resendCooldownTimer.current = null;
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const handleResendVerification = async () => {
+    if (resendCooldown !== null) return;
+    setIsResending(true);
+    setResendMessage("");
+    setResendError("");
+
+    try {
+      const response = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not send a verification email.");
+      setResendMessage("If your account is still unverified, a fresh verification link is on its way. Check your inbox.");
+      startResendCooldown(5 * 60);
+    } catch (error) {
+      setResendError(error instanceof Error ? error.message : "Could not send a verification email. Please try again.");
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -83,12 +154,18 @@ export default function LoginPage() {
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setEmailError("");
+                    }}
                     required
+                    aria-invalid={Boolean(emailError)}
+                    aria-describedby={emailError ? "login-email-error" : undefined}
                     className="auth-input"
                     placeholder="you@example.com"
                   />
                 </div>
+                {emailError && <p className="auth-field-error" id="login-email-error" role="alert">{emailError}</p>}
               </div>
 
               <div className="auth-field">
@@ -98,8 +175,13 @@ export default function LoginPage() {
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setPasswordError("");
+                    }}
                     required
+                    aria-invalid={Boolean(passwordError)}
+                    aria-describedby={passwordError ? "login-password-error" : undefined}
                     className="auth-input"
                     placeholder="••••••••"
                   />
@@ -114,6 +196,7 @@ export default function LoginPage() {
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
+                {passwordError && <p className="auth-field-error" id="login-password-error" role="alert">{passwordError}</p>}
               </div>
 
               <button
@@ -139,6 +222,39 @@ export default function LoginPage() {
           </div>
         </section>
       </main>
+      {showVerificationDialog && dialogPortalRoot && createPortal((
+        <div
+          className="auth-dialog-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowVerificationDialog(false);
+          }}
+        >
+          <section className="auth-dialog" role="dialog" aria-modal="true" aria-labelledby="verification-dialog-title">
+            <button className="auth-dialog-close" type="button" onClick={() => setShowVerificationDialog(false)} aria-label="Close dialog">
+              <X size={19} />
+            </button>
+            <div className="auth-dialog-icon"><Mail size={22} /></div>
+            <div className="auth-card-eyebrow">ONE QUICK STEP</div>
+            <h2 id="verification-dialog-title">Verify your email</h2>
+            <p className="auth-dialog-description">This account hasn’t been verified yet. Open the verification link we sent to <strong>{email}</strong> to finish signing in.</p>
+            {resendMessage ? (
+              <div className="auth-dialog-success" role="status"><CheckCircle2 size={18} /><span>{resendMessage}</span></div>
+            ) : resendCooldown !== null ? (
+              <button className="auth-submit" type="button" disabled>
+                <Loader className="h-4 w-4 animate-spin" />
+                Resending in {resendCooldown}s
+              </button>
+            ) : (
+              <button className="auth-submit" type="button" onClick={handleResendVerification} disabled={isResending || !email.trim()}>
+                {isResending ? <><Loader className="h-4 w-4 animate-spin" /> Sending...</> : "Resend verification email"}
+                {!isResending && <ArrowRight size={16} />}
+              </button>
+            )}
+            {resendError && <p className="auth-field-error auth-dialog-error" role="alert">{resendError}</p>}
+            <p className="auth-dialog-help">The link expires after 30 minutes. Check your spam folder if it doesn’t arrive.</p>
+          </section>
+        </div>
+      ), dialogPortalRoot)}
     </div>
   );
 }
