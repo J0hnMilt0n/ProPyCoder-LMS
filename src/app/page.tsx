@@ -280,9 +280,13 @@ export default async function Home() {
         </Link>
         <span>Learn something real. Build something useful.</span>
         <div>
-          <Link href="/courses">Courses</Link>
+          {/* <Link href="/courses">Courses</Link>
           <Link href="/pycoder">PyCoder</Link>
-          <Link href="/auth/register">Join the community</Link>
+          <Link href="/auth/register">Join the community</Link> */}
+          <Link href="/terms">Terms</Link>
+          <Link href="/privacy-policy">Privacy</Link>
+          <Link href="/refund-policy">Refunds</Link>
+          <Link href="/contact">Contact</Link>
         </div>
       </footer>
     </main>

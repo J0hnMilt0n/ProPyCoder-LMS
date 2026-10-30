@@ -67,6 +67,105 @@ button {
   backdrop-filter: blur(16px) saturate(135%);
   animation: nav-drop 0.5s cubic-bezier(0.2, 0.7, 0.25, 1) both;
 }
+
+.policy-page {
+  min-height: 100vh;
+  background: var(--background);
+}
+.policy-content {
+  width: min(760px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 38px 0 64px;
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.7;
+}
+.policy-back,
+.policy-links a {
+  color: #b83c17;
+  font-size: 14px;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.policy-eyebrow {
+  margin: 28px 0 8px;
+  color: #b83c17;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+}
+.policy-content h1 {
+  max-width: 18ch;
+  margin: 0;
+  font-family: inherit;
+  font-size: clamp(28px, 4vw, 36px);
+  font-weight: 750;
+  letter-spacing: 0;
+  line-height: 1.13;
+}
+.policy-updated {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.policy-content section {
+  margin-top: 24px;
+}
+.policy-content section h2 {
+  margin: 0 0 7px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.35;
+}
+.policy-content section p {
+  margin: 6px 0;
+  font-size: 15px;
+  line-height: 1.7;
+}
+.policy-content section a {
+  color: #b83c17;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+html[data-theme="dark"] .policy-back,
+html[data-theme="dark"] .policy-links a,
+html[data-theme="dark"] .policy-content section a,
+html[data-theme="dark"] .policy-eyebrow {
+  color: #ff9a75;
+}
+.policy-links {
+  display: contents;
+}
+@media (max-width: 600px) {
+  .policy-content {
+    width: calc(100% - 36px);
+    padding: 28px 0 48px;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .policy-eyebrow {
+    margin-top: 24px;
+    font-size: 10px;
+  }
+  .policy-content h1 {
+    font-size: clamp(26px, 8vw, 32px);
+  }
+  .policy-content section {
+    margin-top: 20px;
+  }
+  .policy-content section h2 {
+    font-size: 17px;
+  }
+  .policy-content section p {
+    font-size: 14px;
+    line-height: 1.7;
+  }
+}
 .site-nav-inner {
   width: min(1320px, calc(100% - 64px));
   height: 76px;
