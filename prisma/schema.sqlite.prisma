@@ -55,6 +55,7 @@ model Course {
   category     String
   level        String   @default("BEGINNER")
   price        Float    @default(0)
+  offerPrice   Float? // Optional discounted price
   image        String?
   status       String   @default("DRAFT")
   instructor   User     @relation("instructor", fields: [instructorId], references: [id], onDelete: Cascade)
