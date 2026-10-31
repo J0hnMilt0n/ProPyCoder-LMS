@@ -282,7 +282,7 @@ export default function LoginPage() {
             ) : resendCooldown !== null ? (
               <button className="auth-submit" type="button" disabled>
                 <Loader className="h-4 w-4 animate-spin" />
-                Resending in {formatCooldown(resendCooldown)}
+                Resend in {formatCooldown(resendCooldown)}
               </button>
             ) : (
               <button className="auth-submit" type="button" onClick={handleResendVerification} disabled={isResending || !email.trim()}>

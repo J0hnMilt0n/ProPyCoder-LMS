@@ -147,7 +147,7 @@ export default function ForgotPasswordPage() {
                   {cooldown !== null ? (
                     <button className="auth-submit" type="button" disabled>
                       <Loader className="h-4 w-4 animate-spin" />
-                      Resending in {formatCooldown(cooldown)}
+                      Resend in {formatCooldown(cooldown)}
                     </button>
                   ) : (
                     <button
@@ -155,7 +155,7 @@ export default function ForgotPasswordPage() {
                       type="button"
                       onClick={() => setShowDialog(false)}
                     >
-                      OK <ArrowRight size={16} />
+                      Back <ArrowRight size={16} />
                     </button>
                   )}
                   {cooldown !== null && (
