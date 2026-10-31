@@ -214,6 +214,26 @@ export default function AdminPage() {
   // Keep the historical `loadOverview(refresh?)` signature so existing call
   // sites stay unchanged; the arg is ignored (the hook always revalidates in
   // the background and patches only what changed).
+  const [isClearingCache, setIsClearingCache] = useState(false);
+
+  const handleClearCache = async () => {
+    setIsClearingCache(true);
+    try {
+      const response = await fetch("/api/admin/clear-cache", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!response.ok) throw new Error("Failed to clear cache");
+      toast.success("Server cache cleared successfully");
+      overviewRes.refresh();
+    } catch {
+      toast.error("Failed to clear server cache");
+    } finally {
+      setIsClearingCache(false);
+    }
+  };
+
   const loadOverview = useCallback(
     (_refresh?: boolean) => {
       overviewRes.refresh();
@@ -849,6 +869,25 @@ export default function AdminPage() {
                     <span>
                       <strong>Send an announcement</strong>
                       <small>Notify every learner at once</small>
+                    </span>
+                    <ArrowUpRight size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-shortcut admin-shortcut-button"
+                    onClick={() => void handleClearCache()}
+                    disabled={isClearingCache}
+                  >
+                    <span className="admin-shortcut-icon">
+                      {isClearingCache ? (
+                        <LoaderCircle size={17} className="admin-spin" />
+                      ) : (
+                        <RefreshCw size={17} />
+                      )}
+                    </span>
+                    <span>
+                      <strong>{isClearingCache ? "Clearing..." : "Clear server cache"}</strong>
+                      <small>Purge cached data after direct DB edits</small>
                     </span>
                     <ArrowUpRight size={16} />
                   </button>

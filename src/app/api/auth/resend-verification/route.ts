@@ -9,19 +9,13 @@ import {
 // attempt 1 = 10s, 2 = 30s, 3 = 60s, 4 = 2m, 5 = 5m, 6 = 10m, 7 = 20m,
 // 8 = 40m, 9 = 1h, 10 = 2h, 11 = 4h, 12 = 8h, 13+ = 12h (capped).
 const COOLDOWN_TABLE_MS = [
-  10 * 1000,      // 10s  - attempt 1
-  30 * 1000,      // 30s  - attempt 2
-  60 * 1000,      // 1m   - attempt 3
-  2 * 60 * 1000,  // 2m   - attempt 4
-  5 * 60 * 1000,  // 5m   - attempt 5
-  10 * 60 * 1000, // 10m  - attempt 6
-  20 * 60 * 1000, // 20m  - attempt 7
-  40 * 60 * 1000, // 40m  - attempt 8
-  60 * 60 * 1000, // 1h   - attempt 9
-  2 * 60 * 60 * 1000, // 2h - attempt 10
-  4 * 60 * 60 * 1000, // 4h - attempt 11
-  8 * 60 * 60 * 1000, // 8h - attempt 12
-  12 * 60 * 60 * 1000, // 12h - attempt 13
+  30 * 1000,                    // 10s  - attempt 2
+  5 * 60 * 1000,                // 5m   - attempt 3
+  30 * 60 * 1000,               // 30m  - attempt 4
+  2 * 60 * 60 * 1000,           // 2h   - attempt 5
+  4 * 60 * 60 * 1000,           // 4h   - attempt 6
+  6 * 60 * 60 * 1000,           // 6h   - attempt 7
+  12 * 60 * 60 * 1000,          // 10h - attempt 8
 ];
 
 function getCooldownMs(attemptNumber: number): number {
