@@ -206,7 +206,7 @@ function VerifyEmailContent() {
             {!token && isSentConfirmation && <p className="auth-card-description">The verification link is valid for 30 minutes.</p>}
             {token && state === "ready" && (
               <form onSubmit={handleVerify}>
-                <button className="auth-submit" type="submit">Verify email address</button>
+                <button className="auth-submit px-2" type="submit">Verify email address</button>
               </form>
             )}
             {token && state === "loading" && <button className="auth-submit" type="button" disabled>Verifying…</button>}
