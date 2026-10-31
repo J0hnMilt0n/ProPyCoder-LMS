@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
         emailVerificationExpiresAt: true,
         resendAttemptCount: true,
         resendNextAllowedAt: true,
+        resendLastAttemptAt: true,
       },
     });
     const genericMessage = "If an unverified account exists, a verification email has been sent.";
@@ -83,7 +84,13 @@ export async function POST(request: NextRequest) {
     // Throttle repeated resend requests using exponential backoff. A user may
     // request a fresh link while their previous one is still valid, but the
     // interval between attempts grows with each request.
-    const attemptNumber = user?.resendAttemptCount != null ? user.resendAttemptCount + 1 : 0;
+    // Reset attempt count if 24 hours have passed since last attempt
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const effectiveAttemptCount = (user?.resendLastAttemptAt && user.resendLastAttemptAt < twentyFourHoursAgo)
+      ? 0
+      : (user?.resendAttemptCount ?? 0);
+
+    const attemptNumber = effectiveAttemptCount != null ? effectiveAttemptCount + 1 : 0;
     if (user?.resendNextAllowedAt && user?.resendNextAllowedAt > new Date()) {
       const resendNextAllowed = user?.resendNextAllowedAt?.toISOString() ?? null;
       return NextResponse.json({ message: genericMessage, resendNextAllowedAt: resendNextAllowed });
@@ -106,6 +113,7 @@ export async function POST(request: NextRequest) {
         emailVerificationExpiresAt: verification.expiresAt,
         resendAttemptCount: attemptNumber,
         resendNextAllowedAt: nextAllowedAt,
+        resendLastAttemptAt: new Date(),
       },
     });
 

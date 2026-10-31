@@ -42,8 +42,6 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         passwordResetTokenHash: null,
         passwordResetExpiresAt: null,
-        passwordResetAttemptCount: 0,
-        passwordResetNextAllowedAt: null,
       },
     });
 

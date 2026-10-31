@@ -891,6 +891,57 @@ export default function AdminPage() {
                     </span>
                     <ArrowUpRight size={16} />
                   </button>
+                  <button
+                    type="button"
+                    className="admin-shortcut admin-shortcut-button"
+                    onClick={() => {
+                      window.location.href = "/api/admin/backup";
+                    }}
+                  >
+                    <span className="admin-shortcut-icon">
+                      <ArrowDownToLine size={17} />
+                    </span>
+                    <span>
+                      <strong>Download DB backup</strong>
+                      <small>Export all data as JSON</small>
+                    </span>
+                    <ArrowUpRight size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-shortcut admin-shortcut-button"
+                    onClick={() => {
+                      const input = document.createElement("input");
+                      input.type = "file";
+                      input.accept = ".json,application/json";
+                      input.onchange = async (e) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
+                        if (!file) return;
+                        if (!window.confirm("This will REPLACE all existing data. Are you sure?")) return;
+                        const formData = new FormData();
+                        formData.append("file", file);
+                        try {
+                          const res = await fetch("/api/admin/restore", { method: "POST", body: formData });
+                          const data = await res.json();
+                          if (!res.ok) throw new Error(data.error || "Restore failed");
+                          toast.success("Database restored successfully");
+                          window.location.reload();
+                        } catch (err) {
+                          toast.error(err instanceof Error ? err.message : "Restore failed");
+                        }
+                      };
+                      input.click();
+                    }}
+                  >
+                    <span className="admin-shortcut-icon">
+                      <ArrowDownToLine size={17} style={{ transform: "rotate(180deg)" }} />
+                    </span>
+                    <span>
+                      <strong>Restore DB backup</strong>
+                      <small>Import data from JSON file</small>
+                    </span>
+                    <ArrowUpRight size={16} />
+                  </button>
                   <Link href="/courses" className="admin-shortcut">
                     <span className="admin-shortcut-icon">
                       <BookOpen size={17} />

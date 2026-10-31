@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
         firstName: true,
         passwordResetAttemptCount: true,
         passwordResetNextAllowedAt: true,
+        passwordResetLastAttemptAt: true,
       },
     });
 
@@ -59,7 +60,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: genericMessage, resendNextAllowedAt: null });
     }
 
-    const attemptNumber = user.passwordResetAttemptCount != null ? user.passwordResetAttemptCount + 1 : 0;
+// Reset attempt count if 24 hours have passed since last attempt
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const effectiveAttemptCount = (user.passwordResetLastAttemptAt && user.passwordResetLastAttemptAt < twentyFourHoursAgo)
+      ? 0
+      : (user.passwordResetAttemptCount ?? 0);
+
+    const attemptNumber = effectiveAttemptCount + 1;
 
     // Check cooldown
     if (user.passwordResetNextAllowedAt && user.passwordResetNextAllowedAt > new Date()) {
@@ -85,6 +92,7 @@ export async function POST(request: NextRequest) {
         passwordResetExpiresAt: expiresAt,
         passwordResetAttemptCount: attemptNumber,
         passwordResetNextAllowedAt: nextAllowedAt,
+        passwordResetLastAttemptAt: new Date(),
       },
     });
 
