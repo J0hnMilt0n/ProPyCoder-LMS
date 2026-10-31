@@ -25,7 +25,7 @@ const COOLDOWN_TABLE_MS = [
 ];
 
 function getCooldownMs(attemptNumber: number): number {
-  const index = Math.min(attemptNumber - 1, COOLDOWN_TABLE_MS.length - 1);
+  const index = Math.min(Math.max(attemptNumber - 1, 0), COOLDOWN_TABLE_MS.length - 1);
   return COOLDOWN_TABLE_MS[index];
 }
 
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     });
     const genericMessage = "If an unverified account exists, a verification email has been sent.";
 
-    if (!user?.emailVerified) {
+    if (!user || user.emailVerified) {
       const resendNextAllowed = user?.resendNextAllowedAt ? user.resendNextAllowedAt.toISOString() : null;
       return NextResponse.json({ message: genericMessage, resendNextAllowedAt: resendNextAllowed });
     }
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const resendNextAllowed = user?.resendNextAllowedAt ? user.resendNextAllowedAt.toISOString() : null;
+    const resendNextAllowed = nextAllowedAt.toISOString();
     return NextResponse.json({ message: genericMessage, resendNextAllowedAt: resendNextAllowed });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
