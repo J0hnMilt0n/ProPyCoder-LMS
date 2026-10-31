@@ -24,6 +24,10 @@ model User {
   emailVerificationExpiresAt DateTime?
   resendAttemptCount Int @default(0)
   resendNextAllowedAt DateTime?
+  passwordResetTokenHash String?
+  passwordResetExpiresAt DateTime?
+  passwordResetAttemptCount Int @default(0)
+  passwordResetNextAllowedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

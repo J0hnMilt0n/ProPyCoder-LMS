@@ -256,6 +256,9 @@ export default function LoginPage() {
               New to ProPyCoder?{" "}
               <Link href="/auth/register">Create an account</Link>
             </div>
+            <div className="auth-switch" style={{ marginTop: 8 }}>
+              <Link href="/auth/forgot-password">Forgot password?</Link>
+            </div>
           </div>
         </section>
       </main>
