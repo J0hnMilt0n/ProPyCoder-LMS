@@ -60,9 +60,9 @@ export async function POST(request: NextRequest) {
       if (data.answers?.length) await tx.answer.createMany({ data: data.answers });
       if (data.certificates?.length) await tx.certificate.createMany({ data: data.certificates });
       if (data.notifications?.length) await tx.notification.createMany({ data: data.notifications });
+      if (data.bundles?.length) await tx.bundle.createMany({ data: data.bundles });
       if (data.payments?.length) await tx.payment.createMany({ data: data.payments });
       if (data.liveClasses?.length) await tx.liveClass.createMany({ data: data.liveClasses });
-      if (data.bundles?.length) await tx.bundle.createMany({ data: data.bundles });
       if (data.bundleCourses?.length) await tx.bundleCourse.createMany({ data: data.bundleCourses });
       if (data.announcements?.length) await tx.announcement.createMany({ data: data.announcements });
     });
