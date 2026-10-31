@@ -54,6 +54,7 @@ function VerifyEmailContent() {
 
   const [resendCooldown, setResendCooldown] = useState<number | null>(null);
   const resendCooldownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const resendStartedAt = useRef<number | null>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("propycoder_resend_next_allowed");

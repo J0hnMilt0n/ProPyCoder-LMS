@@ -52,17 +52,17 @@ export async function POST(request: NextRequest) {
     });
     const genericMessage = "If an unverified account exists, a verification email has been sent.";
 
-    if (!user || user.emailVerified) {
-      const resendNextAllowed = user.resendNextAllowedAt ? user.resendNextAllowedAt.toISOString() : null;
+    if (!user?.emailVerified) {
+      const resendNextAllowed = user?.resendNextAllowedAt ? user.resendNextAllowedAt.toISOString() : null;
       return NextResponse.json({ message: genericMessage, resendNextAllowedAt: resendNextAllowed });
     }
 
     // Throttle repeated resend requests using exponential backoff. A user may
     // request a fresh link while their previous one is still valid, but the
     // interval between attempts grows with each request.
-    const attemptNumber = user.resendAttemptCount + 1;
-    if (user.resendNextAllowedAt && user.resendNextAllowedAt > new Date()) {
-      const resendNextAllowed = user.resendNextAllowedAt.toISOString();
+    const attemptNumber = user?.resendAttemptCount != null ? user.resendAttemptCount + 1 : 0;
+    if (user?.resendNextAllowedAt && user?.resendNextAllowedAt > new Date()) {
+      const resendNextAllowed = user?.resendNextAllowedAt?.toISOString() ?? null;
       return NextResponse.json({ message: genericMessage, resendNextAllowedAt: resendNextAllowed });
     }
 
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const resendNextAllowed = user.resendNextAllowedAt ? user.resendNextAllowedAt.toISOString() : null;
+    const resendNextAllowed = user?.resendNextAllowedAt ? user.resendNextAllowedAt.toISOString() : null;
     return NextResponse.json({ message: genericMessage, resendNextAllowedAt: resendNextAllowed });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

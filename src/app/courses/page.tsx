@@ -72,12 +72,17 @@ export default function CoursesPage() {
   const [purchasedCourseIds, setPurchasedCourseIds] = useState<Set<string>>(
     () => new Set(),
   );
-  const [courses, setCourses] = useState<Course[]>(() =>
-    readResourceCache<Course[]>("courses-list:1:::", "public") ?? [],
-  );
-  const [isLoading, setIsLoading] = useState(() => {
-    return readResourceCache<Course[]>("courses-list:1:::", "public") === null;
-  });
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Hydrate from localStorage cache after mount to avoid SSR mismatch
+  useEffect(() => {
+    const cached = readResourceCache<Course[]>("courses-list:1:::", "public");
+    if (cached) {
+      setCourses(cached);
+      setIsLoading(false);
+    }
+  }, []);
   const [isFiltering, setIsFiltering] = useState(false);
   const [error, setError] = useState(false);
   const [searchInput, setSearchInput] = useState("");
