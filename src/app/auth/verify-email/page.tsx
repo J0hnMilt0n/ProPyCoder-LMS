@@ -137,7 +137,7 @@ function VerifyEmailContent() {
           });
         }, 1000);
       } else {
-        startResendCooldown(5 * 60);
+        startResendCooldown(10);
       }
     } catch (error) {
       setResendStatus(error instanceof Error ? error.message : "Could not resend verification email.");
