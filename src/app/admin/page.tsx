@@ -225,8 +225,15 @@ export default function AdminPage() {
   const [isRestoring, setIsRestoring] = useState(false);
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
+  const [showEnrollModal, setShowEnrollModal] = useState(false);
+  const [enrollStudentId, setEnrollStudentId] = useState("");
+  const [enrollCourseId, setEnrollCourseId] = useState("");
+  const [isEnrolling, setIsEnrolling] = useState(false);
+  const [enrollStudentSearch, setEnrollStudentSearch] = useState("");
+  const [enrollCourseSearch, setEnrollCourseSearch] = useState("");
 
   const handleClearCourseCache = async (courseIds?: string[]) => {
+    handleClearCache()
     if (!courseIds || courseIds.length === 0) {
       setSelectedCourseIds([]);
       setShowCourseCacheModal(true);
@@ -938,7 +945,7 @@ export default function AdminPage() {
                   <button
                     type="button"
                     className="admin-shortcut admin-shortcut-button"
-                    onMouseDown={() => void handleClearCache()}
+          
                     onClick={() => void handleClearCourseCache()}
                     disabled={isClearingCache}
                   >
@@ -1277,10 +1284,80 @@ export default function AdminPage() {
                   onDemote={updateUserRole}
                 />
               ) : view === "enrollments" ? (
+                 <>
+                 <button
+                   className="admin-button admin-button-primary"
+                   style={{ marginBottom: 12 }}
+                   onClick={() => {
+                     setEnrollStudentId(overview.recentUsers[0]?.id ?? "");
+                     setEnrollCourseId(overview.recentCourses[0]?.id ?? "");
+                     setShowEnrollModal(true);
+                   }}
+                 >
+                   Enroll student
+                 </button>
+
+                 {showEnrollModal && (
+                   <div className="admin-modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setShowEnrollModal(false); }}>
+                     <div className="admin-modal">
+                       <div className="admin-modal-head">
+                         <h2>Enroll student</h2>
+                         <button type="button" className="admin-modal-close" onClick={() => setShowEnrollModal(false)}>×</button>
+                       </div>
+                       <form className="instructor-form admin-modal-form" onSubmit={async (e) => {
+                         e.preventDefault();
+                         setIsEnrolling(true);
+                         try {
+                           const response = await fetch("/api/admin/enrollments", {
+                             method: "POST",
+                             headers: { "Content-Type": "application/json" },
+                             body: JSON.stringify({ studentId: enrollStudentId, courseId: enrollCourseId }),
+                           });
+                           const data = await response.json().catch(() => null);
+                           if (!response.ok) throw new Error(data?.error ?? "Enrollment failed");
+                           toast.success("Student enrolled successfully");
+                           setShowEnrollModal(false);
+                           overviewRes.refresh();
+                         } catch (err) {
+                           toast.error(err instanceof Error ? err.message : "Enrollment failed");
+                         } finally {
+                           setIsEnrolling(false);
+                         }
+                       }}>
+                         <label>
+                           Student
+                           <input type="text" placeholder="Search student..." value={enrollStudentSearch} onChange={(e) => setEnrollStudentSearch(e.target.value)} />
+                           <select value={enrollStudentId} onChange={(e) => setEnrollStudentId(e.target.value)} required>
+                             {overview.recentUsers.filter((u) => u.role === "STUDENT" && `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase().includes(enrollStudentSearch.toLowerCase())).map((u) => (
+                               <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.email})</option>
+                             ))}
+                           </select>
+                         </label>
+                         <label>
+                           Course
+                           <input type="text" placeholder="Search course..." value={enrollCourseSearch} onChange={(e) => setEnrollCourseSearch(e.target.value)} />
+                           <select value={enrollCourseId} onChange={(e) => setEnrollCourseId(e.target.value)} required>
+                             {overview.recentCourses.filter((c) => c.title.toLowerCase().includes(enrollCourseSearch.toLowerCase()) && !overview.recentEnrollments.some((e) => e.student && e.course.id === c.id && e.student.email && overview.recentUsers.find((u) => u.id === enrollStudentId)?.email === e.student.email)).map((c) => (
+                               <option key={c.id} value={c.id}>{c.title}</option>
+                             ))}
+                           </select>
+                         </label>
+                         <div className="admin-modal-actions">
+                           <button type="button" className="admin-button" onClick={() => setShowEnrollModal(false)} disabled={isEnrolling}>Cancel</button>
+                           <button type="submit" className="admin-button admin-button-primary" disabled={isEnrolling || !enrollStudentId || !enrollCourseId}>
+                             {isEnrolling ? "Enrolling..." : "Enroll"}
+                           </button>
+                         </div>
+                       </form>
+                     </div>
+                   </div>
+                 )}
+
                 <EnrollmentTable
                   items={filteredItems as AdminOverview["recentEnrollments"]}
                   onRemove={removeEnrollment}
                 />
+                 </>
               ) : (
                 <AnnouncementTable
                   items={filteredItems as AdminOverview["recentAnnouncements"]}
