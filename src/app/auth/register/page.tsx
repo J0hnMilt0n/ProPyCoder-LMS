@@ -75,7 +75,7 @@ export default function RegisterPage() {
       }
 
       toast.success("Account created. Check your inbox to verify your email.");
-      router.push("/auth/verify-email?sent=1");
+      router.push(`/auth/verify-email?sent=1&email=${encodeURIComponent(formData.email)}`);
     } catch {
       toast.error("An unexpected error occurred");
     } finally {

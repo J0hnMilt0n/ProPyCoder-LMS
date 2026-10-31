@@ -29,6 +29,35 @@ function getCooldownMs(attemptNumber: number): number {
   return COOLDOWN_TABLE_MS[index];
 }
 
+export async function GET(request: NextRequest) {
+  try {
+    const email = request.nextUrl.searchParams.get("email")?.trim().toLowerCase() ?? "";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
+      return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        emailVerified: true,
+        resendNextAllowedAt: true,
+      },
+    });
+
+    // Don't reveal if account exists - return generic response
+    if (!user || user.emailVerified) {
+      return NextResponse.json({ resendNextAllowedAt: null });
+    }
+
+    return NextResponse.json({ resendNextAllowedAt: user.resendNextAllowedAt?.toISOString() ?? null });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Could not check resend cooldown:", message);
+    return NextResponse.json({ error: "Could not check cooldown." }, { status: 503 });
+  }
+}
+
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

@@ -67,10 +67,20 @@ export default function LoginPage() {
   const resendCooldownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    return () => {
-      if (resendCooldownTimer.current) clearInterval(resendCooldownTimer.current);
-    };
-  }, []);
+    if (!showVerificationDialog || !email.trim()) return;
+    fetch(`/api/auth/resend-verification?email=${encodeURIComponent(email.trim())}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.resendNextAllowedAt) {
+          const expiration = new Date(data.resendNextAllowedAt).getTime();
+          const remaining = Math.max(0, Math.floor((expiration - Date.now()) / 1000));
+          if (remaining > 0) {
+            startResendCooldown(remaining);
+          }
+        }
+      })
+      .catch(() => {});
+  }, [showVerificationDialog, email]);
 
   const formatCooldown = (seconds: number): string => {
     if (seconds >= 3600) {
@@ -86,6 +96,12 @@ export default function LoginPage() {
     }
     return `${seconds}s`;
   };
+
+  useEffect(() => {
+    return () => {
+      if (resendCooldownTimer.current) clearInterval(resendCooldownTimer.current);
+    };
+  }, []);
 
   const startResendCooldown = (durationSeconds: number) => {
     if (resendCooldownTimer.current) clearInterval(resendCooldownTimer.current);

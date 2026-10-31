@@ -8,8 +8,9 @@ import { Navbar } from "@/components/navbar";
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
+  const emailFromUrl = searchParams.get("email") ?? "";
   const [isSentConfirmation, setIsSentConfirmation] = useState(false);
-  const [resendEmail, setResendEmail] = useState("");
+  const [resendEmail, setResendEmail] = useState(emailFromUrl);
   const [resendStatus, setResendStatus] = useState("");
   const [isResending, setIsResending] = useState(false);
   const [state, setState] = useState<"ready" | "loading" | "success" | "error">(
@@ -56,6 +57,35 @@ function VerifyEmailContent() {
   const resendCooldownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const resendStartedAt = useRef<number | null>(null);
   const hydratedFromStorage = useRef(false);
+
+  // Fetch cooldown from server on mount if email is available
+  useEffect(() => {
+    if (!emailFromUrl) return;
+    fetch(`/api/auth/resend-verification?email=${encodeURIComponent(emailFromUrl)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.resendNextAllowedAt) {
+          const expiration = new Date(data.resendNextAllowedAt).getTime();
+          const remaining = Math.max(0, Math.floor((expiration - Date.now()) / 1000));
+          if (remaining > 0) {
+            setResendCooldown(remaining);
+            resendStartedAt.current = Date.now();
+            if (resendCooldownTimer.current) clearInterval(resendCooldownTimer.current);
+            resendCooldownTimer.current = setInterval(() => {
+              setResendCooldown((prev) => {
+                if (prev === null || prev <= 1) {
+                  if (resendCooldownTimer.current) clearInterval(resendCooldownTimer.current);
+                  resendCooldownTimer.current = null;
+                  return null;
+                }
+                return prev - 1;
+              });
+            }, 1000);
+          }
+        }
+      })
+      .catch(() => {});
+  }, [emailFromUrl]);
 
   useEffect(() => {
     const stored = localStorage.getItem("propycoder_resend_next_allowed");
