@@ -69,6 +69,7 @@ model Course {
   quizzes     Quiz[]
   payments    Payment[]
   liveClasses LiveClass[]
+  bundles     BundleCourse[]
 
   @@index([instructorId])
   @@index([category])
@@ -283,6 +284,50 @@ model Notification {
 
   @@index([userId])
   @@index([read])
+}
+
+// Bundle model
+model Bundle {
+  id          String         @id @default(cuid())
+  title       String
+  description String
+  image       String?
+  price       Float          @default(0)
+  status      String         @default("DRAFT")
+  updatedAt   DateTime       @updatedAt
+  createdAt   DateTime       @default(now())
+  courses     BundleCourse[]
+
+  @@index([status])
+}
+
+// BundleCourse model
+model BundleCourse {
+  id       String @id @default(cuid())
+  bundle   Bundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  bundleId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId String
+  order    Int    @default(0)
+
+  @@unique([bundleId, courseId])
+  @@index([bundleId])
+  @@index([courseId])
+}
+
+// Announcement model
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  link      String?
+  audience  String   @default("ALL")
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([published])
+  @@index([createdAt])
 }
 
 // Live class (online session) model
