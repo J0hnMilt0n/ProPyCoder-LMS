@@ -8,8 +8,11 @@ import { Navbar } from "@/components/navbar";
 import { PriceTag } from "@/components/price-tag";
 import { formatINR } from "@/lib/currency";
 import { slugify } from "@/lib/slug";
+
 import {
   ArrowDownToLine,
+  CloudDownload,
+  CloudUpload,
   ArrowUpRight,
   BookOpen,
   Check,
@@ -215,9 +218,38 @@ export default function AdminPage() {
   // sites stay unchanged; the arg is ignored (the hook always revalidates in
   // the background and patches only what changed).
   const [isClearingCache, setIsClearingCache] = useState(false);
+  const [showCourseCacheModal, setShowCourseCacheModal] = useState(false);
+  const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
+  const [cacheSearch, setCacheSearch] = useState("");
+  const [lastCheckedIndex, setLastCheckedIndex] = useState<number | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
+
+  const handleClearCourseCache = async (courseIds?: string[]) => {
+    if (!courseIds || courseIds.length === 0) {
+      setSelectedCourseIds([]);
+      setShowCourseCacheModal(true);
+      return;
+    }
+    setIsClearingCache(true);
+    try {
+      const response = await fetch("/api/admin/clear-cache", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courseIds }),
+      });
+      if (!response.ok) throw new Error("Failed to clear cache");
+      toast.success(`Cache cleared for ${courseIds.length} course(s)`);
+      overviewRes.refresh();
+    } catch {
+      toast.error("Failed to clear course cache");
+    } finally {
+      setIsClearingCache(false);
+      setShowCourseCacheModal(false);
+      setSelectedCourseIds([]);
+    }
+  };
 
   const handleClearCache = async () => {
     setIsClearingCache(true);
@@ -236,6 +268,7 @@ export default function AdminPage() {
       setIsClearingCache(false);
     }
   };
+
 
   const handleRestore = async () => {
     if (!restoreFile) return;
@@ -271,6 +304,13 @@ export default function AdminPage() {
     if (session?.user && session.user.role !== "ADMIN")
       router.replace("/dashboard");
   }, [status, session, router]);
+
+  const filteredCacheCourses = useMemo(() => {
+    const q = cacheSearch.trim().toLowerCase();
+    const courses = overview?.recentCourses ?? [];
+    if (!q) return courses;
+    return courses.filter((c) => c.title.toLowerCase().includes(q));
+  }, [overview, cacheSearch]);
 
   const filteredItems = useMemo(() => {
     if (!overview) return [];
@@ -862,12 +902,12 @@ export default function AdminPage() {
                 <section className="admin-panel admin-quick-actions">
                   <div className="admin-panel-heading">
                     <div>
-                      <div className="admin-eyebrow">SHORTCUTS</div>
+                      {/* <div className="admin-eyebrow">SHORTCUTS</div> */}
                       <h2>Quick access</h2>
                     </div>
-                    <ArrowUpRight size={18} />
+                    {/* <ArrowUpRight size={18} /> */}
                   </div>
-                  <button
+                  {/* <button
                     type="button"
                     className="admin-shortcut admin-shortcut-button"
                     onClick={openCreateCourse}
@@ -894,11 +934,12 @@ export default function AdminPage() {
                       <small>Notify every learner at once</small>
                     </span>
                     <ArrowUpRight size={16} />
-                  </button>
+                  </button> */}
                   <button
                     type="button"
                     className="admin-shortcut admin-shortcut-button"
-                    onClick={() => void handleClearCache()}
+                    onMouseDown={() => void handleClearCache()}
+                    onClick={() => void handleClearCourseCache()}
                     disabled={isClearingCache}
                   >
                     <span className="admin-shortcut-icon">
@@ -910,10 +951,107 @@ export default function AdminPage() {
                     </span>
                     <span>
                       <strong>{isClearingCache ? "Clearing..." : "Clear server cache"}</strong>
-                      <small>Purge cached data after direct DB edits</small>
+                      <small>Purge cache for a specific course</small>
                     </span>
                     <ArrowUpRight size={16} />
                   </button>
+                  {showCourseCacheModal && (
+                    <div
+                      className="auth-dialog-backdrop"
+                      onClick={(e) => { if (e.target === e.currentTarget) setShowCourseCacheModal(false); }}
+                      style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    >
+                      <div className="auth-dialog" style={{ maxWidth: 520, width: "100%", padding: 20, borderRadius: 12 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                          <h2 style={{ margin: 0 }}>Clear course cache</h2>
+                          <button type="button" onClick={() => setShowCourseCacheModal(false)} style={{ background: "transparent", border: "none", fontSize: 20, cursor: "pointer", color: "#6b7280" }}>×</button>
+                        </div>
+                        <p className="auth-dialog-description" style={{ marginBottom: 12 }}>
+                          Select one or more courses to revalidate. Shift-click a checkbox to select the range between two selections.
+                        </p>
+                        <input type="text" placeholder="Search courses..." value={cacheSearch} onChange={(e) => setCacheSearch(e.target.value)} onFocus={(e) => (e.currentTarget.style.borderColor = "#e95f32")} onBlur={(e) => (e.currentTarget.style.borderColor = "var(--line)")} style={{ width: "100%", marginBottom: 8, padding: 6, border: "1px solid var(--line)", borderRadius: 6, background: "var(--background)", color: "var(--foreground)", outline: "none" }} />
+                        <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+                          <button type="button" className="admin-button" onClick={() => setSelectedCourseIds(filteredCacheCourses.map((c) => c.id))}>Select all</button>
+                          <button type="button" className="admin-button" onClick={() => setSelectedCourseIds([])}>Clear selection</button>
+                          <button type="button" className="admin-button" onClick={() => setSelectedCourseIds((prev) => filteredCacheCourses.map((c) => c.id).filter((id) => !prev.includes(id)))}>Inverse</button>
+                          <span style={{ marginLeft: "auto", alignSelf: "center", fontSize: 13, color: "#6b7280" }}>
+                            {selectedCourseIds.length} selected
+                          </span>
+                        </div>
+                        <div style={{ maxHeight: 320, overflowY: "auto", border: "1px solid var(--line)", borderRadius: 8, padding: 4, marginBottom: 12, background: "var(--paper)" }}>
+                          {filteredCacheCourses.map((course, idx) => (
+                            <label
+                              key={course.id}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 10,
+                                padding: "8px 10px",
+                                borderRadius: 6,
+                                cursor: "pointer",
+                                background: selectedCourseIds.includes(course.id) ? "rgba(233, 95, 50, 0.2)" : "transparent",
+                                transition: "background 0.15s",
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedCourseIds.includes(course.id)}
+                                onChange={(e) => {
+                                  const idx = filteredCacheCourses.findIndex((c) => c.id === course.id);
+                                  const shift = (e.nativeEvent as MouseEvent).shiftKey;
+                                  if (shift && lastCheckedIndex !== null) {
+                                    const start = Math.min(lastCheckedIndex, idx);
+                                    const end = Math.max(lastCheckedIndex, idx);
+                                    const rangeIds = filteredCacheCourses.slice(start, end + 1).map((c) => c.id);
+                                    const willCheck = e.target.checked;
+                                    setSelectedCourseIds((prev) => {
+                                      const set = new Set(prev);
+                                      rangeIds.forEach((id) => {
+                                        if (willCheck) set.add(id);
+                                        else set.delete(id);
+                                      });
+                                      return Array.from(set);
+                                    });
+                                  } else {
+                                    setSelectedCourseIds((prev) =>
+                                      e.target.checked
+                                        ? (prev.includes(course.id) ? prev : [...prev, course.id])
+                                        : prev.filter((id) => id !== course.id),
+                                    );
+                                  }
+                                  setLastCheckedIndex(idx);
+                                }}
+                                style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#e95f32" }}
+                              />
+                              <span style={{ flex: 1, color: "var(--foreground)" }}>{course.title}</span>
+                            </label>
+                          ))}
+                          {filteredCacheCourses.length === 0 && (
+                            <p style={{ padding: 12, textAlign: "center", color: "#6b7280", margin: 0 }}>No courses found.</p>
+                          )}
+                        </div>
+                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                          <button
+                            className="admin-button"
+                            type="button"
+                            onClick={() => setShowCourseCacheModal(false)}
+                            disabled={isClearingCache}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            className="admin-button admin-button-primary"
+                            type="button"
+                            onClick={() => void handleClearCourseCache(selectedCourseIds)}
+                            disabled={isClearingCache || selectedCourseIds.length === 0}
+                          >
+                            {isClearingCache ? "Clearing..." : `Clear (${selectedCourseIds.length})`}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <button
                     type="button"
                     className="admin-shortcut admin-shortcut-button"
@@ -922,7 +1060,7 @@ export default function AdminPage() {
                     }}
                   >
                     <span className="admin-shortcut-icon">
-                      <ArrowDownToLine size={17} />
+                      <CloudDownload size={17} />
                     </span>
                     <span>
                       <strong>Download DB backup</strong>
@@ -951,7 +1089,7 @@ export default function AdminPage() {
                       {isRestoring ? (
                         <LoaderCircle size={17} className="admin-spin" />
                       ) : (
-                        <ArrowDownToLine size={17} style={{ transform: "rotate(180deg)" }} />
+                        <CloudUpload size={17} />
                       )}
                     </span>
                     <span>
@@ -960,7 +1098,7 @@ export default function AdminPage() {
                     </span>
                     <ArrowUpRight size={16} />
                   </button>
-                  <Link href="/courses" className="admin-shortcut">
+                  {/* <Link href="/courses" className="admin-shortcut">
                     <span className="admin-shortcut-icon">
                       <BookOpen size={17} />
                     </span>
@@ -979,7 +1117,7 @@ export default function AdminPage() {
                       <small>Preview the learning dashboard</small>
                     </span>
                     <ArrowUpRight size={16} />
-                  </Link>
+                  </Link> */}
                   {showRestoreConfirm && (
                 <div
                   className="auth-dialog-backdrop"
