@@ -209,7 +209,7 @@ function VerifyEmailContent() {
                 <button className="auth-submit px-2" type="submit">Verify email address</button>
               </form>
             )}
-            {token && state === "loading" && <button className="auth-submit" type="button" disabled>Verifying…</button>}
+            {token && state === "loading" && <button className="auth-submit px-2" type="button" disabled>Verifying…</button>}
             {(state === "success" && token) || isSentConfirmation ? (
               <Link className="auth-submit" href="/auth/login">Continue to sign in</Link>
             ) : token && state === "error" ? (
