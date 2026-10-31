@@ -215,6 +215,9 @@ export default function AdminPage() {
   // sites stay unchanged; the arg is ignored (the hook always revalidates in
   // the background and patches only what changed).
   const [isClearingCache, setIsClearingCache] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
 
   const handleClearCache = async () => {
     setIsClearingCache(true);
@@ -231,6 +234,26 @@ export default function AdminPage() {
       toast.error("Failed to clear server cache");
     } finally {
       setIsClearingCache(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!restoreFile) return;
+    setIsRestoring(true);
+    setShowRestoreConfirm(false);
+    const formData = new FormData();
+    formData.append("file", restoreFile);
+    try {
+      const res = await fetch("/api/admin/restore", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Restore failed");
+      toast.success("Database restored successfully");
+      window.location.reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Restore failed");
+    } finally {
+      setIsRestoring(false);
+      setRestoreFile(null);
     }
   };
 
@@ -914,30 +937,25 @@ export default function AdminPage() {
                       const input = document.createElement("input");
                       input.type = "file";
                       input.accept = ".json,application/json";
-                      input.onchange = async (e) => {
+                      input.onchange = (e) => {
                         const file = (e.target as HTMLInputElement).files?.[0];
                         if (!file) return;
-                        if (!window.confirm("This will REPLACE all existing data. Are you sure?")) return;
-                        const formData = new FormData();
-                        formData.append("file", file);
-                        try {
-                          const res = await fetch("/api/admin/restore", { method: "POST", body: formData });
-                          const data = await res.json();
-                          if (!res.ok) throw new Error(data.error || "Restore failed");
-                          toast.success("Database restored successfully");
-                          window.location.reload();
-                        } catch (err) {
-                          toast.error(err instanceof Error ? err.message : "Restore failed");
-                        }
+                        setRestoreFile(file);
+                        setShowRestoreConfirm(true);
                       };
                       input.click();
                     }}
+                    disabled={isRestoring}
                   >
                     <span className="admin-shortcut-icon">
-                      <ArrowDownToLine size={17} style={{ transform: "rotate(180deg)" }} />
+                      {isRestoring ? (
+                        <LoaderCircle size={17} className="admin-spin" />
+                      ) : (
+                        <ArrowDownToLine size={17} style={{ transform: "rotate(180deg)" }} />
+                      )}
                     </span>
                     <span>
-                      <strong>Restore DB backup</strong>
+                      <strong>{isRestoring ? "Restoring..." : "Restore DB backup"}</strong>
                       <small>Import data from JSON file</small>
                     </span>
                     <ArrowUpRight size={16} />
@@ -962,12 +980,45 @@ export default function AdminPage() {
                     </span>
                     <ArrowUpRight size={16} />
                   </Link>
-                  <div className="admin-draft-note">
-                    <Clock3 size={15} />
-                    <span>
-                      {metrics.draftCourses} courses are still in draft
-                    </span>
+                  {showRestoreConfirm && (
+                <div
+                  className="auth-dialog-backdrop"
+                  onClick={(e) => { if (e.target === e.currentTarget) setShowRestoreConfirm(false); }}
+                  style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
+                >
+                  <div className="auth-dialog">
+                    <div className="auth-dialog-icon" style={{ textAlign: "center", marginBottom: 12 }}>
+                      <ArrowDownToLine size={22} style={{ transform: "rotate(180deg)" }} />
+                    </div>
+                    <h2 style={{ textAlign: "center", marginBottom: 8 }}>Restore Database</h2>
+                    <p className="auth-dialog-description" style={{ textAlign: "center", marginBottom: 16 }}>
+                      This will <strong>replace ALL existing data</strong> with the contents of the backup file. This action cannot be undone.
+                    </p>
+                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                      <button
+                        className="admin-button"
+                        type="button"
+                        onClick={() => { setShowRestoreConfirm(false); setRestoreFile(null); }}
+                        disabled={isRestoring}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="admin-button admin-button-danger"
+                        type="button"
+                        onClick={handleRestore}
+                        disabled={isRestoring}
+                      >
+                        {isRestoring ? (
+                          <><LoaderCircle size={16} className="admin-spin" /> Restoring...</>
+                        ) : (
+                          "Confirm Restore"
+                        )}
+                      </button>
+                    </div>
                   </div>
+                </div>
+              )}
                 </section>
               </div>
               <section className="admin-panel admin-recent-panel">
