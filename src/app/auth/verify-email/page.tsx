@@ -59,7 +59,7 @@ function VerifyEmailContent() {
   useEffect(() => {
     const stored = localStorage.getItem("propycoder_resend_next_allowed");
     if (stored) {
-      const expiration = new Date(stored).getTime();
+      const expiration = Number(stored);
       const remaining = Math.max(0, Math.floor((expiration - Date.now()) / 1000));
       if (remaining > 0) {
         setResendCooldown(remaining);
@@ -90,9 +90,25 @@ function VerifyEmailContent() {
     }
   }, [resendCooldown, resendStartedAt]);
 
+  const formatCooldown = (seconds: number): string => {
+    if (seconds >= 3600) {
+      const hours = Math.floor(seconds / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      return `${hours}h ${mins}m ${secs}s`;
+    }
+    if (seconds >= 60) {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins}m ${secs}s`;
+    }
+    return `${seconds}s`;
+  };
+
   const startResendCooldown = (durationSeconds: number) => {
-    if (resendCooldownTimer.current) clearInterval(resendCooldownTimer.current);
     setResendCooldown(durationSeconds);
+    resendStartedAt.current = Date.now();
+    if (resendCooldownTimer.current) clearInterval(resendCooldownTimer.current);
     resendCooldownTimer.current = setInterval(() => {
       setResendCooldown((prev) => {
         if (prev === null || prev <= 1) {
@@ -174,7 +190,7 @@ function VerifyEmailContent() {
                   <input id="resend-email" className="auth-input" type="email" required maxLength={254} autoComplete="email" value={resendEmail} onChange={(event) => setResendEmail(event.target.value)} />
                 </div>
                 <button className="auth-submit" type="submit" disabled={isResending || Boolean(resendCooldown)}>
-  {isResending ? "Sending..." : resendCooldown !== null ? `Resending in ${resendCooldown}s` : "Resend verification email"}
+  {isResending ? "Sending..." : resendCooldown !== null ? `Resending in ${formatCooldown(resendCooldown)}` : "Resend verification email"}
 </button>
                 {resendStatus && <p className="auth-card-description" role="status">{resendStatus}</p>}
               </form>

@@ -102,7 +102,13 @@ export default function LoginPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not send a verification email.");
       setResendMessage("If your account is still unverified, a fresh verification link is on its way. Check your inbox.");
-      startResendCooldown(5 * 60);
+      if (data.resendNextAllowedAt) {
+        const expiration = new Date(data.resendNextAllowedAt).getTime();
+        const remaining = Math.max(0, Math.floor((expiration - Date.now()) / 1000));
+        startResendCooldown(remaining);
+      } else {
+        startResendCooldown(10);
+      }
     } catch (error) {
       setResendError(error instanceof Error ? error.message : "Could not send a verification email. Please try again.");
     } finally {
