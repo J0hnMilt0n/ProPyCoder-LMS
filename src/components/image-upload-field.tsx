@@ -3,6 +3,7 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import { ImagePlus, LoaderCircle, Upload, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { ImageCropModal } from "./image-crop-modal";
 
 const MAX_IMAGE_BYTES = 1_600_000; // keep under the API's 2MB JSON limit
 
@@ -28,6 +29,7 @@ export function ImageUploadField({
 }: ImageUploadFieldProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [isReading, setIsReading] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
 
   const handlePick = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -39,17 +41,13 @@ export function ImageUploadField({
       toast.error("Please choose an image file");
       return;
     }
-    if (file.size > MAX_IMAGE_BYTES) {
-      toast.error("Image is too large (max 1.5 MB)");
-      return;
-    }
 
     setIsReading(true);
     const reader = new FileReader();
     reader.onload = () => {
       setIsReading(false);
       if (typeof reader.result === "string") {
-        onChange(reader.result);
+        setCropSrc(reader.result);
       }
     };
     reader.onerror = () => {
@@ -118,6 +116,19 @@ export function ImageUploadField({
           <ImagePlus size={16} />
           <span>Upload a picture or paste a URL above</span>
         </div>
+      )}
+{cropSrc && (
+        <ImageCropModal
+          src={cropSrc}
+          onApply={(cropped) => {
+            onChange(cropped);
+            setCropSrc(null);
+          }}
+          onCancel={() => setCropSrc(null)}
+          aspectRatio={16 / 9}
+          maxDim={800}
+          quality={0.75}
+        />
       )}
     </div>
   );

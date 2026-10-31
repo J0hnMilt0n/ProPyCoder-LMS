@@ -18,6 +18,7 @@ import {
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { useResource } from "@/lib/use-resource";
+import { ImageCropModal } from "@/components/image-crop-modal";
 
 interface Profile {
   id: string;
@@ -53,6 +54,7 @@ export default function ProfilePage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [avatarCropSrc, setAvatarCropSrc] = useState<string | null>(null);
   const [isSavingDetails, setIsSavingDetails] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
@@ -87,14 +89,17 @@ export default function ProfilePage() {
       toast.error("Please choose an image file");
       return;
     }
-    if (file.size > MAX_AVATAR_BYTES) {
-      toast.error("Image is too large (max 1.5 MB)");
-      return;
-    }
+    // if (file.size > MAX_AVATAR_BYTES) {
+    //   toast.error("Image is too large (max 1.5 MB)");
+    //   return;
+    // }
     const reader = new FileReader();
     reader.onload = () => {
-      setAvatar(typeof reader.result === "string" ? reader.result : null);
+      if (typeof reader.result === "string") {
+        setAvatarCropSrc(reader.result);
+      }
     };
+    reader.onerror = () => toast.error("Could not read that image");
     reader.readAsDataURL(file);
   };
 
@@ -372,6 +377,19 @@ export default function ProfilePage() {
           </div>
         </div>
       </main>
+{avatarCropSrc && (
+          <ImageCropModal
+            src={avatarCropSrc}
+            onApply={(cropped) => {
+              setAvatar(cropped);
+              setAvatarCropSrc(null);
+            }}
+            onCancel={() => setAvatarCropSrc(null)}
+            aspectRatio={1}
+            maxDim={256}
+            quality={0.7}
+          />
+        )}
     </div>
   );
 }
