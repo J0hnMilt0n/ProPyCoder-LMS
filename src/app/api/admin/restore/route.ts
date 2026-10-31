@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { invalidateAdminOverview, invalidateAnnouncements, invalidateBundles, invalidateHome } from "@/lib/page-cache";
 
 export async function POST(request: NextRequest) {
   try {
@@ -66,6 +67,12 @@ export async function POST(request: NextRequest) {
       if (data.bundleCourses?.length) await tx.bundleCourse.createMany({ data: data.bundleCourses });
       if (data.announcements?.length) await tx.announcement.createMany({ data: data.announcements });
     });
+
+    // Invalidate all cached data after restore
+    invalidateAdminOverview();
+    invalidateAnnouncements();
+    invalidateBundles();
+    invalidateHome();
 
     return NextResponse.json({ ok: true, message: "Database restored successfully." });
   } catch (error) {
