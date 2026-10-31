@@ -72,6 +72,21 @@ export default function LoginPage() {
     };
   }, []);
 
+  const formatCooldown = (seconds: number): string => {
+    if (seconds >= 3600) {
+      const hours = Math.floor(seconds / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      return `${hours}h ${mins}m ${secs}s`;
+    }
+    if (seconds >= 60) {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins}m ${secs}s`;
+    }
+    return `${seconds}s`;
+  };
+
   const startResendCooldown = (durationSeconds: number) => {
     if (resendCooldownTimer.current) clearInterval(resendCooldownTimer.current);
     setResendCooldown(durationSeconds);
@@ -248,7 +263,7 @@ export default function LoginPage() {
             ) : resendCooldown !== null ? (
               <button className="auth-submit" type="button" disabled>
                 <Loader className="h-4 w-4 animate-spin" />
-                Resending in {resendCooldown}s
+                Resending in {formatCooldown(resendCooldown)}
               </button>
             ) : (
               <button className="auth-submit" type="button" onClick={handleResendVerification} disabled={isResending || !email.trim()}>

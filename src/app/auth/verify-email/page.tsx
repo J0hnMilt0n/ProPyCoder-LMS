@@ -55,6 +55,7 @@ function VerifyEmailContent() {
   const [resendCooldown, setResendCooldown] = useState<number | null>(null);
   const resendCooldownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const resendStartedAt = useRef<number | null>(null);
+  const hydratedFromStorage = useRef(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("propycoder_resend_next_allowed");
@@ -74,14 +75,15 @@ function VerifyEmailContent() {
             return prev - 1;
           });
         }, 1000);
+      } else {
+        localStorage.removeItem("propycoder_resend_next_allowed");
       }
     }
-    if (stored) {
-      resendStartedAt.current = Date.now();
-    }
+    hydratedFromStorage.current = true;
   }, []);
 
   useEffect(() => {
+    if (!hydratedFromStorage.current) return;
     if (resendCooldown !== null && resendStartedAt.current) {
       const expiration = resendStartedAt.current + resendCooldown * 1000;
       localStorage.setItem("propycoder_resend_next_allowed", expiration.toString());
