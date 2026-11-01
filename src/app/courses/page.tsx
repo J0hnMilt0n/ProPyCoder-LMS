@@ -1,12 +1,11 @@
 "use client";
 
-
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { Navbar } from "@/components/navbar";
 import { ArrowLeft, ArrowRight, BookOpen, Search, Users } from "lucide-react";
 import toast from "react-hot-toast";
+import { Navbar } from "@/components/navbar";
 import { InstructorAvatar } from "@/components/instructor-avatar";
 import { PriceTag } from "@/components/price-tag";
 import { primeResourceCache, readResourceCache } from "@/lib/use-resource";
@@ -25,6 +24,11 @@ interface Course {
   _count: { enrollments: number };
 }
 
+interface CoursesApiResponse {
+  data?: Course[];
+  pagination?: { pages?: number };
+}
+
 const categories = [
   "Web Development",
   "Mobile Development",
@@ -33,81 +37,252 @@ const categories = [
   "Cloud Computing",
   "Python",
 ];
+
 const levels = ["BEGINNER", "INTERMEDIATE", "ADVANCED"];
 
-// Keep successful/attempted catalog fetch timestamps across client-side
-// navigation so returning from a course detail page does not refetch fresh data.
-const catalogFetchedAt = new Map<string, number>();
-const catalogAttemptedAt = new Map<string, number>();
+const CATALOG_CACHE_KEY = "courses-list:all";
+const PAGE_SIZE = 9;
 const CATALOG_STALE_AFTER = 30_000;
-const CATALOG_RETRY_GUARD = 2_000;
+const REVALIDATION_EVENT_GUARD = 1_500;
+const REQUEST_TIMEOUT = 15_000;
 
-// Warm a course's detail/content cache once per id on hover/focus.
+let catalogFetchedAt = 0;
+let catalogAttemptedAt = 0;
+
 const warmedCourses = new Set<string>();
+
 function warmCourse(id: string) {
   if (!id || warmedCourses.has(id)) return;
 
   warmedCourses.add(id);
+
   void fetch(`/api/courses/${id}/warm`).catch(() => {
-    // Permit another attempt if the preload failed.
     warmedCourses.delete(id);
   });
 }
 
+async function fetchAllCourses(signal: AbortSignal): Promise<Course[]> {
+  const limit = PAGE_SIZE;
+
+  const firstParams = new URLSearchParams({
+    page: "1",
+    limit: String(limit),
+  });
+
+  const firstResponse = await fetch(`/api/courses?${firstParams}`, {
+    signal,
+    cache: "no-store",
+  });
+
+  if (!firstResponse.ok) {
+    throw new Error("Course request failed");
+  }
+
+  const firstResult = (await firstResponse.json()) as CoursesApiResponse;
+
+  const firstPage = Array.isArray(firstResult.data)
+    ? firstResult.data
+    : [];
+
+  const totalPages = Math.max(
+    1,
+    firstResult.pagination?.pages ?? 1,
+  );
+
+  if (totalPages === 1) return firstPage;
+
+  const remainingPages = await Promise.all(
+    Array.from({ length: totalPages - 1 }, async (_, index) => {
+      const page = index + 2;
+
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+      });
+
+      const response = await fetch(`/api/courses?${params}`, {
+        signal,
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Could not load course page ${page}`);
+      }
+
+      const result = (await response.json()) as CoursesApiResponse;
+
+      return Array.isArray(result.data) ? result.data : [];
+    }),
+  );
+
+  return [...firstPage, ...remainingPages.flat()];
+}
+
+const normalize = (value: string | null | undefined) =>
+  (value ?? "").trim().toLocaleLowerCase();
+
 export default function CoursesPage() {
   const { data: session } = useSession();
+
   const [purchasedCourseIds, setPurchasedCourseIds] = useState<Set<string>>(
     () => new Set(),
   );
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isFiltering, setIsFiltering] = useState(false);
+
+  const [courses, setCourses] = useState<Course[]>(() => {
+    return readResourceCache<Course[]>(CATALOG_CACHE_KEY, "public") ?? [];
+  });
+
+  const [isLoading, setIsLoading] = useState(() => {
+    return !readResourceCache<Course[]>(CATALOG_CACHE_KEY, "public");
+  });
+
   const [error, setError] = useState(false);
   const [searchInput, setSearchInput] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedLevel, setSelectedLevel] = useState("");
   const [page, setPage] = useState(1);
-  const [pageCount, setPageCount] = useState(1);
   const [retry, setRetry] = useState(0);
-  const hasSearched = searchQuery.trim().length > 0;
-  const activeCacheKey = `courses-list:${page}:${searchQuery.trim()}:${selectedCategory}:${selectedLevel}`;
-  const backgroundRefreshRef = useRef(false);
-  const shownCatalogSignatureRef = useRef("");
+
   const lastCatalogRevalidationRef = useRef(0);
   const lastPurchasedRefreshRef = useRef(0);
   const purchasedRefreshInFlightRef = useRef(false);
+  const catalogRequestInFlightRef = useRef(false);
 
-  // Hydrate from localStorage cache after mount so navigation restores the
-// exact catalog state (page + last applied filters), not a stale default.
-  useEffect(() => {
-    const cached = readResourceCache<Course[]>(activeCacheKey, "public");
-    if (cached) {
+  // Instant client-side search and filtering.
+  const visibleCourses = useMemo(() => {
+    const query = normalize(searchInput);
+
+    return courses.filter((course) => {
+      const matchesQuery =
+        !query ||
+        [
+          course.title,
+          course.description,
+          course.category,
+          course.level,
+          course.instructor?.firstName,
+          course.instructor?.lastName,
+        ].some((value) => normalize(value).includes(query));
+
+      const matchesCategory =
+        !selectedCategory || course.category === selectedCategory;
+
+      const matchesLevel =
+        !selectedLevel || course.level === selectedLevel;
+
+      return matchesQuery && matchesCategory && matchesLevel;
+    });
+  }, [courses, searchInput, selectedCategory, selectedLevel]);
+
+  const pageCount = Math.max(
+    1,
+    Math.ceil(visibleCourses.length / PAGE_SIZE),
+  );
+
+  const safePage = Math.min(page, pageCount);
+
+  const paginatedCourses = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE;
+    return visibleCourses.slice(start, start + PAGE_SIZE);
+  }, [visibleCourses, safePage]);
+
+  const hasActiveFilters =
+    searchInput.trim().length > 0 ||
+    Boolean(selectedCategory) ||
+    Boolean(selectedLevel);
+
+  // Load the complete catalog and cache it.
+  const loadCatalog = useCallback(async (force = false) => {
+    const cached = readResourceCache<Course[]>(
+      CATALOG_CACHE_KEY,
+      "public",
+    );
+
+    const now = Date.now();
+
+    if (
+      !force &&
+      cached &&
+      now - catalogFetchedAt < CATALOG_STALE_AFTER
+    ) {
       setCourses(cached);
       setIsLoading(false);
+      setError(false);
+      return;
     }
-  }, [activeCacheKey]);
 
-  // Revalidate only when the current catalog cache is stale. Browser events
-  // can fire in clusters when returning from another page/tab, so debounce them.
+    if (catalogRequestInFlightRef.current) return;
+
+    const controller = new AbortController();
+
+    catalogRequestInFlightRef.current = true;
+    catalogAttemptedAt = now;
+
+    if (!cached) setIsLoading(true);
+
+    setError(false);
+
+    const timeout = window.setTimeout(
+      () => controller.abort(),
+      REQUEST_TIMEOUT,
+    );
+
+    try {
+      const nextCourses = await fetchAllCourses(controller.signal);
+
+      primeResourceCache(
+        CATALOG_CACHE_KEY,
+        "public",
+        nextCourses,
+      );
+
+      catalogFetchedAt = Date.now();
+
+      setCourses(nextCourses);
+      setError(false);
+    } catch (requestError) {
+      if (
+        requestError instanceof DOMException &&
+        requestError.name === "AbortError"
+      ) {
+        if (!cached) setError(true);
+      } else if (!cached) {
+        setError(true);
+        toast.error("Could not load the course catalog");
+      }
+    } finally {
+      window.clearTimeout(timeout);
+      catalogRequestInFlightRef.current = false;
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Initial load and manual retry.
+  useEffect(() => {
+    void loadCatalog(retry > 0);
+  }, [loadCatalog, retry]);
+
+  // Navigation and browser restoration without duplicate requests.
   useEffect(() => {
     const revalidate = () => {
       if (document.visibilityState !== "visible") return;
 
       const now = Date.now();
-      if (now - lastCatalogRevalidationRef.current < 1_500) return;
+
+      if (
+        now - lastCatalogRevalidationRef.current <
+        REVALIDATION_EVENT_GUARD
+      ) {
+        return;
+      }
+
       lastCatalogRevalidationRef.current = now;
 
-      const fetchedAt = catalogFetchedAt.get(activeCacheKey) ?? 0;
-      const attemptedAt = catalogAttemptedAt.get(activeCacheKey) ?? 0;
+      if (now - catalogFetchedAt < CATALOG_STALE_AFTER) return;
 
-      // Keep the restored catalog on screen and avoid refetching fresh data.
-      if (now - fetchedAt < CATALOG_STALE_AFTER) return;
-      // Also avoid aborting/restarting a request that has just started.
-      if (now - attemptedAt < CATALOG_RETRY_GUARD) return;
+      if (now - catalogAttemptedAt < REVALIDATION_EVENT_GUARD) return;
 
-      backgroundRefreshRef.current = true;
-      setRetry((current) => current + 1);
+      void loadCatalog();
     };
 
     const handlePageShow = (event: PageTransitionEvent) => {
@@ -125,42 +300,64 @@ export default function CoursesPage() {
       document.removeEventListener("visibilitychange", revalidate);
       window.removeEventListener("pageshow", handlePageShow);
     };
-  }, [activeCacheKey]);
+  }, [loadCatalog]);
 
+  // Refresh purchased-course information independently.
   useEffect(() => {
     const userId = session?.user?.id;
+
     if (!userId) {
-      setPurchasedCourseIds((prev) => (prev.size === 0 ? prev : new Set()));
+      setPurchasedCourseIds((previous) =>
+        previous.size === 0 ? previous : new Set(),
+      );
       return;
     }
 
     let active = true;
+
     const refreshPurchasedCourses = async (force = false) => {
       const now = Date.now();
+
       if (purchasedRefreshInFlightRef.current) return;
-      if (!force && now - lastPurchasedRefreshRef.current < 30_000) return;
+
+      if (
+        !force &&
+        now - lastPurchasedRefreshRef.current < 30_000
+      ) {
+        return;
+      }
 
       purchasedRefreshInFlightRef.current = true;
       lastPurchasedRefreshRef.current = now;
 
       try {
-        const response = await fetch("/api/enrollments/purchased", {
-          cache: "no-store",
-        });
+        const response = await fetch(
+          "/api/enrollments/purchased",
+          { cache: "no-store" },
+        );
+
         if (!response.ok) return;
 
-        const result = (await response.json()) as { courseIds?: string[] };
-        if (active) {
-          setPurchasedCourseIds((prev) => {
-            const next = new Set(result.courseIds ?? []);
-            if (prev.size === next.size && [...prev].every((id) => next.has(id))) {
-              return prev;
-            }
-            return next;
-          });
-        }
+        const result = (await response.json()) as {
+          courseIds?: string[];
+        };
+
+        if (!active) return;
+
+        setPurchasedCourseIds((previous) => {
+          const next = new Set(result.courseIds ?? []);
+
+          if (
+            previous.size === next.size &&
+            [...previous].every((id) => next.has(id))
+          ) {
+            return previous;
+          }
+
+          return next;
+        });
       } catch {
-        // Keep the public catalog usable if the ownership lookup fails.
+        // Keep the public catalog usable if ownership lookup fails.
       } finally {
         purchasedRefreshInFlightRef.current = false;
       }
@@ -168,11 +365,16 @@ export default function CoursesPage() {
 
     void refreshPurchasedCourses(true);
 
-    const handlePageShow = (event: PageTransitionEvent) => {
-      if (event.persisted) void refreshPurchasedCourses();
+    const handleFocus = () => {
+      void refreshPurchasedCourses();
     };
 
-    const handleFocus = () => void refreshPurchasedCourses();
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        void refreshPurchasedCourses();
+      }
+    };
+
     window.addEventListener("focus", handleFocus);
     window.addEventListener("pageshow", handlePageShow);
 
@@ -183,171 +385,74 @@ export default function CoursesPage() {
     };
   }, [session?.user?.id]);
 
-  useEffect(() => {
-    // If this filter/page was fetched recently and its cached payload exists,
-    // restore it without making another network request after navigation.
-    if (retry === 0) {
-      const freshCachedCourses = readResourceCache<Course[]>(activeCacheKey, "public");
-      const fetchedAt = catalogFetchedAt.get(activeCacheKey) ?? 0;
-      if (
-        freshCachedCourses &&
-        Date.now() - fetchedAt < CATALOG_STALE_AFTER
-      ) {
-        setCourses(freshCachedCourses);
-        setIsLoading(false);
-        setIsFiltering(false);
-        return;
-      }
-    }
-
-    const controller = new AbortController();
-    let isCurrentRequest = true;
-    const isBackgroundRefresh = backgroundRefreshRef.current;
-    backgroundRefreshRef.current = false;
-    const isFirstLoad = courses.length === 0 && !error && !hasSearched;
-    if (!isBackgroundRefresh && isFirstLoad && isLoading) setIsLoading(true);
-    else if (!isBackgroundRefresh) setIsFiltering(true);
-    setError(false);
-    // Instant for typing (bundle-style): short debounce keeps keystrokes
-    // snappy, and we keep old results on screen instead of flashing
-    // the skeleton on every keystroke.
-    // The catalog payload can take a while on a cold server cache with a
-    // remote DB; never let one hung request hold the page in its loading
-    // state forever (a fresh first visit has no cache to fall back on).
-    const timeout = window.setTimeout(() => controller.abort(), 15000);
-    const timer = window.setTimeout(async () => {
-      const params = new URLSearchParams({ page: String(page), limit: "9" });
-      if (searchQuery.trim()) params.set("title", searchQuery.trim());
-      if (selectedCategory) params.set("category", selectedCategory);
-      if (selectedLevel) params.set("level", selectedLevel);
-      const cacheKey = activeCacheKey;
-      const cached = readResourceCache<Course[]>(cacheKey, "public");
-      catalogAttemptedAt.set(cacheKey, Date.now());
-      if (cached) {
-        setCourses(cached);
-        setIsLoading(false);
-      }
-      try {
-        setError(false);
-        const response = await fetch(`/api/courses?${params}`, {
-          signal: controller.signal,
-          cache: "no-store",
-        });
-        if (!response.ok) throw new Error("Course request failed");
-        const result = await response.json();
-        if (!isCurrentRequest) return;
-        const nextCourses: Course[] = Array.isArray(result.data)
-          ? result.data
-          : [];
-        const nextPageCount = Math.max(1, result.pagination?.pages ?? 1);
-        const nextSignature = JSON.stringify({
-          courses: nextCourses,
-          pageCount: nextPageCount,
-        });
-        if (nextSignature !== shownCatalogSignatureRef.current) {
-          shownCatalogSignatureRef.current = nextSignature;
-          setCourses(nextCourses);
-          setPageCount(nextPageCount);
-        }
-        primeResourceCache(cacheKey, "public", nextCourses);
-        catalogFetchedAt.set(cacheKey, Date.now());
-      } catch (requestError) {
-        if (!isCurrentRequest) return;
-        if (
-          requestError instanceof DOMException &&
-          requestError.name === "AbortError"
-        ) {
-          if (!cached && courses.length === 0) {
-            setIsLoading(false);
-            setError(true);
-          } else {
-            setIsLoading(false);
-            setIsFiltering(false);
-          }
-          return;
-        }
-        if (!cached && courses.length === 0) {
-          setError(true);
-          toast.error("Could not load the course catalog");
-        }
-      } finally {
-        window.clearTimeout(timeout);
-        if (!controller.signal.aborted) {
-          // Always release the blocking skeleton: success, empty results,
-          // server errors, timeouts. Without this the catalog spins forever
-          // whenever the fetch fails with no cache to fall back on (e.g. a
-          // fresh first visit to /courses).
-          setIsLoading(false);
-          setIsFiltering(false);
-        }
-      }
-    }, 120);
-
-    return () => {
-      isCurrentRequest = false;
-      window.clearTimeout(timer);
-      window.clearTimeout(timeout);
-      controller.abort();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, retry, searchQuery, selectedCategory, selectedLevel, activeCacheKey]);
-
-  function runSearch(value: string) {
-    setSearchQuery(value);
+  function resetFilters() {
+    setSearchInput("");
+    setSelectedCategory("");
+    setSelectedLevel("");
     setPage(1);
   }
 
-  function resetFilters() {
-    setSearchInput("");
-    setSearchQuery("");
-    setSelectedCategory("");
-    setSelectedLevel("");
+  function updateSearch(value: string) {
+    setSearchInput(value);
+    setPage(1);
+  }
+
+  function updateCategory(value: string) {
+    setSelectedCategory(value);
+    setPage(1);
+  }
+
+  function updateLevel(value: string) {
+    setSelectedLevel(value);
     setPage(1);
   }
 
   return (
     <main className="catalog-page">
       <Navbar />
+
       <header className="catalog-hero">
         <div className="catalog-hero-inner">
           <div className="catalog-eyebrow">
             <BookOpen size={14} /> THE PROPYCODER LIBRARY
           </div>
+
           <div className="catalog-hero-row">
             <div>
               <h1>
                 Find your next <em>skill.</em>
               </h1>
-              <p>Practical courses for the things you want to make next.</p>
+              <p>
+                Practical courses for the things you want to make next.
+              </p>
             </div>
+
             <div className="catalog-hero-note">
               <span>LEARN BY BUILDING</span>
               <strong>One project at a time.</strong>
             </div>
+
             <form
               className="catalog-hero-search"
               role="search"
-              onSubmit={(event) => {
-                event.preventDefault();
-                runSearch(searchInput);
-              }}
+              onSubmit={(event) => event.preventDefault()}
             >
               <div className="catalog-searchbar">
                 <Search size={17} />
+
                 <input
                   type="search"
                   aria-label="Search courses"
                   placeholder="Search Python, web development, data..."
                   value={searchInput}
-                  onChange={(event) => {
-                    setSearchInput(event.target.value);
-                    runSearch(event.target.value);
-                  }}
+                  onChange={(event) =>
+                    updateSearch(event.target.value)
+                  }
                 />
+
                 <button
                   type="submit"
                   className="catalog-search-go"
-                  disabled={isFiltering}
                 >
                   Search
                 </button>
@@ -360,22 +465,25 @@ export default function CoursesPage() {
       <section className="catalog-content">
         <div className="catalog-toolbar">
           <div className="catalog-results-label">
-            {isLoading
+            {isLoading && courses.length === 0
               ? "Finding courses"
-              : `${courses.length ? `Showing ${courses.length}` : "No"} ${courses.length === 1 ? "course" : "courses"}`}
-            {isFiltering && !isLoading ? " · updating…" : ""}
+              : `Showing ${visibleCourses.length} ${
+                  visibleCourses.length === 1 ? "course" : "courses"
+                }`}
           </div>
+
           <div className="catalog-filters">
             <label>
               <span>Category</span>
+
               <select
                 value={selectedCategory}
-                onChange={(event) => {
-                  setSelectedCategory(event.target.value);
-                  setPage(1);
-                }}
+                onChange={(event) =>
+                  updateCategory(event.target.value)
+                }
               >
                 <option value="">All topics</option>
+
                 {categories.map((category) => (
                   <option value={category} key={category}>
                     {category}
@@ -383,19 +491,22 @@ export default function CoursesPage() {
                 ))}
               </select>
             </label>
+
             <label>
               <span>Level</span>
+
               <select
                 value={selectedLevel}
-                onChange={(event) => {
-                  setSelectedLevel(event.target.value);
-                  setPage(1);
-                }}
+                onChange={(event) =>
+                  updateLevel(event.target.value)
+                }
               >
                 <option value="">All levels</option>
+
                 {levels.map((level) => (
                   <option value={level} key={level}>
-                    {level.charAt(0) + level.slice(1).toLowerCase()}
+                    {level.charAt(0) +
+                      level.slice(1).toLowerCase()}
                   </option>
                 ))}
               </select>
@@ -403,8 +514,11 @@ export default function CoursesPage() {
           </div>
         </div>
 
-        {isLoading ? (
-          <div className="catalog-grid" aria-label="Loading courses">
+        {isLoading && courses.length === 0 ? (
+          <div
+            className="catalog-grid"
+            aria-label="Loading courses"
+          >
             {Array.from({ length: 6 }, (_, index) => (
               <div className="catalog-skeleton" key={index}>
                 <span />
@@ -413,40 +527,54 @@ export default function CoursesPage() {
               </div>
             ))}
           </div>
-        ) : error ? (
+        ) : error && courses.length === 0 ? (
           <div className="catalog-empty">
             <BookOpen />
             <h2>The catalog is taking a break.</h2>
-            <p>Your filters are saved. Try loading the courses again.</p>
-            <button onClick={() => setRetry((current) => current + 1)}>
+            <p>
+              Your filters are saved. Try loading the courses again.
+            </p>
+
+            <button
+              onClick={() =>
+                setRetry((current) => current + 1)
+              }
+            >
               Retry
             </button>
           </div>
-        ) : courses.length === 0 ? (
+        ) : visibleCourses.length === 0 ? (
           <div className="catalog-empty">
             <Search />
+
             <h2>
-              {hasSearched
-                ? `No courses match “${searchQuery.trim()}”.`
+              {hasActiveFilters
+                ? "No courses match your search."
                 : "No courses found."}
             </h2>
+
             <p>
-              {hasSearched
-                ? "Try a different term, or clear filters to browse everything."
-                : "Try a different search or clear your filters."}
+              {hasActiveFilters
+                ? "Try a different term or clear your filters to browse everything."
+                : "Check back soon for new courses."}
             </p>
-            <button onClick={resetFilters}>Clear filters</button>
+
+            {hasActiveFilters && (
+              <button onClick={resetFilters}>
+                Clear filters
+              </button>
+            )}
           </div>
         ) : (
           <div className="catalog-grid">
-            {courses.map((course, index) => (
+            {paginatedCourses.map((course, index) => (
               <Link
                 href={`/courses/${course.id}`}
-                className="catalog-card cursor-pointer"
                 key={course.id}
-                aria-label={`View ${course.title}`}
+                className="catalog-card cursor-pointer"
                 onMouseEnter={() => warmCourse(course.id)}
                 onFocus={() => warmCourse(course.id)}
+                aria-label={`View course: ${course.title}`}
               >
                 <div
                   className={`catalog-art catalog-art-${index % 3}`}
@@ -463,9 +591,18 @@ export default function CoursesPage() {
                       <span className="catalog-art-category">
                         {course.category}
                       </span>
-                      <span className="catalog-art-index">0{index + 1}</span>
+
+                      <span className="catalog-art-index">
+                        {String(
+                          (safePage - 1) * PAGE_SIZE + index + 1,
+                        ).padStart(2, "0")}
+                      </span>
+
                       <div className="catalog-art-glyph">
-                        <BookOpen size={39} strokeWidth={1.3} />
+                        <BookOpen
+                          size={39}
+                          strokeWidth={1.3}
+                        />
                       </div>
                     </>
                   )}
@@ -474,8 +611,10 @@ export default function CoursesPage() {
                 <div className="catalog-card-body">
                   <div className="catalog-card-tags">
                     <span>{course.level.toLowerCase()}</span>
+
                     <span>
-                      {course.duration} hour{course.duration === 1 ? "" : "s"}
+                      {course.duration} hour
+                      {course.duration === 1 ? "" : "s"}
                     </span>
                   </div>
 
@@ -488,30 +627,40 @@ export default function CoursesPage() {
                   <div className="catalog-instructor">
                     <InstructorAvatar
                       className="catalog-instructor-avatar"
-                      avatar={course.instructor.avatar}
-                      firstName={course.instructor.firstName}
-                      lastName={course.instructor.lastName}
+                      avatar={course.instructor?.avatar ?? null}
+                      firstName={
+                        course.instructor?.firstName ?? ""
+                      }
+                      lastName={
+                        course.instructor?.lastName ?? ""
+                      }
                     />
+
                     <span>
-                      {course.instructor.firstName} {course.instructor.lastName}
+                      {course.instructor?.firstName}{" "}
+                      {course.instructor?.lastName}
                     </span>
+
                     <span className="catalog-student-count">
-                      <Users size={13} /> {course._count.enrollments}
+                      <Users size={13} />{" "}
+                      {course._count?.enrollments ?? 0}
                     </span>
                   </div>
 
                   <div className="catalog-card-footer">
                     {purchasedCourseIds.has(course.id) ? (
-                      <span className="purchased-pill">Purchased</span>
+                      <span className="purchased-pill">
+                        Purchased
+                      </span>
                     ) : (
                       <PriceTag
                         price={course.price}
                         offerPrice={course.offerPrice ?? null}
                       />
                     )}
+
                     <span className="catalog-card-action">
-                      {session?.user ? "View course" : "Start learning"}
-                      <ArrowRight size={15} />
+                      View course <ArrowRight size={15} />
                     </span>
                   </div>
                 </div>
@@ -521,20 +670,29 @@ export default function CoursesPage() {
         )}
 
         {!isLoading && !error && pageCount > 1 && (
-          <nav className="catalog-pagination" aria-label="Course pages">
+          <nav
+            className="catalog-pagination"
+            aria-label="Course pages"
+          >
             <button
-              disabled={page <= 1}
-              onClick={() => setPage((current) => Math.max(1, current - 1))}
+              disabled={safePage <= 1}
+              onClick={() =>
+                setPage((current) => Math.max(1, current - 1))
+              }
             >
               <ArrowLeft size={15} /> Previous
             </button>
+
             <span>
-              Page <strong>{page}</strong> of {pageCount}
+              Page <strong>{safePage}</strong> of {pageCount}
             </span>
+
             <button
-              disabled={page >= pageCount}
+              disabled={safePage >= pageCount}
               onClick={() =>
-                setPage((current) => Math.min(pageCount, current + 1))
+                setPage((current) =>
+                  Math.min(pageCount, current + 1),
+                )
               }
             >
               Next <ArrowRight size={15} />
@@ -542,9 +700,11 @@ export default function CoursesPage() {
           </nav>
         )}
       </section>
+
       <footer className="catalog-footer">
         <span>PROPYCODER LEARNING</span>
         <span>Build the skill. Build the thing.</span>
+
         <Link href="/pycoder">
           Open PyCoder lab <ArrowRight size={14} />
         </Link>
