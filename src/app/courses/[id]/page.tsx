@@ -225,10 +225,12 @@ export default function CourseDetailPage({ params }: Props) {
       }
     };
 
+    // Restore cached content once, synchronously after hydration, without
+    // adding an extra effect that runs again on the very first mount.
     restore();
     window.addEventListener("pageshow", restore);
     return () => window.removeEventListener("pageshow", restore);
-  }, [pathname]);
+  }, []);
 
   useEffect(() => {
     // Keep courseId in sync with the router params (covers trailing-slash /

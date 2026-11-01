@@ -91,8 +91,8 @@ export default function BundlesPage() {
                 Course <em>bundles.</em>
               </h1>
               <p>
-                Grab 2 or more courses together at a reduced price. One purchase
-                unlocks every course in the bundle instantly.
+                Grab 2 or more courses together at a reduced price.
+                 {/* One purchase unlocks every course in the bundle instantly. */}
               </p>
             </div>
             <div className="catalog-hero-note">
@@ -138,7 +138,7 @@ export default function BundlesPage() {
             <Package />
             <h2>No bundles available right now.</h2>
             <p>Check back soon — bundle deals are on the way.</p>
-            <Link href="/courses">Browse courses instead</Link>
+            {/* <Link href="/courses">Browse courses instead</Link> */}
           </div>
         ) : (
           <>

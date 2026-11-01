@@ -1543,9 +1543,9 @@ html[data-theme="dark"] .policy-operator {
 }
 .catalog-content {
   width: min(1180px, calc(100% - 64px));
-  min-height: 500px;
+  /* min-height: 500px; */
   margin: 0 auto;
-  padding: 30px 0 74px;
+  padding: 20px 0;
 }
 .catalog-toolbar {
   display: flex;
@@ -1744,7 +1744,7 @@ html[data-theme="dark"] .policy-operator {
   color: #404040;
   font-size: 12px;
 }
-.catalog-card-footer a {
+.catalog-card-footer .catalog-card-action {
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -1778,7 +1778,8 @@ html[data-theme="dark"] .policy-operator {
 }
 .catalog-empty {
   display: flex;
-  min-height: 270px;
+  /* min-height: 270px; */
+  min-height: 57vh;
   flex-direction: column;
   align-items: center;
   justify-content: center;

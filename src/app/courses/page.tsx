@@ -1,7 +1,7 @@
 "use client";
 
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
@@ -35,37 +35,24 @@ const categories = [
 ];
 const levels = ["BEGINNER", "INTERMEDIATE", "ADVANCED"];
 
-// Local `CourseDetail` shape — heavy pages (e.g. /courses/[id]) read this
-// from localStorage on first paint so navigation doesn't wait on a fetch.
-interface CourseDetail {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  level: string;
-  price: number;
-  offerPrice: number | null;
-  image: string | null;
-  duration: number;
-  instructor: { firstName: string; lastName: string; avatar: string | null };
-  _count: { enrollments: number };
-}
+// Keep successful/attempted catalog fetch timestamps across client-side
+// navigation so returning from a course detail page does not refetch fresh data.
+const catalogFetchedAt = new Map<string, number>();
+const catalogAttemptedAt = new Map<string, number>();
+const CATALOG_STALE_AFTER = 30_000;
+const CATALOG_RETRY_GUARD = 2_000;
 
-// Warm a course's detail/content cache once per id on hover/focus so the
-// navigation is instant. Deduped so repeated hovers don't refire. When the
-// course is cached client-side (localStorage), also prime the localStorage
-// entry so the /courses/[id] page paints without a round trip.
+// Warm a course's detail/content cache once per id on hover/focus.
 const warmedCourses = new Set<string>();
 function warmCourse(id: string) {
   if (!id || warmedCourses.has(id)) return;
-  warmedCourses.add(id);
-  try {
-    void fetch(`/api/courses/${id}/warm`);
-  } catch {
-  }
-  
-}
 
+  warmedCourses.add(id);
+  void fetch(`/api/courses/${id}/warm`).catch(() => {
+    // Permit another attempt if the preload failed.
+    warmedCourses.delete(id);
+  });
+}
 
 export default function CoursesPage() {
   const { data: session } = useSession();
@@ -74,15 +61,6 @@ export default function CoursesPage() {
   );
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Hydrate from localStorage cache after mount to avoid SSR mismatch
-  useEffect(() => {
-    const cached = readResourceCache<Course[]>("courses-list:1:::", "public");
-    if (cached) {
-      setCourses(cached);
-      setIsLoading(false);
-    }
-  }, []);
   const [isFiltering, setIsFiltering] = useState(false);
   const [error, setError] = useState(false);
   const [searchInput, setSearchInput] = useState("");
@@ -94,77 +72,141 @@ export default function CoursesPage() {
   const [retry, setRetry] = useState(0);
   const hasSearched = searchQuery.trim().length > 0;
   const activeCacheKey = `courses-list:${page}:${searchQuery.trim()}:${selectedCategory}:${selectedLevel}`;
+  const backgroundRefreshRef = useRef(false);
+  const shownCatalogSignatureRef = useRef("");
+  const lastCatalogRevalidationRef = useRef(0);
+  const lastPurchasedRefreshRef = useRef(0);
+  const purchasedRefreshInFlightRef = useRef(false);
 
+  // Hydrate from localStorage cache after mount so navigation restores the
+// exact catalog state (page + last applied filters), not a stale default.
+  useEffect(() => {
+    const cached = readResourceCache<Course[]>(activeCacheKey, "public");
+    if (cached) {
+      setCourses(cached);
+      setIsLoading(false);
+    }
+  }, [activeCacheKey]);
+
+  // Revalidate only when the current catalog cache is stale. Browser events
+  // can fire in clusters when returning from another page/tab, so debounce them.
   useEffect(() => {
     const revalidate = () => {
-      if (document.visibilityState === "visible") {
-        setRetry((current) => current + 1);
-      }
+      if (document.visibilityState !== "visible") return;
+
+      const now = Date.now();
+      if (now - lastCatalogRevalidationRef.current < 1_500) return;
+      lastCatalogRevalidationRef.current = now;
+
+      const fetchedAt = catalogFetchedAt.get(activeCacheKey) ?? 0;
+      const attemptedAt = catalogAttemptedAt.get(activeCacheKey) ?? 0;
+
+      // Keep the restored catalog on screen and avoid refetching fresh data.
+      if (now - fetchedAt < CATALOG_STALE_AFTER) return;
+      // Also avoid aborting/restarting a request that has just started.
+      if (now - attemptedAt < CATALOG_RETRY_GUARD) return;
+
+      backgroundRefreshRef.current = true;
+      setRetry((current) => current + 1);
     };
+
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) revalidate();
+    };
+
     window.addEventListener("focus", revalidate);
+    window.addEventListener("popstate", revalidate);
     document.addEventListener("visibilitychange", revalidate);
+    window.addEventListener("pageshow", handlePageShow);
+
     return () => {
       window.removeEventListener("focus", revalidate);
+      window.removeEventListener("popstate", revalidate);
       document.removeEventListener("visibilitychange", revalidate);
+      window.removeEventListener("pageshow", handlePageShow);
     };
-  }, []);
+  }, [activeCacheKey]);
 
   useEffect(() => {
     const userId = session?.user?.id;
     if (!userId) {
-      setPurchasedCourseIds(new Set());
+      setPurchasedCourseIds((prev) => (prev.size === 0 ? prev : new Set()));
       return;
     }
 
     let active = true;
-    const refreshPurchasedCourses = async () => {
+    const refreshPurchasedCourses = async (force = false) => {
+      const now = Date.now();
+      if (purchasedRefreshInFlightRef.current) return;
+      if (!force && now - lastPurchasedRefreshRef.current < 30_000) return;
+
+      purchasedRefreshInFlightRef.current = true;
+      lastPurchasedRefreshRef.current = now;
+
       try {
         const response = await fetch("/api/enrollments/purchased", {
           cache: "no-store",
         });
         if (!response.ok) return;
+
         const result = (await response.json()) as { courseIds?: string[] };
         if (active) {
-          setPurchasedCourseIds(new Set(result.courseIds ?? []));
+          setPurchasedCourseIds((prev) => {
+            const next = new Set(result.courseIds ?? []);
+            if (prev.size === next.size && [...prev].every((id) => next.has(id))) {
+              return prev;
+            }
+            return next;
+          });
         }
       } catch {
         // Keep the public catalog usable if the ownership lookup fails.
+      } finally {
+        purchasedRefreshInFlightRef.current = false;
       }
     };
 
-    void refreshPurchasedCourses();
-    window.addEventListener("focus", refreshPurchasedCourses);
-    window.addEventListener("pageshow", refreshPurchasedCourses);
+    void refreshPurchasedCourses(true);
+
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) void refreshPurchasedCourses();
+    };
+
+    const handleFocus = () => void refreshPurchasedCourses();
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("pageshow", handlePageShow);
 
     return () => {
       active = false;
-      window.removeEventListener("focus", refreshPurchasedCourses);
-      window.removeEventListener("pageshow", refreshPurchasedCourses);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("pageshow", handlePageShow);
     };
   }, [session?.user?.id]);
 
   useEffect(() => {
-    function retryCatalogLoad() {
-      setIsLoading(false);
-      setIsFiltering(false);
-      setRetry((current) => current + 1);
+    // If this filter/page was fetched recently and its cached payload exists,
+    // restore it without making another network request after navigation.
+    if (retry === 0) {
+      const freshCachedCourses = readResourceCache<Course[]>(activeCacheKey, "public");
+      const fetchedAt = catalogFetchedAt.get(activeCacheKey) ?? 0;
+      if (
+        freshCachedCourses &&
+        Date.now() - fetchedAt < CATALOG_STALE_AFTER
+      ) {
+        setCourses(freshCachedCourses);
+        setIsLoading(false);
+        setIsFiltering(false);
+        return;
+      }
     }
 
-    // Next.js navigation uses popstate; a full browser restore uses pageshow.
-    window.addEventListener("popstate", retryCatalogLoad);
-    window.addEventListener("pageshow", retryCatalogLoad);
-    return () => {
-      window.removeEventListener("popstate", retryCatalogLoad);
-      window.removeEventListener("pageshow", retryCatalogLoad);
-    };
-  }, []);
-
-  useEffect(() => {
     const controller = new AbortController();
     let isCurrentRequest = true;
+    const isBackgroundRefresh = backgroundRefreshRef.current;
+    backgroundRefreshRef.current = false;
     const isFirstLoad = courses.length === 0 && !error && !hasSearched;
-    if (isFirstLoad && isLoading) setIsLoading(true);
-    else setIsFiltering(true);
+    if (!isBackgroundRefresh && isFirstLoad && isLoading) setIsLoading(true);
+    else if (!isBackgroundRefresh) setIsFiltering(true);
     setError(false);
     // Instant for typing (bundle-style): short debounce keeps keystrokes
     // snappy, and we keep old results on screen instead of flashing
@@ -180,6 +222,7 @@ export default function CoursesPage() {
       if (selectedLevel) params.set("level", selectedLevel);
       const cacheKey = activeCacheKey;
       const cached = readResourceCache<Course[]>(cacheKey, "public");
+      catalogAttemptedAt.set(cacheKey, Date.now());
       if (cached) {
         setCourses(cached);
         setIsLoading(false);
@@ -196,21 +239,30 @@ export default function CoursesPage() {
         const nextCourses: Course[] = Array.isArray(result.data)
           ? result.data
           : [];
-        setCourses(nextCourses);
-        setPageCount(Math.max(1, result.pagination?.pages ?? 1));
+        const nextPageCount = Math.max(1, result.pagination?.pages ?? 1);
+        const nextSignature = JSON.stringify({
+          courses: nextCourses,
+          pageCount: nextPageCount,
+        });
+        if (nextSignature !== shownCatalogSignatureRef.current) {
+          shownCatalogSignatureRef.current = nextSignature;
+          setCourses(nextCourses);
+          setPageCount(nextPageCount);
+        }
         primeResourceCache(cacheKey, "public", nextCourses);
+        catalogFetchedAt.set(cacheKey, Date.now());
       } catch (requestError) {
         if (!isCurrentRequest) return;
         if (
           requestError instanceof DOMException &&
           requestError.name === "AbortError"
         ) {
-          // Timeout or superseded filter change: show the empty state (with
-          // Retry) instead of spinning forever. A cached copy, if any, is
-          // already on screen from the read above.
           if (!cached && courses.length === 0) {
             setIsLoading(false);
             setError(true);
+          } else {
+            setIsLoading(false);
+            setIsFiltering(false);
           }
           return;
         }
@@ -388,9 +440,15 @@ export default function CoursesPage() {
         ) : (
           <div className="catalog-grid">
             {courses.map((course, index) => (
-              <article className="catalog-card cursor-pointer" key={course.id} onClick={() => (window.location.href = `/courses/${course.id}`)}>
-                <Link
-                  href={`/courses/${course.id}`}
+              <Link
+                href={`/courses/${course.id}`}
+                className="catalog-card cursor-pointer"
+                key={course.id}
+                aria-label={`View ${course.title}`}
+                onMouseEnter={() => warmCourse(course.id)}
+                onFocus={() => warmCourse(course.id)}
+              >
+                <div
                   className={`catalog-art catalog-art-${index % 3}`}
                   style={
                     course.image
@@ -399,20 +457,20 @@ export default function CoursesPage() {
                         }
                       : undefined
                   }
-                  aria-label={`View ${course.title}`}
-                  onMouseEnter={() => warmCourse(course.id)}
-                  onFocus={() => warmCourse(course.id)}
-                >{
-                !course.image
-                  ? ( <>
-                  <span className="catalog-art-category">
-                    {course.category}
-                  </span>
-                  <span className="catalog-art-index">0{index + 1}</span>
-                  <div className="catalog-art-glyph">
-                    <BookOpen size={39} strokeWidth={1.3} />
-                  </div> </>) :<></> }
-                </Link>
+                >
+                  {!course.image && (
+                    <>
+                      <span className="catalog-art-category">
+                        {course.category}
+                      </span>
+                      <span className="catalog-art-index">0{index + 1}</span>
+                      <div className="catalog-art-glyph">
+                        <BookOpen size={39} strokeWidth={1.3} />
+                      </div>
+                    </>
+                  )}
+                </div>
+
                 <div className="catalog-card-body">
                   <div className="catalog-card-tags">
                     <span>{course.level.toLowerCase()}</span>
@@ -420,15 +478,13 @@ export default function CoursesPage() {
                       {course.duration} hour{course.duration === 1 ? "" : "s"}
                     </span>
                   </div>
-                  <Link
-                    href={`/courses/${course.id}`}
-                    className="catalog-card-title"
-                    onMouseEnter={() => warmCourse(course.id)}
-                    onFocus={() => warmCourse(course.id)}
-                  >
+
+                  <div className="catalog-card-title">
                     <h2>{course.title}</h2>
-                  </Link>
+                  </div>
+
                   <p>{course.description}</p>
+
                   <div className="catalog-instructor">
                     <InstructorAvatar
                       className="catalog-instructor-avatar"
@@ -443,6 +499,7 @@ export default function CoursesPage() {
                       <Users size={13} /> {course._count.enrollments}
                     </span>
                   </div>
+
                   <div className="catalog-card-footer">
                     {purchasedCourseIds.has(course.id) ? (
                       <span className="purchased-pill">Purchased</span>
@@ -452,21 +509,13 @@ export default function CoursesPage() {
                         offerPrice={course.offerPrice ?? null}
                       />
                     )}
-                    <Link
-                      href={
-                        session?.user
-                          ? `/courses/${course.id}`
-                          : "/auth/register"
-                      }
-                      onMouseEnter={() => warmCourse(course.id)}
-                      onFocus={() => warmCourse(course.id)}
-                    >
+                    <span className="catalog-card-action">
                       {session?.user ? "View course" : "Start learning"}
                       <ArrowRight size={15} />
-                    </Link>
+                    </span>
                   </div>
                 </div>
-              </article>
+              </Link>
             ))}
           </div>
         )}

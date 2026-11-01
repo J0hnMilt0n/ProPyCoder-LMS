@@ -13,7 +13,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "ProPyCoder | Learn by building",
+  title: "ProPyCoder",
   description:
     "Project-led software courses, practical coding labs, and a learning dashboard built for your next skill.",
     icons: {
