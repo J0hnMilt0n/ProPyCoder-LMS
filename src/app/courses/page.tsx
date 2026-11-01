@@ -66,6 +66,8 @@ const levels = ["BEGINNER", "INTERMEDIATE", "ADVANCED"];
 
 const CATALOG_CACHE_KEY = "courses-list:all";
 const LEGACY_CACHE_KEY = "courses-list:1:::";
+const PURCHASED_COURSES_CACHE_KEY = "courses-purchased";
+
 const PAGE_SIZE = 9;
 
 const CATALOG_STALE_AFTER = 30_000;
@@ -178,7 +180,7 @@ async function fetchAllCourses(
 }
 
 export default function CoursesPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   // Read the new complete-catalog cache first.
   // If it does not exist, use the old first-page cache temporarily
@@ -238,9 +240,6 @@ export default function CoursesPage() {
     useState<Set<string>>(() => new Set());
 
   const lastCatalogRevalidationRef = useRef(0);
-  const lastPurchasedRefreshRef = useRef(0);
-
-  const purchasedRefreshInFlightRef = useRef(false);
   const catalogRequestInFlightRef = useRef(false);
 
   /**
@@ -510,48 +509,69 @@ export default function CoursesPage() {
   /**
    * PURCHASED COURSE LOOKUP
    *
-   * This remains independent of the public course catalog.
+   * - Restores cached purchases immediately.
+   * - Fetches fresh purchased course IDs.
+   * - Stores purchases in a user-specific cache.
+   * - Refreshes when returning to the page.
+   *
+   * Uses effect-local request state instead of shared refs.
+   * This avoids the React Strict Mode cleanup/remount issue.
    */
   useEffect(() => {
     const userId = session?.user?.id;
 
-    if (!userId) {
-      setPurchasedCourseIds((previous) =>
-        previous.size === 0
-          ? previous
-          : new Set(),
-      );
+    if (status === "loading") {
+      return;
+    }
 
+    if (status !== "authenticated" || !userId) {
+      setPurchasedCourseIds(new Set());
       return;
     }
 
     let active = true;
+    let refreshInFlight = false;
+    let lastRefreshAt = 0;
+
+    const controller = new AbortController();
+
+    // Restore this user's cached purchases immediately.
+    const cachedPurchases = readResourceCache<string[]>(
+      PURCHASED_COURSES_CACHE_KEY,
+      userId,
+    );
+
+    setPurchasedCourseIds(
+      new Set(cachedPurchases ?? []),
+    );
 
     const refreshPurchasedCourses = async (
       force = false,
     ) => {
       const now = Date.now();
 
-      if (purchasedRefreshInFlightRef.current) {
+      if (!active || refreshInFlight) {
         return;
       }
 
       if (
         !force &&
-        now - lastPurchasedRefreshRef.current <
+        now - lastRefreshAt <
           PURCHASED_REFRESH_INTERVAL
       ) {
         return;
       }
 
-      purchasedRefreshInFlightRef.current = true;
-      lastPurchasedRefreshRef.current = now;
+      refreshInFlight = true;
+      lastRefreshAt = now;
 
       try {
         const response = await fetch(
           "/api/enrollments/purchased",
           {
+            credentials: "same-origin",
             cache: "no-store",
+            signal: controller.signal,
           },
         );
 
@@ -567,10 +587,17 @@ export default function CoursesPage() {
           return;
         }
 
+        const courseIds = result.courseIds ?? [];
+
+        // Cache only under the authenticated user's ID.
+        primeResourceCache(
+          PURCHASED_COURSES_CACHE_KEY,
+          userId,
+          courseIds,
+        );
+
         setPurchasedCourseIds((previous) => {
-          const next = new Set(
-            result.courseIds ?? [],
-          );
+          const next = new Set(courseIds);
 
           const unchanged =
             previous.size === next.size &&
@@ -581,13 +608,13 @@ export default function CoursesPage() {
           return unchanged ? previous : next;
         });
       } catch {
-        // Keep the public catalog usable if ownership
-        // lookup fails.
+        // Keep cached purchases if the API request fails.
       } finally {
-        purchasedRefreshInFlightRef.current = false;
+        refreshInFlight = false;
       }
     };
 
+    // Always fetch fresh ownership information on initial load.
     void refreshPurchasedCourses(true);
 
     const handleFocus = () => {
@@ -602,6 +629,12 @@ export default function CoursesPage() {
       }
     };
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void refreshPurchasedCourses();
+      }
+    };
+
     window.addEventListener("focus", handleFocus);
 
     window.addEventListener(
@@ -609,8 +642,14 @@ export default function CoursesPage() {
       handlePageShow,
     );
 
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange,
+    );
+
     return () => {
       active = false;
+      controller.abort();
 
       window.removeEventListener(
         "focus",
@@ -621,8 +660,13 @@ export default function CoursesPage() {
         "pageshow",
         handlePageShow,
       );
+
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange,
+      );
     };
-  }, [session?.user?.id]);
+  }, [session?.user?.id, status]);
 
   /**
    * FILTER HANDLERS
