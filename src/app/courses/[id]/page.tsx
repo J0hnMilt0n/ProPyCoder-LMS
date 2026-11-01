@@ -1128,11 +1128,7 @@ export default function CourseDetailPage({ params }: Props) {
               </div>
             </div>
           </div>
-
-          {/* Curriculum (left) + video player (right) ÔÇö full-width row */}
-          <div className="course-learning-grid">
-            <div className="course-curriculum">
-              {/* Live classes ÔÇö upcoming/running sessions for this course */}
+{/* Live classes ÔÇö upcoming/running sessions for this course */}
               {liveClasses.length > 0 && (
                 <div className="course-live">
                   <div className="course-live-head">
@@ -1220,6 +1216,9 @@ export default function CourseDetailPage({ params }: Props) {
                   </div>
                 </div>
               )}
+          {/* Curriculum (left) + video player (right) ÔÇö full-width row */}
+          <div className="course-learning-grid">
+            <div className="course-curriculum">
               <div className="course-curriculum-heading">
                 <div>
                   <span>WHAT YOU WILL LEARN</span>
