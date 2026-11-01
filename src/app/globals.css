@@ -8454,10 +8454,10 @@ html[data-theme="dark"] .certificate-logo .site-brand {
 
 /* Course detail — live classes block */
 .course-live {
-  margin-bottom: 26px;
+  /* margin-bottom: 26px; */
   border: 1px solid #ececee;
   border-radius: 16px;
-  padding: 18px;
+  padding: 18px 18px 0;
   background: linear-gradient(180deg, #fffaf7, #ffffff);
 }
 .course-live-head {
