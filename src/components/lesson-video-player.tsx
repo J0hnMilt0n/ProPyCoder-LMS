@@ -553,7 +553,7 @@ export function LessonVideoPlayer({
 
       <div
         className={`lvp-controls ${
-          controlsVisible || !isPlaying ? "is-visible" : ""
+          hasStarted && (controlsVisible || !isPlaying) ? "is-visible" : ""
         }`}
       >
         <input
