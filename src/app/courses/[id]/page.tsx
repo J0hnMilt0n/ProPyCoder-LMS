@@ -1153,8 +1153,24 @@ export default function CourseDetailPage({ params }: Props) {
                       return (
                         <div
                           key={item.id}
-                          className={`course-live-row is-${status.toLowerCase()}`}
-                        >
+                          className={`course-live-row items-center is-${status.toLowerCase()}`}
+                        >            
+                          <div className="">
+                            {canJoin ? (
+                            <a
+                              className="course-live-join"
+                              href={item.meetingUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              Join
+                            </a>
+                          ) : status === "SCHEDULED" || status === "LIVE" ? (
+                            <span className="course-live-join is-locked">
+                              Enroll to join
+                            </span>
+                          ) : null}
+                          </div>
                           <div className="course-live-when mt-2">
                             <strong>
                               {start.toLocaleDateString(undefined, {
@@ -1177,10 +1193,8 @@ export default function CourseDetailPage({ params }: Props) {
                               {PROVIDER_LABELS[item.provider] ?? item.provider}
                               </p>
                           </div>
-                          <div className="course-live-copy">
-                            <div>
-                              <h4>{item.title}</h4>
-                              <span
+                          <div className="course-live-copy mt-6">
+                            <span
                                 className={`live-pill is-${status.toLowerCase()}`}
                               >
                                 {status === "LIVE" && (
@@ -1188,28 +1202,19 @@ export default function CourseDetailPage({ params }: Props) {
                                 )}
                                 {STATUS_LABELS[status]}
                               </span>
+                            <div>
+                              <h4>{item.title}</h4>
+                              
                             </div>
-                            <p className="ps-3">
+                            <p className="">
                               
                               {item.description
                                 ? `${item.description}`
                                 : ""}
                             </p>
+                            
                           </div>
-                          {canJoin ? (
-                            <a
-                              className="course-live-join"
-                              href={item.meetingUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              Join
-                            </a>
-                          ) : status === "SCHEDULED" || status === "LIVE" ? (
-                            <span className="course-live-join is-locked">
-                              Enroll to join
-                            </span>
-                          ) : null}
+                          
                         </div>
                       );
                     })}

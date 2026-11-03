@@ -8549,7 +8549,7 @@ html[data-theme="dark"] .certificate-logo .site-brand {
   align-items: center;
   gap: 6px;
   padding: 8px 15px;
-  margin-right: 110px;
+  /* margin-right: 110px; */
   border-radius: 9px;
   background: #e95f32;
   color: #fff;
@@ -8587,7 +8587,7 @@ html[data-theme="dark"] .certificate-logo .site-brand {
 
   .course-live-row {
     display: grid;
-    grid-template-columns: 52px minmax(0, 1fr);
+    /* grid-template-cols: 52px minmax(0, 1fr); */
     align-items: start;
     gap: 8px 11px;
     padding: 11px;
@@ -8596,7 +8596,7 @@ html[data-theme="dark"] .certificate-logo .site-brand {
 
   .course-live-when {
     min-width: 0;
-    align-items: flex-start;
+    /* align-items: flex-start; */
     padding-top: 2px;
   }
 
