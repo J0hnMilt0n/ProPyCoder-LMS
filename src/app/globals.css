@@ -1779,7 +1779,7 @@ html[data-theme="dark"] .policy-operator {
 .catalog-empty {
   display: flex;
   /* min-height: 270px; */
-  min-height: 57vh;
+  min-height: 50vh;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -6886,7 +6886,7 @@ html[data-theme="dark"] .text-emerald-600 {
 }
 
 .bundle-mrp {
-  color: #9ca3af;
+  color: #9ca3af !important;
   font-size: 0.85rem;
   text-decoration: line-through;
 }
