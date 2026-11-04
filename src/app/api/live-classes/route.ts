@@ -62,7 +62,9 @@ export async function GET(request: NextRequest) {
         endsAt: row.endsAt.toISOString(),
         status: effectiveStatus(row),
       }));
-      return NextResponse.json({ data });
+      return NextResponse.json({ data }, {
+        headers: { "Cache-Control": "public, max-age=60, s-maxage=60, stale-while-revalidate=300" },
+      });
     }
 
     const session = await auth();

@@ -1,4 +1,4 @@
-import { revalidateTag, unstable_cache } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { cached, invalidate, type CacheOptions } from "@/lib/data-cache";
 
 /**
@@ -110,21 +110,33 @@ export function getCertificateDetail<T>(id: string, load: () => Promise<T>): Pro
 export function invalidateAdminOverview(): void {
   invalidate("admin-overview:");
   purgeTag(ADMIN_OVERVIEW_TAG);
+  try { revalidatePath(`/admin`); } catch { /* ignore */ }
 }
 
 export function invalidateBundles(): void {
   invalidate("bundles:");
   purgeTag(BUNDLES_TAG);
+  try {
+    revalidatePath(`/api/bundles`);
+    revalidatePath(`/bundles`);
+    revalidatePath(`/api/bundles/[id]`);
+    revalidatePath(`/bundles/[id]`, "page");
+  } catch { /* ignore */ }
 }
 
 export function invalidateAnnouncements(): void {
   invalidate("announcements:");
   purgeTag(ANNOUNCEMENTS_TAG);
+  try {
+    revalidatePath(`/api/announcements`);
+    revalidatePath(`/`);
+  } catch { /* ignore */ }
 }
 
 export function invalidateHome(): void {
   invalidate("home:");
   purgeTag(HOME_TAG);
+  try { revalidatePath(`/`); } catch { /* ignore */ }
 }
 
 /* ------------------------------ per-user reads ----------------------------- */

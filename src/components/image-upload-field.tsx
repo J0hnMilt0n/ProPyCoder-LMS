@@ -126,8 +126,8 @@ export function ImageUploadField({
           }}
           onCancel={() => setCropSrc(null)}
           aspectRatio={16 / 9}
-          maxDim={800}
-          quality={0.75}
+          maxDim={640}
+          quality={0.7}
         />
       )}
     </div>

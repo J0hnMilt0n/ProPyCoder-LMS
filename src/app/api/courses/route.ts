@@ -2,6 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
+
+// Public catalog � safe to cache at the edge to reduce Fast Origin Transfer.
+export const revalidate = 2592000;
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import {
   CATALOG_TAG,
@@ -99,7 +102,9 @@ export async function GET(request: NextRequest) {
       preloadCourse(course.id);
     }
 
-    return NextResponse.json(payload);
+    return NextResponse.json(payload, {
+      headers: { "Cache-Control": "public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=86400" },
+    });
   } catch (error) {
     console.error("Course fetch error:", error);
     return NextResponse.json(

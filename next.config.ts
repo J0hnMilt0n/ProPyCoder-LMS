@@ -8,8 +8,8 @@ const nextConfig: NextConfig = {
     // Keep page segments in the client Router Cache briefly so back/forward
     // paints instantly from cache while the server revalidates in background.
     staleTimes: {
-      dynamic: 30,
-      static: 180,
+      dynamic: 300,
+      static: 1800,
     },
   },
 };

@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getCourseDetail } from "@/lib/course-cache";
 
+export const revalidate = 2592000;
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -20,7 +22,9 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(course);
+    return NextResponse.json(course, {
+      headers: { "Cache-Control": "public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=86400" },
+    });
   } catch (error) {
     console.error("Course fetch error:", error);
     return NextResponse.json(

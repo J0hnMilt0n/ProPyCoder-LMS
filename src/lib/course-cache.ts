@@ -1,5 +1,5 @@
 import { unstable_cache } from "next/cache";
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { cached, invalidate, preload, type CacheOptions } from "@/lib/data-cache";
 import { prisma } from "@/lib/prisma";
 
@@ -104,6 +104,14 @@ export function invalidateCourse(courseId: string): void {
     revalidateTag(courseTag(courseId), "max");
     revalidateTag(modulesTag(courseId), "max");
   } catch {
+    // handled below
+  }
+  try {
+    revalidatePath(`/api/courses/${courseId}`);
+    revalidatePath(`/courses/${courseId}`);
+    revalidatePath(`/api/courses`);
+    revalidatePath(`/courses`);
+  } catch {
     // revalidateTag throws outside a request scope (e.g. scripts) — the
     // in-process invalidation above still keeps this process correct.
   }
@@ -114,6 +122,13 @@ export function invalidateCatalog(): void {
   invalidate("catalog:");
   try {
     revalidateTag(CATALOG_TAG, "max");
+  } catch {
+    // ignore
+  }
+  try {
+    revalidatePath(`/api/courses`);
+    revalidatePath(`/courses`);
+    revalidatePath(`/`);
   } catch {
     // Outside a request scope — in-process invalidation already ran.
   }

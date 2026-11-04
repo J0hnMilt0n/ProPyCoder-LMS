@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { getBundle } from "@/lib/page-cache";
 
+export const revalidate = 2592000;
+
 // GET one published bundle with its courses — public, no auth required.
 export async function GET(
   _request: Request,
@@ -50,7 +52,9 @@ export async function GET(
         { status: 404 },
       );
     }
-    return NextResponse.json({ bundle });
+    return NextResponse.json({ bundle }, {
+      headers: { "Cache-Control": "public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=86400" },
+    });
   } catch (error) {
     console.error("Public bundle error:", error);
     return NextResponse.json(

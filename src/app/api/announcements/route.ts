@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { getAnnouncements } from "@/lib/page-cache";
 
+export const revalidate = 2592000;
+
 // GET public announcements — no auth required so registered
 // AND non-registered visitors can read them.
 export async function GET() {
@@ -23,7 +25,9 @@ export async function GET() {
         take: 50,
       }),
     }));
-    return NextResponse.json({ announcements });
+    return NextResponse.json({ announcements }, {
+      headers: { "Cache-Control": "public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=86400" },
+    });
   } catch (error) {
     console.error("Public announcements error:", error);
     return NextResponse.json(

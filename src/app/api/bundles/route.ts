@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { cached } from "@/lib/data-cache";
 import { GLOBAL_CACHE } from "@/lib/page-cache";
 
+export const revalidate = 2592000;
+
 // GET published bundles — public, no auth required.
 export async function GET() {
   try {
@@ -38,7 +40,9 @@ export async function GET() {
       }),
       GLOBAL_CACHE,
     );
-    return NextResponse.json({ bundles });
+    return NextResponse.json({ bundles }, {
+      headers: { "Cache-Control": "public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=86400" },
+    });
   } catch (error) {
     console.error("Public bundles error:", error);
     return NextResponse.json(

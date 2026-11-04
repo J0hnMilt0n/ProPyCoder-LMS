@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getCertificateDetail } from "@/lib/page-cache";
 
+export const revalidate = 2592000;
+
 interface Props {
   params: Promise<{ id: string }>;
 }
@@ -33,7 +35,9 @@ export async function GET(_request: NextRequest, { params }: Props) {
       );
     }
 
-    return NextResponse.json(certificate);
+    return NextResponse.json(certificate, {
+      headers: { "Cache-Control": "public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=86400" },
+    });
   } catch (error) {
     console.error("Certificate fetch error:", error);
     return NextResponse.json(
