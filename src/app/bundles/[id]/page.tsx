@@ -162,7 +162,7 @@ export default function BundleDetailPage() {
                   >
                     {course.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={course.image} alt={course.title} />
+                      <img src={course.image ? `/api/images/course/${course.id}` : undefined} alt={course.title} />
                     ) : (
                       <div className="bundle-store-cover">
                         <Package size={22} />

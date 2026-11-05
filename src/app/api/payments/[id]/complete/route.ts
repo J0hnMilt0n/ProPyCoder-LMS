@@ -2,8 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { effectiveCoursePrice } from "@/lib/pricing";
-import { getPhonePeOrderStatus } from "@/lib/phonepe";
-import { completePhonePePayment } from "@/lib/payment-completion";
+import { getPaytmOrderStatus } from "@/lib/paytm";
+import { completePaytmPayment } from "@/lib/payment-completion";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -45,20 +45,20 @@ export async function GET(request: NextRequest, { params }: Props) {
       );
     }
 
-    if (payment.status === "PENDING" && payment.paymentMethod === "PHONEPE") {
-      const provider = await getPhonePeOrderStatus(payment.id);
-      const amountInPaise = Math.round(payment.amount * 100);
-      if (provider.amount !== amountInPaise) {
+    if (payment.status === "PENDING" && payment.paymentMethod === "PAYTM") {
+      const provider = await getPaytmOrderStatus(payment.id);
+      const amountInRupees = Number(provider.txnAmount) || 0;
+      if (Math.round(amountInRupees * 100) !== Math.round(payment.amount * 100)) {
         return NextResponse.json({ error: "Payment amount verification failed" }, { status: 502 });
       }
-      if (provider.state === "COMPLETED") {
-        await completePhonePePayment(payment.id, session.user.id, provider);
+      if (provider.status === "TXN_SUCCESS") {
+        await completePaytmPayment(payment.id, session.user.id, provider);
         const refreshed = await prisma.payment.findUnique({
           where: { id },
           include: { course: true, bundle: { include: { courses: { include: { course: true } } } }, enrollment: true },
         });
         if (refreshed) return NextResponse.json(refreshed);
-      } else if (provider.state === "FAILED") {
+      } else if (provider.status === "TXN_FAILURE") {
         await prisma.payment.updateMany({ where: { id, status: "PENDING" }, data: { status: "FAILED" } });
         payment.status = "FAILED";
       }
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest, { params }: Props) {
   }
 }
 
-// POST verifies PhonePe with the provider before granting enrollment.
+// POST verifies Paytm with the provider before granting enrollment.
 export async function POST(request: NextRequest, { params }: Props) {
   try {
     const session = await auth();
@@ -145,21 +145,22 @@ export async function POST(request: NextRequest, { params }: Props) {
       );
     }
 
-    if (payment.paymentMethod !== "PHONEPE") {
+    if (payment.paymentMethod !== "PAYTM") {
       return NextResponse.json({ error: "Payment provider is not configured" }, { status: 409 });
     }
-    const provider = await getPhonePeOrderStatus(payment.id);
-    if (provider.amount !== Math.round(payment.amount * 100)) {
+    const provider = await getPaytmOrderStatus(payment.id);
+    const amountInRupees = Number(provider.txnAmount) || 0;
+    if (Math.round(amountInRupees * 100) !== Math.round(payment.amount * 100)) {
       return NextResponse.json({ error: "Payment amount verification failed" }, { status: 409 });
     }
-    if (provider.state !== "COMPLETED") {
-      if (provider.state === "FAILED") {
+    if (provider.status !== "TXN_SUCCESS") {
+      if (provider.status === "TXN_FAILURE") {
         await prisma.payment.updateMany({ where: { id, status: "PENDING" }, data: { status: "FAILED" } });
       }
-      return NextResponse.json({ error: "PhonePe has not confirmed this payment" }, { status: 409 });
+      return NextResponse.json({ error: "Paytm has not confirmed this payment" }, { status: 409 });
     }
 
-    return NextResponse.json(await completePhonePePayment(id, session.user.id, provider));
+    return NextResponse.json(await completePaytmPayment(id, session.user.id, provider));
   } catch (error) {
     console.error("Payment verification error:", error);
     return NextResponse.json({ error: "Failed to verify payment" }, { status: 502 });

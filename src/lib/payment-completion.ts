@@ -6,12 +6,12 @@ import {
   invalidateHome,
   invalidateUser,
 } from "@/lib/page-cache";
-import type { PhonePeOrderStatus } from "@/lib/phonepe";
+import type { PaytmOrderStatus } from "@/lib/paytm-types";
 
-export async function completePhonePePayment(
+export async function completePaytmPayment(
   id: string,
   userId: string,
-  provider: PhonePeOrderStatus,
+  provider: PaytmOrderStatus,
 ) {
   const payment = await prisma.payment.findUnique({
     where: { id },
@@ -19,20 +19,17 @@ export async function completePhonePePayment(
   });
   if (!payment || payment.userId !== userId) throw new Error("Payment not found");
   if (payment.status === "COMPLETED") return { success: true, alreadyCompleted: true };
-  if (payment.status !== "PENDING" || payment.paymentMethod !== "PHONEPE") {
+  if (payment.status !== "PENDING" || payment.paymentMethod !== "PAYTM") {
     throw new Error("Payment is not eligible for completion");
   }
 
-  const detail = provider.paymentDetails?.find(
-    (attempt) => attempt.state === "COMPLETED" && attempt.transactionId,
-  );
   const result = await prisma.$transaction(async (tx) => {
     const claimed = await tx.payment.updateMany({
-      where: { id, userId, status: "PENDING", paymentMethod: "PHONEPE" },
+      where: { id, userId, status: "PENDING", paymentMethod: "PAYTM" },
       data: {
         status: "COMPLETED",
-        transactionId: detail?.transactionId ?? id,
-        paymentMethod: detail?.paymentMode ?? "PHONEPE",
+        transactionId: provider.txnId ?? id,
+        paymentMethod: provider.paymentMode ?? "PAYTM",
       },
     });
     if (claimed.count !== 1) throw new Error("Payment was already processed");
@@ -87,10 +84,10 @@ export async function completePhonePePayment(
   };
 }
 
-export async function completePhonePePaymentFromWebhook(
+export async function completePaytmPaymentFromWebhook(
   id: string,
   userId: string,
-  provider: PhonePeOrderStatus,
+  provider: PaytmOrderStatus,
 ) {
-  return completePhonePePayment(id, userId, provider);
+  return completePaytmPayment(id, userId, provider);
 }

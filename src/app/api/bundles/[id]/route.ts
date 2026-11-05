@@ -53,7 +53,7 @@ export async function GET(
       );
     }
     return NextResponse.json({ bundle }, {
-      headers: { "Cache-Control": "public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=86400" },
+      headers: { "Cache-Control": "public, max-age=300, s-maxage=86400, stale-while-revalidate=60" },
     });
   } catch (error) {
     console.error("Public bundle error:", error);

@@ -539,7 +539,7 @@ export default function BundlesPage() {
                         {bundle.image ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={bundle.image}
+                            src={bundle.image ? `/api/images/bundle/${bundle.id}` : undefined}
                             alt={bundle.title}
                             loading="lazy"
                           />

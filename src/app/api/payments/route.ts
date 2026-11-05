@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { effectiveCoursePrice } from "@/lib/pricing";
-import { createPhonePeOrder, PhonePeApiError } from "@/lib/phonepe";
+import { createPaytmOrder, PaytmApiError } from "@/lib/paytm";
 
 // GET user's payment history
 export async function GET(request: NextRequest) {
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Create a fresh merchant order for each attempt. PhonePe won't let an
+      // Create a fresh merchant order for each attempt. Paytm won't let an
       // existing merchantOrderId be reused after its order has been created.
       const payment = await prisma.payment.create({
         data: {
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
           amount: effectiveAmount,
           currency: "INR",
           status: "PENDING",
-          paymentMethod: "PHONEPE",
+          paymentMethod: "PAYTM",
         },
         include: {
           course: true,
@@ -125,10 +125,10 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      const checkout = await createPhonePeOrder({
+      const checkout = await createPaytmOrder({
         paymentId: payment.id,
         amountRupees: payment.amount,
-        redirectUrl: new URL(`/checkout/${payment.id}?phonepe=return`, request.url).toString(),
+        redirectUrl: new URL(`/checkout/${payment.id}?paytm=return`, request.url).toString(),
       });
       return NextResponse.json({
         id: payment.id,
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // A new PhonePe merchantOrderId is needed for every checkout attempt.
+    // A new Paytm merchantOrderId is needed for every checkout attempt.
     const payment = await prisma.payment.create({
       data: {
         userId: session.user.id,
@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
         amount,
         currency: "INR",
         status: "PENDING",
-        paymentMethod: "PHONEPE",
+        paymentMethod: "PAYTM",
       },
       include: {
         course: true,
@@ -220,10 +220,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const checkout = await createPhonePeOrder({
+    const checkout = await createPaytmOrder({
       paymentId: payment.id,
       amountRupees: payment.amount,
-      redirectUrl: new URL(`/checkout/${payment.id}?phonepe=return`, request.url).toString(),
+      redirectUrl: new URL(`/checkout/${payment.id}?paytm=return`, request.url).toString(),
     });
     return NextResponse.json({
       id: payment.id,
@@ -236,10 +236,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Payment creation error:", error);
-    if (error instanceof PhonePeApiError) {
+    if (error instanceof PaytmApiError) {
       return NextResponse.json(
         {
-          error: "PhonePe could not create the checkout order",
+          error: "Paytm could not create the checkout order",
           providerCode: error.providerCode,
           providerMessage: error.providerMessage,
         },
