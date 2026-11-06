@@ -858,11 +858,12 @@ export default function CourseDetailPage({ params }: Props) {
         <h3 className="text-lg font-bold text-gray-900 mb-4">
           {selectedLesson.title}
         </h3>
-        {selectedLesson.videoId ? (
+        {selectedLesson.videoId || selectedLesson.videoUrl ? (
           <LessonVideoPlayer
             key={selectedLesson.id}
             lessonId={selectedLesson.id}
             videoId={selectedLesson.videoId}
+            videoUrl={selectedLesson.videoUrl}
             title={selectedLesson.title}
           />
         ) : (

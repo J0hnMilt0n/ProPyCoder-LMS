@@ -15,6 +15,7 @@ import {
   VolumeX,
 } from "lucide-react";
 import { getLessonVideoSource } from "@/lib/lesson-video-sources";
+import { extractYouTubeId } from "@/lib/youtube";
 
 const RATES = [0.25, 0.5, 1, 1.25, 1.5, 2];
 
@@ -35,6 +36,7 @@ interface LessonVideoPlayerProps {
   lessonId: string;
   videoId: string | null;
   title: string;
+  videoUrl?: string | null;
 }
 
 /**
@@ -45,15 +47,25 @@ interface LessonVideoPlayerProps {
 export function LessonVideoPlayer({
   lessonId,
   videoId,
+  videoUrl,
   title,
 }: LessonVideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const ytContainerRef = useRef<HTMLDivElement>(null);
+  const ytPlayerRef = useRef<any>(null);
+  const [ytReady, setYtReady] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressRestoredRef = useRef(false);
   const lastSavedTimeRef = useRef(0);
   const [rateMenuOpen, setRateMenuOpen] = useState(false);
-  const src = getLessonVideoSource(videoId);
+  const resolvedFromMap = getLessonVideoSource(videoId);
+  const isDirectVideoUrl =
+    !!videoUrl && !/youtube\.com|youtu\.be/i.test(videoUrl);
+  const src = resolvedFromMap ?? (isDirectVideoUrl ? videoUrl! : null);
+  const youtubeId = videoId ?? (videoUrl ? extractYouTubeId(videoUrl) : null);
+  const isYouTube = !src && !!youtubeId;
+  const hasMedia = !!src || isYouTube;
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -231,7 +243,183 @@ export function LessonVideoPlayer({
     }, 2800);
   }, []);
 
+  // YouTube IFrame API integration (custom controls over YouTube)
+  useEffect(() => {
+    if (!isYouTube || !youtubeId) return;
+
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    const startPolling = () => {
+      if (pollInterval) return;
+      pollInterval = setInterval(() => {
+        const p = ytPlayerRef.current;
+        if (!p) return;
+        try {
+          const t = p.getCurrentTime?.();
+          if (typeof t === "number") {
+            setCurrentTime(t);
+            if (Math.abs(t - lastSavedTimeRef.current) >= 5) {
+              lastSavedTimeRef.current = t;
+              // save progress best-effort
+              if (lessonId) {
+                try {
+                  window.localStorage.setItem(
+                    `${PROGRESS_PREFIX}${lessonId}`,
+                    String(t),
+                  );
+                } catch {
+                  // ignore
+                }
+              }
+            }
+          }
+          const d = p.getDuration?.();
+          if (typeof d === "number" && d > 0) setDuration(d);
+        } catch {
+          // ignore
+        }
+      }, 250);
+    };
+    const stopPolling = () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    };
+
+    const init = () => {
+      if (!ytContainerRef.current) return;
+      const YT = (window as any).YT;
+      const player = new YT.Player(ytContainerRef.current, {
+        height: "100%",
+        width: "100%",
+        videoId: youtubeId,
+        playerVars: { controls: 0, modestbranding: 1, showinfo: 0, rel: 0, branding: 0 },
+        events: {
+          onReady: (event: any) => {
+            ytPlayerRef.current = event.target;
+            setYtReady(true);
+            const p = event.target;
+            const d = p.getDuration?.();
+            if (typeof d === "number") setDuration(d);
+            try {
+              const vol = Number(window.localStorage.getItem(VOLUME_KEY));
+              if (Number.isFinite(vol)) {
+                p.setVolume(Math.round(vol * 100));
+                setVolume(vol);
+              }
+              const muted = window.localStorage.getItem(MUTED_KEY) === "1";
+              if (muted) {
+                p.mute();
+                setIsMuted(true);
+              }
+            } catch {
+              // ignore
+            }
+            // restore progress
+            if (lessonId) {
+              try {
+                const raw = window.localStorage.getItem(
+                  `${PROGRESS_PREFIX}${lessonId}`,
+                );
+                const saved = raw === null ? NaN : Number(raw);
+                if (
+                  Number.isFinite(saved) &&
+                  saved > 1 &&
+                  typeof d === "number" &&
+                  saved < d - 1
+                ) {
+                  p.seekTo(saved, true);
+                  setCurrentTime(saved);
+                }
+              } catch {
+                // ignore
+              }
+            }
+            progressRestoredRef.current = true;
+          },
+          onStateChange: (event: any) => {
+            const YTNS = (window as any).YT;
+            const state = event.data;
+            if (state === YTNS.PlayerState.PLAYING) {
+              setIsPlaying(true);
+              setHasStarted(true);
+              setIsBuffering(false);
+              setHasError(false);
+              startPolling();
+            } else if (state === YTNS.PlayerState.PAUSED) {
+              setIsPlaying(false);
+              setIsBuffering(false);
+              stopPolling();
+              // save
+              try {
+                const p = ytPlayerRef.current;
+                if (p && lessonId) {
+                  window.localStorage.setItem(
+                    `${PROGRESS_PREFIX}${lessonId}`,
+                    String(p.getCurrentTime?.() ?? 0),
+                  );
+                }
+              } catch {
+                // ignore
+              }
+            } else if (state === YTNS.PlayerState.ENDED) {
+              setIsPlaying(false);
+              stopPolling();
+              if (lessonId) {
+                try {
+                  window.localStorage.removeItem(`${PROGRESS_PREFIX}${lessonId}`);
+                } catch {
+                  // ignore
+                }
+              }
+            } else if (state === YTNS.PlayerState.BUFFERING) {
+              setIsBuffering(true);
+            }
+          },
+          onError: () => {
+            setIsBuffering(false);
+            setHasError(true);
+          },
+        },
+      });
+      ytPlayerRef.current = player;
+    };
+
+    if ((window as any).YT && (window as any).YT.Player) {
+      init();
+    } else {
+      (window as any).onYouTubeIframeAPIReady = init;
+      if (
+        !document.querySelector('script[src="https://www.youtube.com/iframe_api"]')
+      ) {
+        const tag = document.createElement("script");
+        tag.src = "https://www.youtube.com/iframe_api";
+        const firstScript = document.getElementsByTagName("script")[0];
+        firstScript?.parentNode?.insertBefore(tag, firstScript);
+      }
+    }
+
+    return () => {
+      stopPolling();
+      try {
+        ytPlayerRef.current?.destroy?.();
+      } catch {
+        // ignore
+      }
+      ytPlayerRef.current = null;
+      setYtReady(false);
+    };
+  }, [isYouTube, youtubeId, lessonId]);
+
   const togglePlay = useCallback(() => {
+    if (isYouTube) {
+      const p = ytPlayerRef.current;
+      if (!p) return;
+      if (isPlaying) p.pauseVideo?.();
+      else p.playVideo?.();
+      revealControls();
+      return;
+    }
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
@@ -240,10 +428,21 @@ export function LessonVideoPlayer({
       video.pause();
     }
     revealControls();
-  }, [revealControls]);
+  }, [isYouTube, isPlaying, revealControls]);
 
   const skip = useCallback(
     (delta: number) => {
+      if (isYouTube) {
+        const p = ytPlayerRef.current;
+        if (!p) return;
+        const target = (p.getCurrentTime?.() ?? 0) + delta;
+        const dur = p.getDuration?.() ?? 0;
+        const clamped = Math.min(Math.max(target, 0), dur || target);
+        p.seekTo?.(clamped, true);
+        setCurrentTime(clamped);
+        revealControls();
+        return;
+      }
       const video = videoRef.current;
       if (!video) return;
       const target = video.currentTime + delta;
@@ -254,27 +453,33 @@ export function LessonVideoPlayer({
       setCurrentTime(video.currentTime);
       revealControls();
     },
-    [revealControls],
+    [isYouTube, revealControls],
   );
 
   const toggleMute = useCallback(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    const nextMuted = !video.muted;
-    video.muted = nextMuted;
-    if (!nextMuted && video.volume === 0) {
-      video.volume = 0.5;
-      setVolume(0.5);
+    const nextMuted = !isMuted;
+    if (isYouTube) {
+      const p = ytPlayerRef.current;
+      if (nextMuted) p?.mute?.();
+      else p?.unMute?.();
+    } else {
+      const video = videoRef.current;
+      if (video) {
+        video.muted = nextMuted;
+        if (!nextMuted && video.volume === 0) {
+          video.volume = 0.5;
+          setVolume(0.5);
+        }
+      }
     }
     setIsMuted(nextMuted);
     try {
       window.localStorage.setItem(MUTED_KEY, nextMuted ? "1" : "0");
-      window.localStorage.setItem(VOLUME_KEY, String(video.volume));
     } catch {
       // Storage unavailable.
     }
     revealControls();
-  }, [revealControls]);
+  }, [isYouTube, isMuted, revealControls]);
 
   const toggleFullscreen = useCallback(async () => {
     if (isMobile) {
@@ -404,20 +609,31 @@ export function LessonVideoPlayer({
   };
 
   const handleSeek = (event: ChangeEvent<HTMLInputElement>) => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.currentTime = Number(event.target.value);
-    setCurrentTime(video.currentTime);
+    const value = Number(event.target.value);
+    setCurrentTime(value);
+    if (isYouTube) {
+      ytPlayerRef.current?.seekTo?.(value, true);
+    } else {
+      const video = videoRef.current;
+      if (video) video.currentTime = value;
+    }
   };
 
   const handleVolume = (event: ChangeEvent<HTMLInputElement>) => {
-    const video = videoRef.current;
     const value = Number(event.target.value);
     setVolume(value);
     setIsMuted(value === 0);
-    if (video) {
-      video.volume = value;
-      video.muted = value === 0;
+    if (isYouTube) {
+      const p = ytPlayerRef.current;
+      p?.setVolume?.(Math.round(value * 100));
+      if (value === 0) p?.mute?.();
+      else p?.unMute?.();
+    } else {
+      const video = videoRef.current;
+      if (video) {
+        video.volume = value;
+        video.muted = value === 0;
+      }
     }
     try {
       window.localStorage.setItem(VOLUME_KEY, String(value));
@@ -444,80 +660,86 @@ export function LessonVideoPlayer({
       }}
       onKeyDown={handleKeyDown}
     >
-      <video
-        ref={videoRef}
-        src={src ?? undefined}
-        playsInline
-        preload="metadata"
-        onClick={togglePlay}
-        onPlay={() => {
-          setIsPlaying(true);
-          setHasStarted(true);
-        }}
-        onPause={() => {
-          setIsPlaying(false);
-          setControlsVisible(true);
-          saveProgress();
-        }}
-        onEnded={() => {
-          setIsPlaying(false);
-          setControlsVisible(true);
-          // Finished — start fresh next time.
-          try {
-            if (lessonId) {
-              window.localStorage.removeItem(`${PROGRESS_PREFIX}${lessonId}`);
-            }
-          } catch {
-            // Storage unavailable.
-          }
-        }}
-        onTimeUpdate={(event) => {
-          const time = event.currentTarget.currentTime;
-          setCurrentTime(time);
-          // Throttled save every ~5s so a crash/refresh loses little.
-          if (Math.abs(time - lastSavedTimeRef.current) >= 5) {
-            lastSavedTimeRef.current = time;
+      {isYouTube ? (
+        <div
+          ref={ytContainerRef}
+          className="lvp-yt-container"
+          style={{ width: "100%", height: "100%" }}
+        />
+      ) : (
+        <video
+          ref={videoRef}
+          src={src ?? undefined}
+          playsInline
+          preload="metadata"
+          onClick={togglePlay}
+          onPlay={() => {
+            setIsPlaying(true);
+            setHasStarted(true);
+          }}
+          onPause={() => {
+            setIsPlaying(false);
+            setControlsVisible(true);
             saveProgress();
-          }
-        }}
-        onLoadedMetadata={(event) => {
-          const video = event.currentTarget;
-          setDuration(video.duration);
-          if (progressRestoredRef.current || !lessonId) return;
-          progressRestoredRef.current = true;
-          try {
-            const raw = window.localStorage.getItem(
-              `${PROGRESS_PREFIX}${lessonId}`,
-            );
-            const saved = raw === null ? NaN : Number(raw);
-            if (
-              Number.isFinite(saved) &&
-              saved > 1 &&
-              Number.isFinite(video.duration) &&
-              saved < video.duration - 1
-            ) {
-              video.currentTime = saved;
-              setCurrentTime(saved);
+          }}
+          onEnded={() => {
+            setIsPlaying(false);
+            setControlsVisible(true);
+            try {
+              if (lessonId) {
+                window.localStorage.removeItem(`${PROGRESS_PREFIX}${lessonId}`);
+              }
+            } catch {
+              // Storage unavailable.
             }
-          } catch {
-            // Storage unavailable.
-          }
-        }}
-        onWaiting={() => setIsBuffering(true)}
-        onPlaying={() => {
-          setIsBuffering(false);
-          setHasError(false);
-        }}
-        onCanPlay={() => setIsBuffering(false)}
-        onError={() => {
-          setIsBuffering(false);
-          setHasError(true);
-        }}
-      />
+          }}
+          onTimeUpdate={(event) => {
+            const time = event.currentTarget.currentTime;
+            setCurrentTime(time);
+            if (Math.abs(time - lastSavedTimeRef.current) >= 5) {
+              lastSavedTimeRef.current = time;
+              saveProgress();
+            }
+          }}
+          onLoadedMetadata={(event) => {
+            const video = event.currentTarget;
+            setDuration(video.duration);
+            if (progressRestoredRef.current || !lessonId) return;
+            progressRestoredRef.current = true;
+            try {
+              const raw = window.localStorage.getItem(
+                `${PROGRESS_PREFIX}${lessonId}`,
+              );
+              const saved = raw === null ? NaN : Number(raw);
+              if (
+                Number.isFinite(saved) &&
+                saved > 1 &&
+                Number.isFinite(video.duration) &&
+                saved < video.duration - 1
+              ) {
+                video.currentTime = saved;
+                setCurrentTime(saved);
+              }
+            } catch {
+              // Storage unavailable.
+            }
+          }}
+          onWaiting={() => setIsBuffering(true)}
+          onPlaying={() => {
+            setIsBuffering(false);
+            setHasError(false);
+          }}
+          onCanPlay={() => setIsBuffering(false)}
+          onError={() => {
+            setIsBuffering(false);
+            setHasError(true);
+          }}
+        />
+      )}
 
-      {!src && (
+      {!hasMedia && (
         <div className="lvp-loading">
-          {videoId ? "Preparing player…" : "No video for this lesson"}
+          {videoId || videoUrl ? "Preparing player…" : "No video for this lesson"}
         </div>
       )}
 
@@ -527,20 +749,23 @@ export function LessonVideoPlayer({
           className="lvp-loading lvp-error"
           role="alert"
           onClick={() => {
-            // Drop and re-resolve the source to force a fresh load attempt.
             setHasError(false);
-            videoRef.current?.load();
+            if (isYouTube) {
+              ytPlayerRef.current?.loadVideoById?.(youtubeId);
+            } else {
+              videoRef.current?.load();
+            }
           }}
         >
           This video could not be loaded. Click to retry.
         </button>
       )}
 
-      {isBuffering && src && (
+      {isBuffering && hasMedia && (
         <div className="lvp-spinner" role="status" aria-label="Buffering" />
       )}
 
-      {src && !hasStarted && (
+      {hasMedia && !hasStarted && (
         <button
           type="button"
           className="lvp-big-play"
@@ -645,7 +870,7 @@ export function LessonVideoPlayer({
           onClick={() => {
             const index = RATES.indexOf(rate);
             setRateIndex(index);
-            if (videoRef.current) videoRef.current.playbackRate = rate;
+            if (isYouTube) ytPlayerRef.current?.setPlaybackRate?.(rate); else if (videoRef.current) videoRef.current.playbackRate = rate;
             setRateMenuOpen(false);
           }}
         >

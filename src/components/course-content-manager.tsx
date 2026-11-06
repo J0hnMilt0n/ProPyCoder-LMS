@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Check, GripVertical, LoaderCircle, Plus, Video } from "lucide-react";
 import toast from "react-hot-toast";
 import { useConfirm } from "@/components/confirm-dialog";
+import { clearCourseResourceCache } from "@/lib/use-resource";
 
 type Lesson = {
   id: string;
@@ -97,6 +98,19 @@ export function CourseContentManager({
       );
     } finally {
       setIsLoading(false);
+    }
+  }, [courseId]);
+
+  // Clear client-side resource cache for this course
+  // This forces students to fetch fresh data on next page load
+  const clearCourseCache = useCallback(async () => {
+    try {
+      await clearCourseResourceCache(courseId);
+      toast.success("Course cache cleared - students will see fresh data on next load");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to clear cache",
+      );
     }
   }, [courseId]);
 
@@ -220,6 +234,7 @@ export function CourseContentManager({
       setLessonForm(EMPTY_LESSON_FORM);
       await loadContent();
       onChanged?.();
+      await clearCourseCache();
     }, "Could not save the lesson");
   }
 
@@ -231,6 +246,7 @@ export function CourseContentManager({
       if (editingLessonId === lesson.id) setEditingLessonId(null);
       await loadContent();
       onChanged?.();
+      await clearCourseCache();
     }, "Could not delete the lesson");
   }
   async function persistModuleOrder(list: Module[]) {

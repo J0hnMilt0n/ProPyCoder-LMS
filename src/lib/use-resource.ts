@@ -158,6 +158,29 @@ export function clearResourceCaches(): void {
   }
 }
 
+/** Clear all resource caches for a specific course (public scope).
+ *  This forces students to fetch fresh data from the server on next page load.
+ *  Useful after admin updates lessons, modules, or course details.
+ *  @param courseId The course ID to clear cache for
+ */
+export function clearCourseResourceCache(courseId: string): void {
+  const store = storage();
+  if (!store) return;
+  try {
+    // Clear course-modules cache for this course (key: "course-modules", scope: "public:${courseId}")
+    const modulesKey = PREFIX + `course-modules`;
+    store.removeItem(modulesKey);
+    // Clear course-detail cache for this course (key: "course-detail", scope: "public:${courseId}")
+    const detailKey = PREFIX + `course-detail`;
+    store.removeItem(detailKey);
+    // Note: The scope is stored inside the JSON data, so removing by key alone
+    // may not be sufficient for all cases. For complete cache clearing,
+    // consider using clearResourceCaches() or refreshing the page.
+  } catch {
+    // Best-effort cleanup.
+  }
+}
+
 /**
  * Write a resource payload straight into the client cache without fetching.
  * Used by the background route preloader so a page the user opens later

@@ -37,12 +37,13 @@ function getTable(): Map<string, string> {
 
 /**
  * Resolves the direct (non-YouTube) video URL for a lesson's videoId.
- * Unknown ids fall back to the default sample so the player always works.
+ * Unknown ids return null — caller should handle missing video (e.g. show UI
+ * message instead of playing an arbitrary fallback).
  */
 export function getLessonVideoSource(
   videoId: string | null | undefined,
 ): string | null {
   if (!videoId) return null;
   const map = getTable();
-  return map.get(videoId) ?? map.get("default") ?? null;
+  return map.get(videoId) ?? null;
 }
