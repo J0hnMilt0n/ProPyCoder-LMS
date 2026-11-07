@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -17,6 +17,10 @@ interface CertificateView {
   student: { firstName: string; lastName: string };
 }
 
+// The certificate is designed at a fixed width; on narrower screens the
+// whole thing is scaled down (not reflowed) so it always fits.
+const CERT_WIDTH = 760;
+
 export default function CertificateViewPage() {
   const params = useParams<{ id: string }>();
   const certificateId = params?.id ?? null;
@@ -31,6 +35,30 @@ export default function CertificateViewPage() {
   const notFound = certificateRes.error && !certificate;
   const [isDownloading, setIsDownloading] = useState(false);
 
+  // Scale-to-fit state (hooks must stay above the early returns).
+  const boxRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  const [innerHeight, setInnerHeight] = useState<number | undefined>();
+
+  useEffect(() => {
+    const box = boxRef.current;
+    const inner = innerRef.current;
+    if (!box || !inner) return;
+
+    const update = () => {
+      const available = box.clientWidth;
+      setScale(Math.min(1, available / CERT_WIDTH));
+      setInnerHeight(inner.offsetHeight);
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(box);
+    ro.observe(inner);
+    return () => ro.disconnect();
+  }, [certificate]);
+
   // Download the certificate as a PNG image of exactly the certificate
   // frame (no buttons, no page chrome).
   const downloadImage = async () => {
@@ -39,16 +67,37 @@ export default function CertificateViewPage() {
     setIsDownloading(true);
     try {
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: 5,
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
+        // Render as if on a desktop-width window so the export is identical
+        // regardless of the phone's viewport.
+        windowWidth: 1024,
         // html2canvas renders absolute children slightly differently than the
         // browser, so the wordmark needs a small lift ONLY while exporting.
         // `onclone` lets us add the `is-exporting` class to the cloned node
-        // without ever affecting the on-screen certificate view.
+        // without ever affecting the on-screen certificate view. It also
+        // removes the mobile scale-to-fit transform from the clone so the
+        // PNG is always exported at the full certificate size.
         onclone: (_doc, clonedElement) => {
-          if (clonedElement) clonedElement.classList.add("is-exporting");
+          if (!clonedElement) return;
+          clonedElement.classList.add("is-exporting");
+
+          const inner = clonedElement.closest(
+            ".certificate-scale-inner",
+          ) as HTMLElement | null;
+          if (inner) inner.style.transform = "none";
+
+          const box = clonedElement.closest(
+            ".certificate-scale-box",
+          ) as HTMLElement | null;
+          if (box) {
+            box.style.width = `${CERT_WIDTH}px`;
+            box.style.maxWidth = "none";
+            box.style.height = "auto";
+            box.style.overflow = "visible";
+          }
         },
       });
       const blob = await new Promise<Blob | null>((resolve) =>
@@ -114,82 +163,94 @@ export default function CertificateViewPage() {
       <Navbar />
       <main className="certificate-view-main">
         <div className="certificate">
-          <div id="certificate" className="certificate-frame">
-            <span className="certificate-emblem certificate-medal" aria-hidden="true">
-              <svg
-                viewBox="0 0 72 96"
-                width="76"
-                height="101"
-                role="img"
-                aria-label="Award medal"
-              >
-                <defs>
-                  <linearGradient id="ppcRibbonL" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0" stopColor="#e0452f" />
-                    <stop offset="1" stopColor="#a82618" />
-                  </linearGradient>
-                  <linearGradient id="ppcRibbonR" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0" stopColor="#f0703f" />
-                    <stop offset="1" stopColor="#cf461f" />
-                  </linearGradient>
-                  <radialGradient id="ppcGold" cx="0.35" cy="0.3" r="0.9">
-                    <stop offset="0" stopColor="#fff3c4" />
-                    <stop offset="0.55" stopColor="#f2c75c" />
-                    <stop offset="1" stopColor="#c8891a" />
-                  </radialGradient>
-                </defs>
-                {/* ribbons forming a shallow V behind the medal */}
-                <polygon points="19,2 32,2 35,56 25,56" fill="url(#ppcRibbonL)" />
-                <polygon points="40,2 53,2 47,56 37,56" fill="url(#ppcRibbonR)" />
-                <polygon points="19,2 32,2 33,26 20,26" fill="#ffffff" opacity="0.18" />
-                <polygon points="40,2 53,2 52,26 39,26" fill="#ffffff" opacity="0.14" />
-                {/* medal rim + disc */}
-                <circle cx="36" cy="62" r="30" fill="#b9801a" />
-                <circle cx="36" cy="62" r="30" fill="none" stroke="#8f6212" strokeWidth="1" />
-                <circle cx="36" cy="62" r="26" fill="url(#ppcGold)" />
-                {/* engraved inner ring */}
-                <circle cx="36" cy="62" r="21" fill="none" stroke="#d9a52a" strokeWidth="1.4" opacity="0.55" />
-                {/* sheen */}
-                <ellipse cx="27" cy="51" rx="11" ry="6.5" fill="#ffffff" opacity="0.28" transform="rotate(-24 27 51)" />
-                {/* center star */}
-                <polygon
-                  points="36,49 39.29,57.47 48.36,57.98 41.33,63.73 43.64,72.52 36,67.6 28.36,72.52 30.67,63.73 23.64,57.98 32.71,57.47"
-                  fill="#fffdf3"
-                  stroke="#e0a020"
-                  strokeWidth="0.6"
-                />
-              </svg>
-            </span>
-            <div className="certificate-logo">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/propycoder-logo.png" alt="ProPyCoder" />
-              <div className="site-brand">ProPyCoder</div>
-            </div>
-            <div className="certificate-id">
-              <span className="certificate-label">Certificate ID</span>
-              <strong>{certificate.certificateNumber}</strong>
-            </div>
-            <div className="certificate-eyebrow">CERTIFICATE OF COMPLETION</div>
-            <h1 className="certificate-title">{certificate.course}</h1>
-            <p className="certificate-awarded">This certificate is awarded to</p>
-            <p className="certificate-name">
-              {certificate.student.firstName} {certificate.student.lastName}
-            </p>
-            <p className="certificate-text">
-              for successfully completing all lessons and requirements of the
-              course.
-            </p>
-            <div className="certificate-footer">
-              <div>
-                <span className="certificate-label">Issue date</span>
-                <strong>
-                  {new Date(certificate.issueDate).toLocaleDateString()}
-                </strong>
-              </div>
-              <div className="certificate-signature">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/CEO-Signature.png" alt="CEO signature" />
-                <span className="certificate-label">Chief Executive Officer</span>
+          <div
+            ref={boxRef}
+            className="certificate-scale-box"
+            style={{ height: innerHeight ? innerHeight * scale : undefined }}
+          >
+            <div
+              ref={innerRef}
+              className="certificate-scale-inner"
+              style={{ transform: `scale(${scale})` }}
+            >
+              <div id="certificate" className="certificate-frame">
+                <span className="certificate-emblem certificate-medal" aria-hidden="true">
+                  <svg
+                    viewBox="0 0 72 96"
+                    width="76"
+                    height="101"
+                    role="img"
+                    aria-label="Award medal"
+                  >
+                    <defs>
+                      <linearGradient id="ppcRibbonL" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stopColor="#e0452f" />
+                        <stop offset="1" stopColor="#a82618" />
+                      </linearGradient>
+                      <linearGradient id="ppcRibbonR" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stopColor="#f0703f" />
+                        <stop offset="1" stopColor="#cf461f" />
+                      </linearGradient>
+                      <radialGradient id="ppcGold" cx="0.35" cy="0.3" r="0.9">
+                        <stop offset="0" stopColor="#fff3c4" />
+                        <stop offset="0.55" stopColor="#f2c75c" />
+                        <stop offset="1" stopColor="#c8891a" />
+                      </radialGradient>
+                    </defs>
+                    {/* ribbons forming a shallow V behind the medal */}
+                    <polygon points="19,2 32,2 35,56 25,56" fill="url(#ppcRibbonL)" />
+                    <polygon points="40,2 53,2 47,56 37,56" fill="url(#ppcRibbonR)" />
+                    <polygon points="19,2 32,2 33,26 20,26" fill="#ffffff" opacity="0.18" />
+                    <polygon points="40,2 53,2 52,26 39,26" fill="#ffffff" opacity="0.14" />
+                    {/* medal rim + disc */}
+                    <circle cx="36" cy="62" r="30" fill="#b9801a" />
+                    <circle cx="36" cy="62" r="30" fill="none" stroke="#8f6212" strokeWidth="1" />
+                    <circle cx="36" cy="62" r="26" fill="url(#ppcGold)" />
+                    {/* engraved inner ring */}
+                    <circle cx="36" cy="62" r="21" fill="none" stroke="#d9a52a" strokeWidth="1.4" opacity="0.55" />
+                    {/* sheen */}
+                    <ellipse cx="27" cy="51" rx="11" ry="6.5" fill="#ffffff" opacity="0.28" transform="rotate(-24 27 51)" />
+                    {/* center star */}
+                    <polygon
+                      points="36,49 39.29,57.47 48.36,57.98 41.33,63.73 43.64,72.52 36,67.6 28.36,72.52 30.67,63.73 23.64,57.98 32.71,57.47"
+                      fill="#fffdf3"
+                      stroke="#e0a020"
+                      strokeWidth="0.6"
+                    />
+                  </svg>
+                </span>
+                <div className="certificate-logo">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/propycoder-logo.png" alt="ProPyCoder" />
+                  <div className="site-brand">ProPyCoder</div>
+                </div>
+                <div className="certificate-id">
+                  <span className="certificate-label">Certificate ID</span>
+                  <strong>{certificate.certificateNumber}</strong>
+                </div>
+                <div className="certificate-eyebrow">CERTIFICATE OF COMPLETION</div>
+                <h1 className="certificate-title">{certificate.course}</h1>
+                <p className="certificate-awarded">This certificate is awarded to</p>
+                <p className="certificate-name">
+                  {certificate.student.firstName} {certificate.student.lastName}
+                </p>
+                <p className="certificate-text">
+                  for successfully completing all lessons and requirements of the
+                  course.
+                </p>
+                <div className="certificate-footer">
+                  <div>
+                    <span className="certificate-label">Issue date</span>
+                    <strong>
+                      {new Date(certificate.issueDate).toLocaleDateString()}
+                    </strong>
+                  </div>
+                  <div className="certificate-signature">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/CEO-Signature.png" alt="CEO signature" />
+                    <span className="certificate-label">Chief Executive Officer</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
