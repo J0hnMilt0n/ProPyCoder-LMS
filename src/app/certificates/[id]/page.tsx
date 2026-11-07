@@ -1,7 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
+
+// Runs synchronously before the browser paints (client) so the first visible
+// frame is already scaled; falls back to useEffect during SSR.
+const useIsoLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
@@ -35,29 +40,29 @@ export default function CertificateViewPage() {
   const notFound = certificateRes.error && !certificate;
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // Scale-to-fit state (hooks must stay above the early returns).
+  // Scale-to-fit state. scale === null means the frame hasn't been measured
+  // yet, so we don't render the certificate at all — this avoids the flash
+  // of an oversized certificate before the scale is known.
   const boxRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
+  const [scale, setScale] = useState<number | null>(null);
   const [innerHeight, setInnerHeight] = useState<number | undefined>();
 
-  useEffect(() => {
+  useIsoLayoutEffect(() => {
     const box = boxRef.current;
-    const inner = innerRef.current;
-    if (!box || !inner) return;
+    if (!box) return;
 
     const update = () => {
-      const available = box.clientWidth;
-      setScale(Math.min(1, available / CERT_WIDTH));
-      setInnerHeight(inner.offsetHeight);
+      setScale(Math.min(1, box.clientWidth / CERT_WIDTH));
+      if (innerRef.current) setInnerHeight(innerRef.current.offsetHeight);
     };
 
-    update();
+    update(); // runs before the browser paints — no big first frame
     const ro = new ResizeObserver(update);
     ro.observe(box);
-    ro.observe(inner);
+    if (innerRef.current) ro.observe(innerRef.current);
     return () => ro.disconnect();
-  }, [certificate]);
+  }, [certificate, scale === null]);
 
   // Download the certificate as a PNG image of exactly the certificate
   // frame (no buttons, no page chrome).
@@ -97,6 +102,7 @@ export default function CertificateViewPage() {
             box.style.maxWidth = "none";
             box.style.height = "auto";
             box.style.overflow = "visible";
+            box.style.visibility = "visible";
           }
         },
       });
@@ -166,14 +172,15 @@ export default function CertificateViewPage() {
           <div
             ref={boxRef}
             className="certificate-scale-box"
-            style={{ height: innerHeight ? innerHeight * scale : undefined }}
+            style={{ height: scale !== null && innerHeight ? innerHeight * scale : undefined }}
           >
             <div
               ref={innerRef}
               className="certificate-scale-inner"
-              style={{ transform: `scale(${scale})` }}
+              style={{ transform: scale !== null ? `scale(${scale})` : undefined }}
             >
-              <div id="certificate" className="certificate-frame">
+              {scale !== null ? (
+                <div id="certificate" className="certificate-frame">
                 <span className="certificate-emblem certificate-medal" aria-hidden="true">
                   <svg
                     viewBox="0 0 72 96"
@@ -221,7 +228,7 @@ export default function CertificateViewPage() {
                 </span>
                 <div className="certificate-logo">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/propycoder-logo.png" alt="ProPyCoder" />
+                  <img src="/propycoder-logo.png" alt="ProPyCoder" width="160" height="40" />
                   <div className="site-brand">ProPyCoder</div>
                 </div>
                 <div className="certificate-id">
@@ -247,11 +254,20 @@ export default function CertificateViewPage() {
                   </div>
                   <div className="certificate-signature">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/CEO-Signature.png" alt="CEO signature" />
+                    <img src="/CEO-Signature.png" alt="CEO signature" width="200" height="60" />
                     <span className="certificate-label">Chief Executive Officer</span>
                   </div>
                 </div>
               </div>
+              ) : (
+                <div className="certificate-view-spinner">
+                  <LoaderCircle
+                    className="animate-spin"
+                    size={28}
+                    style={{ margin: "0 auto", color: "#e95f32" }}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
