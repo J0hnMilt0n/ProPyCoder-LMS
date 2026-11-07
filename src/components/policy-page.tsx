@@ -1771,33 +1771,7 @@ export function PolicyPage({ kind }: { kind: PolicyKind }) {
           {kind === "contact" && (
             <>
               <section>
-                <h2>1. Business and Support Information</h2>
-
-                <p>
-                  Legal Operator: {businessInfo.legalName}
-                </p>
-
-                <p>
-                  Business Address: {businessInfo.businessAddress}
-                </p>
-
-                <p>
-                  Email:{" "}
-                  <a href={`mailto:${supportEmail}`}>
-                    {supportEmail}
-                  </a>
-                </p>
-
-                <p>
-                  Phone:{" "}
-                  <a href={`tel:${supportPhone}`}>
-                    {supportPhone}
-                  </a>
-                </p>
-              </section>
-
-              <section>
-                <h2>2. Account and Course Support</h2>
+                <h2>1. Account and Course Support</h2>
 
                 <p>
                   Contact us if you need
@@ -1814,7 +1788,7 @@ export function PolicyPage({ kind }: { kind: PolicyKind }) {
               </section>
 
               <section>
-                <h2>3. Payment and Refund Support</h2>
+                <h2>2. Payment and Refund Support</h2>
 
                 <p>
                   For payment-related
@@ -1843,7 +1817,7 @@ export function PolicyPage({ kind }: { kind: PolicyKind }) {
               </section>
 
               <section>
-                <h2>4. Privacy and Data Requests</h2>
+                <h2>3. Privacy and Data Requests</h2>
 
                 <p>
                   You may contact us
@@ -1866,7 +1840,7 @@ export function PolicyPage({ kind }: { kind: PolicyKind }) {
               </section>
 
               <section>
-                <h2>5. Support Response</h2>
+                <h2>4. Support Response</h2>
 
                 <p>
                   We aim to acknowledge
@@ -1881,6 +1855,31 @@ export function PolicyPage({ kind }: { kind: PolicyKind }) {
                   on the nature and
                   complexity of the
                   request.
+                </p>
+              </section>
+               <section>
+                <h2>5.Contact</h2>
+
+                <p>
+                  Legal Operator: {businessInfo.legalName}
+                </p>
+
+                <p>
+                  Business Address: {businessInfo.businessAddress}
+                </p>
+
+                <p>
+                  Email:{" "}
+                  <a href={`mailto:${supportEmail}`}>
+                    {supportEmail}
+                  </a>
+                </p>
+
+                <p>
+                  Phone:{" "}
+                  <a href={`tel:${supportPhone}`}>
+                    {supportPhone}
+                  </a>
                 </p>
               </section>
             </>
