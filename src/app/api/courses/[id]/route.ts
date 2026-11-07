@@ -6,30 +6,30 @@ export const revalidate = 2592000;
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
-    
+
     // Cached — course details are public and read far more often than the
     // rare write (which invalidates this key).
     const course = await getCourseDetail(id);
 
     if (!course) {
-      return NextResponse.json(
-        { error: "Course not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Course not found" }, { status: 404 });
     }
 
     return NextResponse.json(course, {
-      headers: { "Cache-Control": "public, max-age=300, s-maxage=86400, stale-while-revalidate=60" },
+      headers: {
+        "Cache-Control":
+          "public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=60",
+      },
     });
   } catch (error) {
     console.error("Course fetch error:", error);
     return NextResponse.json(
       { error: "Failed to fetch course" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

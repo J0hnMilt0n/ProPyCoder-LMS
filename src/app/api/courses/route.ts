@@ -87,7 +87,14 @@ export async function GET(request: NextRequest) {
           },
         };
       },
-      ["catalog", category ?? "", level ?? "", title ?? "", String(page), String(limit)],
+      [
+        "catalog",
+        category ?? "",
+        level ?? "",
+        title ?? "",
+        String(page),
+        String(limit),
+      ],
       { tags: [CATALOG_TAG] },
     );
 
@@ -103,7 +110,10 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(payload, {
-      headers: { "Cache-Control": "public, max-age=300, s-maxage=86400, stale-while-revalidate=60" },
+      headers: {
+        "Cache-Control":
+          "public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=60",
+      },
     });
   } catch (error) {
     console.error("Course fetch error:", error);

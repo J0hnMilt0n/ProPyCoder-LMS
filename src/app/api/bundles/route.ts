@@ -12,37 +12,44 @@ export async function GET() {
     // Keep the full response in the existing per-process SWR cache instead.
     const bundles = await cached(
       "bundles:list:",
-      () => prisma.bundle.findMany({
-        where: { status: "PUBLISHED" },
-        select: {
-          id: true,
-          title: true,
-          description: true,
-          image: true,
-          price: true,
-          courses: {
-            select: {
-              order: true,
-              course: {
-                select: {
-                  id: true,
-                  title: true,
-                  price: true,
-                  offerPrice: true,
-                  image: true,
+      () =>
+        prisma.bundle.findMany({
+          where: { status: "PUBLISHED" },
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            image: true,
+            price: true,
+            courses: {
+              select: {
+                order: true,
+                course: {
+                  select: {
+                    id: true,
+                    title: true,
+                    price: true,
+                    offerPrice: true,
+                    image: true,
+                  },
                 },
               },
+              orderBy: { order: "asc" },
             },
-            orderBy: { order: "asc" },
           },
-        },
-        orderBy: { updatedAt: "desc" },
-      }),
+          orderBy: { updatedAt: "desc" },
+        }),
       GLOBAL_CACHE,
     );
-    return NextResponse.json({ bundles }, {
-      headers: { "Cache-Control": "public, max-age=300, s-maxage=86400, stale-while-revalidate=60" },
-    });
+    return NextResponse.json(
+      { bundles },
+      {
+        headers: {
+          "Cache-Control":
+            "public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=60",
+        },
+      },
+    );
   } catch (error) {
     console.error("Public bundles error:", error);
     return NextResponse.json(

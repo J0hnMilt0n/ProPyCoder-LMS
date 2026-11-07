@@ -47,14 +47,17 @@ export async function GET(
       }),
     }));
     if (!bundle) {
-      return NextResponse.json(
-        { error: "Bundle not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Bundle not found" }, { status: 404 });
     }
-    return NextResponse.json({ bundle }, {
-      headers: { "Cache-Control": "public, max-age=300, s-maxage=86400, stale-while-revalidate=60" },
-    });
+    return NextResponse.json(
+      { bundle },
+      {
+        headers: {
+          "Cache-Control":
+            "public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=60",
+        },
+      },
+    );
   } catch (error) {
     console.error("Public bundle error:", error);
     return NextResponse.json(

@@ -23,7 +23,7 @@ export async function proxyPyCoderStatic(pathSegments: string[]) {
       headers: {
         "Content-Type":
           response.headers.get("content-type") ?? "application/octet-stream",
-        "Cache-Control": "public, max-age=3600, s-maxage=3600",
+        "Cache-Control": "public, max-age=2592000, s-maxage=2592000",
       },
     });
   } catch (error) {
