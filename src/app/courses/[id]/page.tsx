@@ -1270,10 +1270,10 @@ export default function CourseDetailPage({ params }: Props) {
                               {completedLessonIds.has(lesson.id) ? (
                                 <CheckCircle className="h-5 w-5 text-sky-600" />
                               ) : isEnrolled || lesson.isFree ? (
-                                lesson.videoId ? (
+                                !lesson.videoId ? (
                                   <Video className="h-5 w-5 text-red-600" />
                                 ) : (
-                                  <PlayCircle className="h-5 w-5 text-blue-600" />
+                                  <PlayCircle className="h-5 w-5 text-red-600" />
                                 )
                               ) : (
                                 <Lock className="h-5 w-5 text-gray-400" />

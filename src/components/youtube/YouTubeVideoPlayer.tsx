@@ -33,6 +33,13 @@ const YouTubeVideoPlayer = ({
           showinfo: 0,
           rel: 0,
           branding: 0,
+          disablekb: 1,
+          iv_load_policy: 3,
+          playsinline: 1,
+          origin: window.location.origin,
+          theme: "dark",
+          color: "white",
+          cc_load_policy: 0,
         },
         events: {
           onReady: () => {
@@ -79,3 +86,4 @@ const YouTubeVideoPlayer = ({
 };
 
 export default YouTubeVideoPlayer;
+

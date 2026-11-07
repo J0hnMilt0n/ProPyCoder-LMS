@@ -106,7 +106,7 @@ export function CourseContentManager({
   const clearCourseCache = useCallback(async () => {
     try {
       await clearCourseResourceCache(courseId);
-      toast.success("Course cache cleared - students will see fresh data on next load");
+      // toast.success("Course cache cleared - students will see fresh data on next load");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to clear cache",

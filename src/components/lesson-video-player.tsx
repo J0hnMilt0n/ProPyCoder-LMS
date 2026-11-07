@@ -14,16 +14,68 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react";
-import { getLessonVideoSource } from "@/lib/lesson-video-sources";
 import { extractYouTubeId } from "@/lib/youtube";
 
 const RATES = [0.25, 0.5, 1, 1.25, 1.5, 2];
 
+/**
+ * Resolve the video source URL based on available video info.
+ * Priority:
+ * 1. Direct videoUrl (if not YouTube)
+ * 2. YouTube stream proxy (/api/youtube/stream?videoId=...)
+ * 3. YouTube iframe embed
+ * 4. Obfuscated sources from lesson-video-sources.ts
+ */
+function resolveVideoSource(
+  videoId: string | null,
+  videoUrl: string | null | undefined
+): {
+  src: string | null;
+  type: "proxy" | "youtube" | "native" | "obfuscated";
+  label: string;
+} {
+
+  // If we have a direct videoUrl that's not YouTube, use it natively
+  if (videoUrl && !/^(?:https?:)?\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//.test(videoUrl)) {
+    // console.log("Failed")
+    return { src: videoUrl, type: "native", label: "Direct video URL" };
+  }
+  
+  // If we have a YouTube videoId, use the stream proxy
+  if (videoId) {
+    const proxyUrl = `/api/youtube/stream?videoId=${videoId}&itag=137`;
+    return { src: proxyUrl, type: "proxy", label: "YouTube stream proxy" };
+  }
+
+  // If we have a YouTube URL, also use the stream proxy (instead of iframe embed)
+  if (videoUrl && /^(?:https?:)?\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//.test(videoUrl)) {
+    const videoId = extractYouTubeId(videoUrl);
+    if (videoId) {
+      const proxyUrl = `/api/youtube/stream?videoId=${videoId}&itag=137`;
+      return { src: proxyUrl, type: "proxy", label: "YouTube stream proxy" };
+    }
+    // Fallback to iframe if we can't extract the ID
+    return { src: videoUrl, type: "youtube", label: "YouTube embed (fallback)" };
+  }
+
+  // Fall back to obfuscated sources
+  return { src: null, type: "obfuscated", label: "Obfuscated sources" };
+}
+
 function formatTime(value: number): string {
   if (!Number.isFinite(value) || value < 0) return "0:00";
+
   const total = Math.floor(value);
-  const minutes = Math.floor(total / 60);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
   const seconds = total % 60;
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds
+      .toString()
+      .padStart(2, "0")}`;
+  }
+
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
@@ -59,13 +111,25 @@ export function LessonVideoPlayer({
   const progressRestoredRef = useRef(false);
   const lastSavedTimeRef = useRef(0);
   const [rateMenuOpen, setRateMenuOpen] = useState(false);
-  const resolvedFromMap = getLessonVideoSource(videoId);
-  const isDirectVideoUrl =
-    !!videoUrl && !/youtube\.com|youtu\.be/i.test(videoUrl);
-  const src = resolvedFromMap ?? (isDirectVideoUrl ? videoUrl! : null);
   const youtubeId = videoId ?? (videoUrl ? extractYouTubeId(videoUrl) : null);
-  const isYouTube = !src && !!youtubeId;
-  const hasMedia = !!src || isYouTube;
+  const isYouTube = !!youtubeId;
+  
+  // Resolve the video source using the new priority system
+  const sourceInfo = resolveVideoSource(youtubeId, videoUrl);
+  const src = sourceInfo.src;
+  const hasMedia = !!youtubeId || !!src;
+  const sourceType = sourceInfo.type;
+  
+  // Debug logging for source resolution
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[LessonVideoPlayer] Source resolution:`);
+    console.log(`  - youtubeId: ${youtubeId}`);
+    console.log(`  - videoUrl: ${videoUrl}`);
+    console.log(`  - sourceType: ${sourceType}`);
+    console.log(`  - src: ${src}`);
+    console.log(`  - isYouTube: ${isYouTube}`);
+    console.log(`  - hasMedia: ${hasMedia}`);
+  }
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -240,7 +304,7 @@ export function LessonVideoPlayer({
       if (videoRef.current && !videoRef.current.paused) {
         setControlsVisible(false);
       }
-    }, 2800);
+    }, 1000);
   }, []);
 
   // YouTube IFrame API integration (custom controls over YouTube)
@@ -654,7 +718,7 @@ export function LessonVideoPlayer({
       aria-label={`Video player: ${title}`}
       onMouseMove={revealControls}
       onMouseLeave={() => {
-        if (videoRef.current && !videoRef.current.paused) {
+        if (ytContainerRef.current || videoRef.current && !videoRef.current.paused) {
           setControlsVisible(false);
         }
       }}

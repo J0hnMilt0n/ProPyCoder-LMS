@@ -5928,7 +5928,7 @@ html[data-theme="light"] .lab-frame {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 30px 12px 10px;
+  padding: 0px 12px 10px;
   background: linear-gradient(transparent, rgba(8, 9, 11, 0.92));
   opacity: 0;
   pointer-events: none;
