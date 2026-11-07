@@ -15,6 +15,7 @@ import { prisma } from "@/lib/prisma";
 import { getHomeData } from "@/lib/page-cache";
 import { PriceTag } from "@/components/price-tag";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
+import { HomeSessionSync } from "@/components/home-session-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,7 @@ export default async function Home() {
 
   return (
     <main className="site-home">
+      <HomeSessionSync initialAuthenticated={!!session?.user?.id} />
       <Navbar />
       <section className="home-hero">
         <div
