@@ -96,7 +96,16 @@ function getCourseScrollTarget(): CourseScrollTarget {
   const page = document.querySelector<HTMLElement>(".course-detail-page");
   if (!page) return window;
 
-  // First prefer a scrollable ancestor of the course page.
+  // If the document itself scrolls, that is the surface. Checking this first
+  // stops a small inner overflow box (table, code block, horizontal scroller)
+  // from being mistaken for the page scroller.
+  const root = document.scrollingElement ?? document.documentElement;
+  const rootLocked = [document.documentElement, document.body].some(
+    (el) => window.getComputedStyle(el).overflowY === "hidden",
+  );
+  if (!rootLocked && root.scrollHeight > root.clientHeight + 1) return window;
+
+  // Otherwise prefer a scrollable ancestor of the course page.
   let ancestor: HTMLElement | null = page;
   while (ancestor && ancestor !== document.body && ancestor !== document.documentElement) {
     if (isScrollableElement(ancestor)) return ancestor;
@@ -164,7 +173,7 @@ function settle(request: Promise<Response>): Promise<Response | null> {
 }
 
 export default function CourseDetailPage({ params }: Props) {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   // Resolve the route ID from Next.js navigation state after hydration.
@@ -204,6 +213,16 @@ export default function CourseDetailPage({ params }: Props) {
     0,
   );
   const completedLessons = completedLessonIds.size;
+
+  // True only when the real page content is on screen (not the spinner or the
+  // empty access-loading shell). Scroll save/restore must wait for this,
+  // otherwise a collapsed layout clamps scroll to 0 and overwrites the saved
+  // position, or restore runs before the target is reachable.
+  const contentReady =
+    !isLoading &&
+    !!course &&
+    status !== "loading" &&
+    accessResolvedCourseId === courseId;
 
   useEffect(() => {
     const id = pathname.split("/").filter(Boolean).at(-1);
@@ -358,7 +377,7 @@ export default function CourseDetailPage({ params }: Props) {
         // `await` waits ONLY for the course payload (the old Promise.all
         // held the spinner until the slowest of four requests).
         const response = await courseRequest;
-      
+
         if (!response.ok) {
           const errorData = await response.json().catch(() => null);
           throw new Error(
@@ -381,7 +400,7 @@ export default function CourseDetailPage({ params }: Props) {
           data,
         );
         // Remember this course so the navbar "Courses" tab can return
-        // here (lab ÔåÆ courses switch) instead of always showing the list.
+        // here (lab -> courses switch) instead of always showing the list.
         try {
           window.sessionStorage.setItem("propycoder-last-course", courseId);
         } catch {
@@ -457,7 +476,7 @@ export default function CourseDetailPage({ params }: Props) {
             } catch {
               return [];
             }
-            })();
+          })();
           setCompletedLessonIds(new Set(completedIds));
         }
 
@@ -569,59 +588,59 @@ export default function CourseDetailPage({ params }: Props) {
     }
   }, [courseId, selectedLesson]);
 
-  // Save the exact scroll position per course. Listen in capture phase as well,
-  // because scroll events from nested overflow containers do not bubble normally.
+  // SAVE: only once content is ready, so layout collapse during loading can
+  // never write a bogus 0. Saved on every (rAF-throttled) scroll, so there is
+  // no need to read the position at unmount time, when the DOM is already gone.
   useEffect(() => {
-    if (!courseId) return;
+    if (!courseId || !contentReady) return;
     const storageKey = `propycoder-course-scroll:${courseId}`;
     let frame = 0;
+
+    // Real user scrolling input. Used to tell a genuine "scrolled back to the
+    // top" apart from the router's automatic scroll-to-top on navigation,
+    // which must never overwrite the saved position with 0.
+    let lastUserScrollInput = 0;
+    const markUserInput = () => {
+      lastUserScrollInput = Date.now();
+    };
 
     const persist = () => {
       frame = 0;
       if (isRestoringScroll.current) return;
       try {
-        const target = getCourseScrollTarget();
-        window.sessionStorage.setItem(
-          storageKey,
-          String(readCourseScrollPosition(target)),
-        );
+        const position = readCourseScrollPosition(getCourseScrollTarget());
+        if (position <= 0 && Date.now() - lastUserScrollInput > 1000) return;
+        window.sessionStorage.setItem(storageKey, String(position));
       } catch {
         // Storage unavailable.
       }
     };
-
     const onScroll = () => {
       if (isRestoringScroll.current || frame) return;
       frame = window.requestAnimationFrame(persist);
     };
 
+    const inputEvents = ["wheel", "touchmove", "keydown"] as const;
+    inputEvents.forEach((e) =>
+      window.addEventListener(e, markUserInput, { passive: true }),
+    );
     window.addEventListener("scroll", onScroll, { passive: true });
+    // Capture phase: nested overflow containers don't bubble scroll events.
     document.addEventListener("scroll", onScroll, { passive: true, capture: true });
     window.addEventListener("pagehide", persist);
-
     return () => {
+      inputEvents.forEach((e) => window.removeEventListener(e, markUserInput));
       window.removeEventListener("scroll", onScroll);
       document.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("pagehide", persist);
       if (frame) window.cancelAnimationFrame(frame);
-
-      // Save the last non-zero position before route unmount/navigation.
-      if (!isRestoringScroll.current) {
-        try {
-          const current = readCourseScrollPosition(getCourseScrollTarget());
-          if (current > 0) window.sessionStorage.setItem(storageKey, String(current));
-        } catch {
-          // Storage unavailable.
-        }
-      }
     };
-  }, [courseId]);
+  }, [courseId, contentReady]);
 
-  // Restore after navigation/refresh. Re-detect the scroll surface on every
-  // retry because the actual container may not be scrollable on the first paint.
+  // RESTORE: runs once, only after content is ready. Gives up after 3s, and
+  // stops immediately on any user input so it can never fight the user.
   useEffect(() => {
-    if (!courseId) return;
-
+    if (!courseId || !contentReady) return;
     const storageKey = `propycoder-course-scroll:${courseId}`;
     let saved = 0;
     try {
@@ -633,82 +652,61 @@ export default function CourseDetailPage({ params }: Props) {
     if (!Number.isFinite(saved) || saved <= 0) return;
 
     let stopped = false;
-    let timeoutId: number | undefined;
+    let interval: number | undefined;
+    let settleTimer: number | undefined;
     const startedAt = Date.now();
     isRestoringScroll.current = true;
 
-    const finish = () => {
+    const maxScroll = (t: CourseScrollTarget) =>
+      isWindowScrollTarget(t)
+        ? document.documentElement.scrollHeight - window.innerHeight
+        : t.scrollHeight - t.clientHeight;
+
+    const userEvents = ["wheel", "touchstart", "pointerdown", "keydown"] as const;
+    const stop = () => {
       if (stopped) return;
       stopped = true;
       isRestoringScroll.current = false;
-      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
-      observer?.disconnect();
+      if (interval !== undefined) window.clearInterval(interval);
+      if (settleTimer !== undefined) window.clearTimeout(settleTimer);
       resizeObserver?.disconnect();
+      userEvents.forEach((e) => window.removeEventListener(e, stop));
     };
 
-    const tick = () => {
-      if (stopped) return;
+    const attempt = () => {
+      if (stopped || settleTimer !== undefined) return;
       const target = getCourseScrollTarget();
-      writeCourseScrollPosition(target, saved);
-      const position = readCourseScrollPosition(target);
-      const enoughContent = isWindowScrollTarget(target)
-        ? document.documentElement.scrollHeight >= saved + window.innerHeight
-        : target.scrollHeight >= saved + target.clientHeight;
+      const reachable = maxScroll(target) >= saved - 2;
+      const timedOut = Date.now() - startedAt >= 3000;
+      if (!reachable && !timedOut) return; // content still growing
 
-      if (Math.abs(position - saved) <= 2 && enoughContent) {
-        // Let one more frame pass so late layout shifts can settle.
-        timeoutId = window.setTimeout(() => {
-          if (stopped) return;
-          const currentTarget = getCourseScrollTarget();
-          const currentPosition = readCourseScrollPosition(currentTarget);
-          if (Math.abs(currentPosition - saved) > 2) {
-            tick();
-          } else {
-            finish();
-          }
-        }, 150);
-        return;
-      }
-
-      if (Date.now() - startedAt >= 10000) {
-        writeCourseScrollPosition(getCourseScrollTarget(), saved);
-        finish();
-        return;
-      }
-      timeoutId = window.setTimeout(tick, 100);
+      writeCourseScrollPosition(
+        target,
+        Math.min(saved, Math.max(0, maxScroll(target))),
+      );
+      // One final correction after late layout shifts (video player etc.), then stop.
+      settleTimer = window.setTimeout(() => {
+        if (stopped) return;
+        const t = getCourseScrollTarget();
+        if (
+          Math.abs(readCourseScrollPosition(t) - saved) > 2 &&
+          maxScroll(t) >= saved - 2
+        ) {
+          writeCourseScrollPosition(t, saved);
+        }
+        stop();
+      }, 250);
     };
 
-    const observer = typeof MutationObserver !== "undefined"
-      ? new MutationObserver(() => tick())
-      : null;
-    const resizeObserver = typeof ResizeObserver !== "undefined"
-      ? new ResizeObserver(() => tick())
-      : null;
-    observer?.observe(document.documentElement, { childList: true, subtree: true });
-    // ResizeObserver.observe accepts an Element. Observe the detected element
-    // when it is an HTMLElement; otherwise observe the document root for window scrolling.
-    const detectedTarget = getCourseScrollTarget();
-    const resizeTarget: Element = detectedTarget instanceof HTMLElement
-      ? detectedTarget
-      : document.documentElement;
-    resizeObserver?.observe(resizeTarget);
+    userEvents.forEach((e) => window.addEventListener(e, stop, { passive: true }));
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(attempt) : null;
+    resizeObserver?.observe(document.body);
+    interval = window.setInterval(attempt, 100);
+    window.requestAnimationFrame(attempt);
 
-    window.requestAnimationFrame(() => window.requestAnimationFrame(tick));
-    const onPageshow = () => {
-      if (document.visibilityState === "visible") tick();
-    };
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") tick();
-    };
-    window.addEventListener("pageshow", onPageshow);
-    window.addEventListener("visibilitychange", onVisibilityChange);
-
-    return () => {
-      finish();
-      window.removeEventListener("pageshow", onPageshow);
-      window.removeEventListener("visibilitychange", onVisibilityChange);
-    };
-  }, [courseId]);
+    return stop;
+  }, [courseId, contentReady]);
 
   const handleEnroll = async () => {
     if (!session?.user) {
@@ -757,7 +755,7 @@ export default function CourseDetailPage({ params }: Props) {
           router.push(payload.checkoutUrl);
           return;
         }
-        // No gateway configured (e.g. free course) ÔÇö we are already enrolled.
+        // No gateway configured (e.g. free course) - we are already enrolled.
         toast.success("Successfully enrolled in course!");
         setIsEnrolled(true);
         router.push("/dashboard");
@@ -772,7 +770,7 @@ export default function CourseDetailPage({ params }: Props) {
   };
 
   // Mobile: the player is rendered inline in the curriculum, directly
-  // beneath the tapped topic ÔÇö not pinned above/below the whole list.
+  // beneath the tapped topic - not pinned above/below the whole list.
   // Breakpoint must match the 740px layout rules in globals.css.
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   useEffect(() => {
@@ -813,7 +811,7 @@ export default function CourseDetailPage({ params }: Props) {
       }
 
       // If this completion finished the course, a certificate was issued
-      // server-side ÔÇö fetch it so the certificate card unlocks right away.
+      // server-side - fetch it so the certificate card unlocks right away.
       const willComplete =
         !completedLessonIds.has(selectedLesson.id) &&
         totalLessons > 0 &&
@@ -838,7 +836,7 @@ export default function CourseDetailPage({ params }: Props) {
             if (certLink) setCertificateId(certLink);
           }
         } catch {
-          // Ignore ÔÇö the card will appear on next load.
+          // Ignore - the card will appear on next load.
         }
       }
     } catch (error) {
@@ -1014,7 +1012,7 @@ export default function CourseDetailPage({ params }: Props) {
             </div>
           </div>
 
-          {/* Pricing & enrollment ÔÇö beside the cover/overview/instructor,
+          {/* Pricing & enrollment - beside the cover/overview/instructor,
               non-sticky so it scrolls away with the page */}
           <div className="course-detail-sidebar">
             <div className="course-purchase-card">
@@ -1129,7 +1127,7 @@ export default function CourseDetailPage({ params }: Props) {
               </div>
             </div>
           </div>
-{/* Live classes ÔÇö upcoming/running sessions for this course */}
+{/* Live classes - upcoming/running sessions for this course */}
               {liveClasses.length > 0 && (
                 <div className="course-live">
                   <div className="course-live-head">
@@ -1222,7 +1220,7 @@ export default function CourseDetailPage({ params }: Props) {
                   </div>
                 </div>
               )}
-          {/* Curriculum (left) + video player (right) ÔÇö full-width row */}
+          {/* Curriculum (left) + video player (right) - full-width row */}
           <div className="course-learning-grid">
             <div className="course-curriculum">
               <div className="course-curriculum-heading">
@@ -1308,7 +1306,7 @@ export default function CourseDetailPage({ params }: Props) {
                       </div>
                     </div>
                   ))}
-                  {/* Certificate ÔÇö locked until the course is 100% complete */}
+                  {/* Certificate - locked until the course is 100% complete */}
                 {
                   <div className="mt-2">
                     {certificateId ? (
@@ -1348,7 +1346,7 @@ export default function CourseDetailPage({ params }: Props) {
               
             </div>
 
-            {/* Video Player ÔÇö desktop only; mobile renders the same
+            {/* Video Player - desktop only; mobile renders the same
                 player inline directly beneath the tapped topic. */}
             {!isMobileViewport && lessonPlayer}
           </div>
