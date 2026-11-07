@@ -1857,8 +1857,9 @@ export function PolicyPage({ kind }: { kind: PolicyKind }) {
                   request.
                 </p>
               </section>
+              
                <section>
-                <h2>5.Contact</h2>
+                <h2>5. Contact</h2>
 
                 <p>
                   Legal Operator: {businessInfo.legalName}
