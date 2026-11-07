@@ -428,26 +428,31 @@ html[data-theme="dark"] .about-contact-link {
   font-size: 13px;
   line-height: 1.9;
 }
+
 .policy-sections {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-  gap: 16px;
+  columns: 2;
+  column-gap: 16px;
 }
+
 .policy-sections > section {
-  min-height: 100%;
-  margin: 0;
+  display: inline-block;
+  width: 100%;
+  margin: 0 0 16px;
   padding: 19px 21px;
   border: 1px solid #e8e8e5;
   border-radius: 4px;
   background: #fff;
+  break-inside: avoid;
+  vertical-align: top;
 }
+
 .policy-sections > section h2 {
   margin: 0 0 8px;
   font-size: 16px;
   line-height: 1.4;
 }
-.policy-sections > section p {
+.policy-sections > section p,
+.policy-sections > section li {
   margin: 6px 0;
   color: #626262;
   font-size: 13px;
@@ -471,7 +476,8 @@ html[data-theme="dark"] .policy-operator h2 {
 }
 html[data-theme="dark"] .policy-hero .about-hero-inner > p:not(.policy-updated),
 html[data-theme="dark"] .policy-updated,
-html[data-theme="dark"] .policy-sections > section p {
+html[data-theme="dark"] .policy-sections > section p,
+.policy-sections > section li {
   color: var(--muted);
 }
 html[data-theme="dark"] .policy-operator,
@@ -548,8 +554,8 @@ html[data-theme="dark"] .policy-operator {
     padding: 28px 0 40px;
   }
   .policy-sections {
-    grid-template-columns: 1fr;
-  }
+  columns: 1;
+}
   .policy-content .policy-operator p {
     display: block;
   }
