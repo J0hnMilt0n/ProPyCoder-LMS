@@ -7933,17 +7933,7 @@ html[data-theme="dark"] .course-certificate-card.is-unlocked {
   padding: 24px 16px 48px;
 }
 
-/* Certificate scale-to-fit wrapper: reserves space so nothing jumps, and
-   centers the scaled-down certificate on mobile. */
-.certificate-scale-box {
-  min-height: 220px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.certificate-scale-box > .certificate-scale-inner {
-  align-self: flex-start;
-}
+
 
 /* Certificate frame (redesigned standalone page) */
 .certificate {
