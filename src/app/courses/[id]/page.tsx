@@ -1181,9 +1181,7 @@ export default function CourseDetailPage({ params }: Props) {
                       : "bg-blue-600 text-white hover:bg-blue-700"
                   } ${isEnrolling ? "opacity-50" : ""}`}
                 >
-                  {isAccessLoading ? (
-                    "Checking access..."
-                  ) : isEnrolled ? (
+                  {isEnrolled ? (
                     <>
                       <CheckCircle className="h-5 w-5" />
                       Enrolled
