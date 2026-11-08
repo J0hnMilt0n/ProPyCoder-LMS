@@ -1297,7 +1297,7 @@ export function LessonVideoPlayer({
   return (
     <div
       ref={rootRef}
-      className={`lvp-root ${controlsVisible ? "is-active" : ""} ${isFullscreen && isMobile ? "is-mobile-fullscreen" : ""} ${isRotated ? "is-rotated" : ""}`}
+      className={`lvp-root ${controlsVisible ? "is-active" : ""} ${isFullscreen && isMobile ? "is-mobile-fullscreen" : ""} ${isNativeFullscreen ? "is-native-fullscreen" : ""} ${isRotated ? "is-rotated" : ""}`}
       tabIndex={0}
       aria-label={`Video player: ${title}`}
       onMouseMove={revealControls}
