@@ -224,7 +224,7 @@ function formatStartsIn(startTime: number, now: number): string {
 
 export default function CourseDetailPage({ params }: Props) {
   const { id: courseId } = use(params);
-  const { data: session, status } = useSession();
+  const { data: session, status, update: updateSession } = useSession();
   const sessionUserId = session?.user?.id ?? null;
   const authUserHint = status === "loading" ? readAuthUserHint() : null;
   const cacheUserId = sessionUserId ?? authUserHint;
@@ -780,13 +780,20 @@ export default function CourseDetailPage({ params }: Props) {
   }, [courseId, contentReady]);
 
   const handleEnroll = async () => {
-    if (!session?.user) {
+    if (status === "unauthenticated") {
       router.push("/auth/login");
       return;
     }
 
     setIsEnrolling(true);
     try {
+      const currentSession =
+        status === "loading" ? await updateSession() : session;
+      if (!currentSession?.user) {
+        router.push("/auth/login");
+        return;
+      }
+
       // Free courses enroll directly; paid courses go through the payment
       // API, which sends the user to checkout and creates the enrollment
       // once the order completes.
@@ -803,6 +810,11 @@ export default function CourseDetailPage({ params }: Props) {
           router.push("/dashboard");
         } else {
           const error = await response.json();
+          if (error.error === "Already enrolled in this course") {
+            setIsEnrolled(true);
+            setAccessResolvedCourseId(courseId);
+            return;
+          }
           toast.error(error.error || "Failed to enroll");
         }
         return;
@@ -831,6 +843,11 @@ export default function CourseDetailPage({ params }: Props) {
         setIsEnrolled(true);
         router.push("/dashboard");
       } else {
+        if (payload.error === "Already enrolled in this course") {
+          setIsEnrolled(true);
+          setAccessResolvedCourseId(courseId);
+          return;
+        }
         toast.error(payload.error || "Failed to start checkout");
       }
     } catch {
@@ -1011,10 +1028,6 @@ export default function CourseDetailPage({ params }: Props) {
     );
   }
 
-  const isAccessLoading =
-    ((status === "loading" || status === "authenticated") &&
-      accessResolvedCourseId !== courseId);
-
   if (!course) {
     return (
       <div className="course-detail-page">
@@ -1174,7 +1187,7 @@ export default function CourseDetailPage({ params }: Props) {
 
                 <button
                   onClick={handleEnroll}
-                  disabled={isAccessLoading || isEnrolling || isEnrolled}
+                  disabled={isEnrolling || isEnrolled}
                   className={`w-full py-3 rounded-lg font-semibold text-lg transition flex items-center justify-center gap-2 ${
                     isEnrolled
                       ? "bg-sky-600 text-white cursor-not-allowed"
