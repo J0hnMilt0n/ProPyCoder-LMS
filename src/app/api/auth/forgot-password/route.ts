@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
       .email-heading { font-size:25px !important; }
     }
   </style>
-  <title>Reset your password | ProPyCoder</title>
+  <title>ProPyCoder - Reset your password</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f4f3f1;font-family:Arial,Helvetica,sans-serif;color:#252525;-webkit-text-size-adjust:100%;">
   <div style="display:none!important;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">Reset your ProPyCoder password. Your secure link is ready inside.</div>
@@ -158,7 +158,6 @@ export async function POST(request: NextRequest) {
             <tr><td style="height:4px;border-radius:10px 10px 0 0;background:#f15a2a;font-size:0;line-height:0;">&nbsp;</td></tr>
             <tr><td class="email-card-content" style="padding:38px 40px 34px;">
               <p style="margin:0 0 12px;color:#b84c2b;font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;">PASSWORD RESET</p>
-              <h1 class="email-heading" style="margin:0 0 20px;color:#242424;font-size:30px;font-weight:700;line-height:1.18;letter-spacing:-.7px;">Reset your password.</h1>
               <p style="margin:0 0 9px;color:#333;font-size:15px;line-height:1.6;">Hi ${safeName},</p>
               <p style="margin:0 0 27px;color:#626262;font-size:15px;line-height:1.75;">We received a request to reset your ProPyCoder password. Click the button below to choose a new one.</p>
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 18px;">

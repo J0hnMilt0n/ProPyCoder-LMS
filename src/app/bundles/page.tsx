@@ -44,8 +44,8 @@ interface StoreBundle {
   }[];
 }
 
-interface PurchasedCoursesResponse {
-  courseIds?: string[];
+interface BundlePurchasesResponse {
+  purchases?: Record<string, string[]>;
 }
 
 interface BundlePricing {
@@ -81,7 +81,7 @@ export default function BundlesPage() {
       (json as { bundles: StoreBundle[] }).bundles ?? [],
   });
 
-  const bundles = bundlesRes.data ?? [];
+  const bundles = useMemo(() => bundlesRes.data ?? [], [bundlesRes.data]);
   const isLoading = bundlesRes.isLoading;
 
   
@@ -145,55 +145,30 @@ export default function BundlesPage() {
       lastPurchasedRefreshRef.current = now;
 
       try {
-        // Fetch purchases independently for each bundle.
-        const results = await Promise.all(
-          bundles.map(async (bundle) => {
-            try {
-              const response = await fetch(
-                `/api/bundles/${bundle.id}/purchases`,
-                {
-                  credentials: "same-origin",
-                  cache: "no-store",
-                },
-              );
-
-              if (!response.ok) return null;
-
-              const result =
-                (await response.json()) as PurchasedCoursesResponse;
-
-              const courseIds = result.courseIds ?? [];
-
-              // Same cache key and scope as BundleDetailPage.
-              primeResourceCache(
-                `bundle-purchases:${bundle.id}`,
-                scope,
-                courseIds,
-              );
-
-              return {
-                bundleId: bundle.id,
-                courseIds,
-              };
-            } catch {
-              return null;
-            }
-          }),
-        );
+        const response = await fetch("/api/bundles/purchases", {
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const result =
+          (await response.json()) as BundlePurchasesResponse;
+        const purchases = result.purchases ?? {};
 
         if (!active) return;
 
+        for (const bundle of bundles) {
+          primeResourceCache(
+            `bundle-purchases:${bundle.id}`,
+            scope,
+            purchases[bundle.id] ?? [],
+          );
+        }
+
         setPurchasedByBundle((previous) => {
-          const next = { ...previous };
-
-          for (const result of results) {
-            if (result) {
-              next[result.bundleId] = result.courseIds;
-            }
-          }
-
-          return next;
+          return { ...previous, ...purchases };
         });
+      } catch {
+        // Keep any previously cached purchase badges when refresh fails.
       } finally {
         purchasedRefreshInFlightRef.current = false;
       }

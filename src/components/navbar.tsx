@@ -22,7 +22,7 @@ import { useTheme } from "@/components/theme-provider";
 import { useResource, clearResourceCaches } from "@/lib/use-resource";
 
 export function Navbar() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const user = session?.user;
   // Unread inbox count for the bell badge (logged-in users only).
@@ -148,7 +148,7 @@ export function Navbar() {
               <LogOut size={15} /> Sign out
             </button>
           )}
-          {!user && (
+          {status === "unauthenticated" && (
             <>
               <Link
                 className="site-login"
@@ -181,7 +181,7 @@ export function Navbar() {
         >
           <BookOpen size={14} />
         </Link>
-        {!user && (
+        {status === "unauthenticated" && (
           <Link
             href="/announcements"
             className="site-shortcut"

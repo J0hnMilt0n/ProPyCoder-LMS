@@ -298,16 +298,12 @@ export default function CourseDetailPage({ params }: Props) {
           ? await fetch(`/api/live-classes?courseId=${encodeURIComponent(courseId)}`, {
               cache: "no-store",
             })
-          : await fetch("/api/live-classes?scope=public", {
-              cache: "no-store",
-            });
+          : await fetch("/api/live-classes?scope=public");
         let responseContainsCredentials = Boolean(sessionUserId);
         // A signed-in visitor who hasn't enrolled should still see the public
         // schedule, but must not receive the protected meeting credentials.
         if (sessionUserId && response.status === 403) {
-          response = await fetch("/api/live-classes?scope=public", {
-            cache: "no-store",
-          });
+          response = await fetch("/api/live-classes?scope=public");
           responseContainsCredentials = false;
         }
         if (!response.ok) {
@@ -350,29 +346,18 @@ export default function CourseDetailPage({ params }: Props) {
       );
       if (cachedModules) setModules(cachedModules);
 
-      // All four requests are independent of each other. The database is
-      // remote, so awaiting them one after another made the page wait for
-      // the SUM of four round trips.
+      // Fetch course details and access-controlled lessons in parallel.
       // Course first paint wins here: the spinner gates ONLY on the
       // course payload settled in the inner try block below.
       const signal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
-      const [courseRequest, lessonsRequest, progressRequest, certsRequest] = [
+      const [courseRequest, lessonsRequest] = [
         fetch(`/api/courses/${courseId}`, { signal }),
         fetch(`/api/lessons?courseId=${encodeURIComponent(courseId)}`, {
           signal,
         }),
-        fetch(`/api/progress?courseId=${encodeURIComponent(courseId)}`, {
-          signal,
-        }),
-        fetch("/api/certificates", { signal }),
       ];
-      const [lessonsResponse, progressResponse, certResponse] = [
-        settle(lessonsRequest),
-        settle(progressRequest),
-        settle(certsRequest),
-      ];
+      const lessonsResponse = settle(lessonsRequest);
 
-      let courseTitle = "";
       try {
         // `await` waits ONLY for the course payload (the old Promise.all
         // held the spinner until the slowest of four requests).
@@ -390,7 +375,6 @@ export default function CourseDetailPage({ params }: Props) {
           throw new Error("Invalid course data received from the server");
         }
 
-        courseTitle = data.title;
         setCourse({ ...data, modules: data.modules ?? [] });
         // Cache for instant first paint on the next visit (paint-first from
         // localStorage, then this background fetch patches what changed).
@@ -441,74 +425,46 @@ export default function CourseDetailPage({ params }: Props) {
         setModules(loadedModules);
         setIsEnrolled(lessonsData.isEnrolled ?? false);
         setAccessResolvedCourseId(courseId);
+        setCompletedLessonIds(new Set());
+        setCertificateId(null);
         primeResourceCache<Module[]>(
           "course-modules",
           `public:${courseId}`,
           loadedModules,
         );
 
-        // Fetched in parallel above; only meaningful for enrolled users
-        // (401 when signed out, empty otherwise). Lookup must finish
-        // before selecting the resume lesson below. Timeouts and network
-        // failures resolve to empty progress, never a page hang.
+        // Progress is only needed for enrolled users; skip that private API
+        // request for visitors who only have access to public previews.
         if (lessonsData.isEnrolled) {
-          const completedIds = await (async (): Promise<string[]> => {
-            try {
-              const res = await progressResponse;
-              if (!res?.ok) return [];
-              const progressJson = (await res.json()) as {
+          try {
+            const progressRes = await fetch(
+              `/api/progress?courseId=${encodeURIComponent(courseId)}`,
+              { signal },
+            );
+            if (progressRes.ok) {
+              const progressJson = (await progressRes.json()) as {
                 data?: unknown;
                 certificateNumber?: unknown;
               };
               if (typeof progressJson.certificateNumber === "string") {
                 setCertificateId(progressJson.certificateNumber);
               }
-              if (!Array.isArray(progressJson.data)) return [];
-              return (progressJson.data as { status?: string }[])
-                .filter((item) => item.status === "COMPLETED")
-                .map((item, index) =>
-                  typeof (item as { lessonId?: unknown }).lessonId ===
-                  "string"
-                    ? ((item as { lessonId: string }).lessonId as string)
-                    : `missing-${index}`,
+              if (Array.isArray(progressJson.data)) {
+                const completedIds = (
+                  progressJson.data as { lessonId?: unknown; status?: string }[]
                 )
-                .filter((lessonId) => !lessonId.startsWith("missing-"));
-            } catch {
-              return [];
+                  .filter((item) => item.status === "COMPLETED")
+                  .map((item) => item.lessonId)
+                  .filter(
+                    (lessonId): lessonId is string =>
+                      typeof lessonId === "string",
+                  );
+                setCompletedLessonIds(new Set(completedIds));
+              }
             }
-          })();
-          setCompletedLessonIds(new Set(completedIds));
-        }
-
-        // If a certificate already exists for this course, surface it
-        // (also fetched in parallel above). A failed/timed-out cert
-        // lookup just hides the certificate link, as before.
-        try {
-          const certRes = await certResponse;
-          if (certRes?.ok) {
-            const certJson = (await certRes.json()) as {
-              data?: {
-                course?: unknown;
-                id?: unknown;
-                certificateNumber?: unknown;
-              }[];
-            };
-            const match = (certJson.data ?? []).find(
-              (entry) => entry.course === courseTitle,
-            );
-            // Prefer the human-readable certificate number for the URL; the
-            // cuid id still resolves through the same page as a fallback.
-            const certLink =
-              typeof match?.certificateNumber === "string" &&
-              match.certificateNumber
-                ? match.certificateNumber
-                : typeof match?.id === "string"
-                  ? match.id
-                  : null;
-            if (certLink) setCertificateId(certLink);
+          } catch {
+            // Progress is optional for rendering the course page.
           }
-        } catch {
-          // Certificate link stays hidden.
         }
 
         // Restore the lesson the user was last watching. Falls back to the

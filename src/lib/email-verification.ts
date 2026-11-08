@@ -79,7 +79,7 @@ export async function sendVerificationEmail(input: {
       .email-heading { font-size:25px !important; }
     }
   </style>
-  <title>Confirm your email | ProPyCoder</title>
+  <title>ProPyCoder - Confirm your email</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f4f3f1;font-family:Arial,Helvetica,sans-serif;color:#252525;-webkit-text-size-adjust:100%;">
   <div style="display:none!important;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">One quick step to activate your ProPyCoder account. Your confirmation link is ready inside.</div>

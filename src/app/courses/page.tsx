@@ -117,7 +117,6 @@ async function fetchAllCourses(
     `/api/courses?${firstParams}`,
     {
       signal,
-      cache: "no-store",
     },
   );
 
@@ -156,7 +155,6 @@ async function fetchAllCourses(
           `/api/courses?${params}`,
           {
             signal,
-            cache: "no-store",
           },
         );
 

@@ -13,8 +13,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
  *     real content immediately instead of a loading state — even after the
  *     tab was closed and reopened (entries expire after 24h so a page that
  *     hasn't been visited in a while can't serve ancient data).
- *  2. FETCH IN BACKGROUND — a fresh request runs right after mount (and again
- *     whenever the window regains focus, to pick up changes made elsewhere).
+ *  2. REVALIDATE WHEN NEEDED — mount and focus refreshes skip a recent local
+ *     entry; stale entries refresh in the background. Explicit refreshes bypass
+ *     this window.
  *  3. PATCH ONLY WHAT CHANGED — the fresh payload is compared to what's shown;
  *     setState is called ONLY when it actually differs, so React re-renders
  *     just the changed nodes instead of flashing the whole page.
@@ -26,7 +27,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const PREFIX = "propycoder-resource:";
 // Entries older than this are ignored (the next page load refreshes them).
-// Writes invalidate server-side immediately, so this is only a safety bound.
+// `freshForMs` separately controls when mount/focus requests may be skipped.
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const inFlightRequests = new Map<string, Promise<unknown>>();
 
@@ -70,6 +71,28 @@ function readCache<T>(key: string, scope: string): T | null {
     return parsed.data;
   } catch {
     return null;
+  }
+}
+
+function hasFreshCache(key: string, scope: string, maxAgeMs: number): boolean {
+  if (maxAgeMs <= 0) return false;
+  const store = storage();
+  if (!store) return false;
+  try {
+    const raw = store.getItem(PREFIX + key);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw) as CacheEnvelope<unknown>;
+    const age = Date.now() - parsed.savedAt;
+    return (
+      parsed.scope === scope &&
+      parsed.data !== null &&
+      typeof parsed.savedAt === "number" &&
+      age >= 0 &&
+      age < maxAgeMs &&
+      age <= CACHE_TTL_MS
+    );
+  } catch {
+    return false;
   }
 }
 
@@ -214,6 +237,8 @@ export interface UseResourceOptions {
   enabled?: boolean;
   /** Re-fetch when the tab/window regains focus. Default true. */
   revalidateOnFocus?: boolean;
+  /** Skip mount/focus fetches while a matching local entry is this recent. */
+  freshForMs?: number;
   /** Transform the parsed JSON into the value the page needs. */
   select?: (json: unknown) => unknown;
 }
@@ -236,6 +261,7 @@ export function useResource<T>(options: UseResourceOptions): UseResourceResult<T
     scope,
     enabled = true,
     revalidateOnFocus = true,
+    freshForMs = 30_000,
     select,
   } = options;
 
@@ -257,9 +283,13 @@ export function useResource<T>(options: UseResourceOptions): UseResourceResult<T
   const activeRequestRef = useRef(0);
 
   const load = useCallback(
-    async (background: boolean) => {
+    async (background: boolean, force = false) => {
       if (!enabled) return;
       const requestId = ++activeRequestRef.current;
+      if (!force && hasFreshCache(key, scope, freshForMs)) {
+        setError(false);
+        return;
+      }
       if (background) setIsRevalidating(true);
       try {
         const json = await fetchResource<unknown>(url, scope);
@@ -289,7 +319,7 @@ export function useResource<T>(options: UseResourceOptions): UseResourceResult<T
         }
       }
     },
-    [enabled, url, key, scope],
+    [enabled, url, key, scope, freshForMs],
   );
 
   // Reset when the resource key or scope changes, so route changes and
@@ -328,7 +358,7 @@ export function useResource<T>(options: UseResourceOptions): UseResourceResult<T
   }, [enabled, revalidateOnFocus, load]);
 
   const refresh = useCallback(() => {
-    void load(shownRef.current !== "");
+    void load(shownRef.current !== "", true);
   }, [load]);
 
   // "Loading" only means there's genuinely nothing to show yet. Once the

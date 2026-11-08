@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Poppins } from "next/font/google";
 import "./globals.css";
-import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { Providers } from "@/components/providers";
 import { ThemeInitScript } from "@/components/theme-init";
 
@@ -29,19 +28,18 @@ export const viewport = {
   themeColor: "#e95f2d",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth();
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <ThemeInitScript />
       </head>
       <body className={`${inter.className} min-h-full`}>
-        <Providers session={session}>{children}</Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

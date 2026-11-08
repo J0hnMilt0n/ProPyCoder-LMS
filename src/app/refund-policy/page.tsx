@@ -1,6 +1,6 @@
 import { PolicyPage } from "@/components/policy-page";
 
-export const metadata = { title: "Refund and Cancellation Policy | ProPyCoder" };
+export const metadata = { title: "ProPyCoder - Refund and Cancellation Policy" };
 
 export default function RefundPolicyPage() {
   return <PolicyPage kind="refund" />;

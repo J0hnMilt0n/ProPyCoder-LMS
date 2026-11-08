@@ -5,7 +5,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { businessInfo } from "@/lib/business-info";
 
 export const metadata = {
-  title: "About Us | ProPyCoder",
+  title: "ProPyCoder - About Us ",
   description:
     "Learn about ProPyCoder, an online learning platform for practical software and coding education.",
 };
