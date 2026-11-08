@@ -6160,12 +6160,12 @@ html[data-theme="light"] .lab-frame {
   background: rgba(255, 255, 255, 0.14);
 }
 .lvp-btn.is-active {
-  background: rgba(233, 95, 50, 0.85);
+  /* background: rgba(233, 95, 50, 0.85); */
   color: #fff;
 }
-.lvp-btn.is-active:hover {
+/* .lvp-btn.is-active:hover {
   background: #e95f32;
-}
+} */
 .lvp-rate {
   min-width: 34px;
   font-size: 12px;
