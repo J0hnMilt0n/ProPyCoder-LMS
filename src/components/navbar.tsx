@@ -288,7 +288,7 @@ export function Navbar() {
                   .slice(0, 2) ?? "P"}
               </span>
             )}
-            <ChevronDown size={13} />
+            {/* <ChevronDown size={13} /> */}
           </Link>
         )}
         {/* {user && (
