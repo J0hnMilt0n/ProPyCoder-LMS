@@ -87,7 +87,6 @@ function formatTime(value: number): string {
 const VOLUME_KEY = "propycoder-video-volume";
 const MUTED_KEY = "propycoder-video-muted";
 const PROGRESS_PREFIX = "propycoder-video-progress:";
-const RATE_KEY = "propycoder-video-rate";
 
 interface LessonVideoPlayerProps {
   lessonId: string;
@@ -204,29 +203,28 @@ export function LessonVideoPlayer({
       : requestedEndTime ?? duration;
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
-  const [rateIndex, setRateIndex] = useState(2);
+  const [rateState, setRateState] = useState({
+    lessonId,
+    videoId,
+    videoUrl,
+    index: 2,
+  });
+  const rateIndex =
+    rateState.lessonId === lessonId &&
+    rateState.videoId === videoId &&
+    rateState.videoUrl === videoUrl
+      ? rateState.index
+      : 2;
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isNativeFullscreen, setIsNativeFullscreen] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
-  const [brightnessState, setBrightnessState] = useState({
-    lessonId,
-    videoId,
-    value: 1,
-  });
-  const brightness =
-    brightnessState.lessonId === lessonId &&
-    brightnessState.videoId === videoId
-      ? brightnessState.value
-      : 1;
   const [gestureFeedback, setGestureFeedback] = useState("");
   const [isRotated, setIsRotated] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isPortrait, setIsPortrait] = useState(false);
   const [isOrientationLocked, setIsOrientationLocked] = useState(false);
-  const updateBrightness = (value: number) =>
-    setBrightnessState({ lessonId, videoId, value });
 
   const showGestureFeedback = useCallback((message: string, duration = 0) => {
     if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
@@ -249,29 +247,14 @@ export function LessonVideoPlayer({
 
   useEffect(() => {
     const media = window.matchMedia("(orientation: portrait)");
-    const update = () => setIsPortrait(media.matches);
+    const update = () => {
+      const portrait = media.matches;
+      setIsPortrait(portrait);
+      if (!portrait) setIsRotated(false);
+    };
     update();
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
-  }, []);
-
-  useEffect(() => {
-    let frame = 0;
-    try {
-      const savedRate = Number(localStorage.getItem(RATE_KEY));
-      const savedIndex = RATES.indexOf(savedRate);
-      if (savedIndex !== -1) {
-        frame = window.requestAnimationFrame(() => {
-          setRateIndex(savedIndex);
-          if (videoRef.current) videoRef.current.playbackRate = savedRate;
-        });
-      }
-    } catch {
-      // Storage unavailable; use the default rate.
-    }
-    return () => {
-      if (frame) window.cancelAnimationFrame(frame);
-    };
   }, []);
 
   // Reset non-React playback bookkeeping when the lesson changes; the media
@@ -736,6 +719,19 @@ export function LessonVideoPlayer({
     [isYouTube],
   );
 
+  useEffect(() => {
+    applyPlaybackRate(1);
+  }, [applyPlaybackRate, lessonId, videoId, videoUrl]);
+
+  const setPlaybackRate = useCallback(
+    (index: number) => {
+      const nextIndex = Math.min(RATES.length - 1, Math.max(0, index));
+      setRateState({ lessonId, videoId, videoUrl, index: nextIndex });
+      applyPlaybackRate(RATES[nextIndex]);
+    },
+    [applyPlaybackRate, lessonId, videoId, videoUrl],
+  );
+
   const applyVolume = useCallback(
     (value: number) => {
       const clamped = Math.min(1, Math.max(0, value));
@@ -914,14 +910,38 @@ export function LessonVideoPlayer({
     persistVolume(value);
   };
 
+  const getGestureCoordinates = (
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    if (isMobile && isFullscreen && isRotated) {
+      // Map viewport coordinates back into the player's rotated coordinate space.
+      return {
+        x: event.clientY - bounds.top,
+        y: bounds.width - (event.clientX - bounds.left),
+        width: bounds.height,
+        height: bounds.width,
+      };
+    }
+    return {
+      x: event.clientX - bounds.left,
+      y: event.clientY - bounds.top,
+      width: bounds.width,
+      height: bounds.height,
+    };
+  };
+
   const handleGesturePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType !== "touch" || gestureRef.current) return;
     event.preventDefault();
 
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const x = event.clientX - bounds.left;
+    const position = getGestureCoordinates(event);
     const zone: GestureZone =
-      x < bounds.width * 0.4 ? "left" : x > bounds.width * 0.6 ? "right" : "center";
+      position.x < position.width * 0.4
+        ? "left"
+        : position.x > position.width * 0.6
+          ? "right"
+          : "center";
     const videoRate = videoRef.current?.playbackRate;
     const playerRate = ytPlayerRef.current?.getPlaybackRate?.();
     const previousRate =
@@ -937,12 +957,12 @@ export function LessonVideoPlayer({
         : currentTime;
     const gesture: TouchGesture = {
       pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
+      startX: position.x,
+      startY: position.y,
       zone,
       mode: "pending",
-      initialValue: zone === "left" ? brightness : volume,
-      lastValue: zone === "left" ? brightness : volume,
+      initialValue: zone === "left" ? rateIndex : volume,
+      lastValue: zone === "left" ? rateIndex : volume,
       initialTime,
       lastSeekTime: currentTime,
       previousRate,
@@ -1013,8 +1033,9 @@ export function LessonVideoPlayer({
       return;
     }
 
-    const deltaY = gesture.startY - event.clientY;
-    const deltaX = event.clientX - gesture.startX;
+    const position = getGestureCoordinates(event);
+    const deltaY = gesture.startY - position.y;
+    const deltaX = position.x - gesture.startX;
     if (gesture.mode === "pending") {
       if (Math.abs(deltaX) > 16 && Math.abs(deltaX) > Math.abs(deltaY)) {
         if (gesture.holdTimer) clearTimeout(gesture.holdTimer);
@@ -1028,7 +1049,6 @@ export function LessonVideoPlayer({
 
     if (gesture.mode === "horizontal") {
       event.preventDefault();
-      const bounds = event.currentTarget.getBoundingClientRect();
       const endTime = Math.max(clipStartTime, clipEndTime || duration);
       const range = endTime - clipStartTime;
       if (range <= 0) return;
@@ -1036,7 +1056,7 @@ export function LessonVideoPlayer({
         endTime,
         Math.max(
           clipStartTime,
-          gesture.initialTime + (deltaX / Math.max(bounds.width, 1)) * range,
+          gesture.initialTime + (deltaX / Math.max(position.width, 1)) * range,
         ),
       );
       setCurrentTime(gesture.lastSeekTime);
@@ -1053,19 +1073,30 @@ export function LessonVideoPlayer({
 
     if (gesture.mode !== "vertical") return;
     event.preventDefault();
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const amount = (deltaY / Math.max(bounds.height, 1)) * 1.5;
-    gesture.lastValue = Math.min(
-      gesture.zone === "left" ? 1.5 : 1,
-      Math.max(gesture.zone === "left" ? 0.2 : 0, gesture.initialValue + amount),
-    );
     if (gesture.zone === "left") {
-      updateBrightness(gesture.lastValue);
-      showGestureFeedback(`Brightness ${Math.round(gesture.lastValue * 100)}%`);
-    } else {
-      applyVolume(gesture.lastValue);
-      showGestureFeedback(`Volume ${Math.round(gesture.lastValue * 100)}%`);
+      const rateIndex = Math.min(
+        RATES.length - 1,
+        Math.max(
+          0,
+          gesture.initialValue +
+            Math.round(
+              (deltaY / Math.max(position.height, 1)) * (RATES.length - 1),
+            ),
+        ),
+      );
+      gesture.lastValue = rateIndex;
+      setPlaybackRate(rateIndex);
+      showGestureFeedback(`Speed ${RATES[rateIndex]}×`);
+      return;
     }
+
+    const amount = (deltaY / Math.max(position.height, 1)) * 1.5;
+    gesture.lastValue = Math.min(
+      1,
+      Math.max(0, gesture.initialValue + amount),
+    );
+    applyVolume(gesture.lastValue);
+    showGestureFeedback(`Volume ${Math.round(gesture.lastValue * 100)}%`);
   };
 
   const finishGesture = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -1100,13 +1131,16 @@ export function LessonVideoPlayer({
       return;
     }
     if (gesture.mode === "vertical") {
-      if (gesture.zone === "right") persistVolume(gesture.lastValue);
-      showGestureFeedback(
-        gesture.zone === "right"
-          ? `Volume ${Math.round(gesture.lastValue * 100)}%`
-          : `Brightness ${Math.round(gesture.lastValue * 100)}%`,
-        500,
-      );
+      if (gesture.zone === "left") {
+        const rate = RATES[gesture.lastValue];
+        showGestureFeedback(`Speed ${rate}×`, 500);
+      } else {
+        persistVolume(gesture.lastValue);
+        showGestureFeedback(
+          `Volume ${Math.round(gesture.lastValue * 100)}%`,
+          500,
+        );
+      }
       return;
     }
     if (gesture.mode === "horizontal") {
@@ -1208,17 +1242,12 @@ export function LessonVideoPlayer({
         <div
           ref={ytContainerRef}
           className="lvp-yt-container"
-          style={{
-            width: "100%",
-            height: "100%",
-            filter: `brightness(${brightness})`,
-          }}
+          style={{ width: "100%", height: "100%" }}
         />
       ) : (
         <video
           ref={videoRef}
           src={src ?? undefined}
-          style={{ filter: `brightness(${brightness})` }}
           playsInline
           preload="metadata"
           onClick={togglePlay}
@@ -1375,7 +1404,10 @@ export function LessonVideoPlayer({
 
       <div
         className={`lvp-controls ${
-          hasStarted && (controlsVisible || !isPlaying) ? "is-visible" : ""
+          (hasStarted && (controlsVisible || !isPlaying)) ||
+          (isMobile && isFullscreen && controlsVisible)
+            ? "is-visible"
+            : ""
         }`}
       >
         <input
@@ -1469,8 +1501,7 @@ export function LessonVideoPlayer({
           aria-checked={RATES[rateIndex] === rate}
           onClick={() => {
             const index = RATES.indexOf(rate);
-            setRateIndex(index);
-            applyPlaybackRate(rate);
+            setPlaybackRate(index);
             setRateMenuOpen(false);
           }}
         >

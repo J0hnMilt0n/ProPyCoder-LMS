@@ -6056,6 +6056,7 @@ html[data-theme="light"] .lab-frame {
     aspect-ratio: auto;
     transform: translate(-50%, -50%) rotate(90deg);
     transform-origin: center;
+    transition: none;
   }
 }
 .lvp-rate-menu {
@@ -6116,10 +6117,10 @@ html[data-theme="light"] .lab-frame {
 }
 .lvp-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 6px;
-  row-gap: 6px;
+  min-width: 0;
 }
 .lvp-btn {
   display: inline-flex;
@@ -6152,7 +6153,10 @@ html[data-theme="light"] .lab-frame {
   font-weight: 700;
 }
 .lvp-time {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
   color: #b6b6bd;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
@@ -6214,9 +6218,40 @@ html[data-theme="light"] .lab-frame {
     display: none;
   }
 }
-@media (max-width: 480px) {
+
+@container (max-width: 420px) {
+  .lvp-controls {
+    gap: 4px;
+    padding: 0 6px 8px;
+  }
+
+  .lvp-row {
+    gap: 2px;
+  }
+
+  .lvp-btn {
+    min-width: 22px;
+    height: 24px;
+    padding: 0 1px;
+  }
+
+  .lvp-rate {
+    min-width: 26px;
+    font-size: 9px;
+  }
+
   .lvp-time {
+    font-size: clamp(7px, 2.4cqw, 10px);
+  }
+
+  .lvp-volume {
     display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .lvp-row {
+    gap: 2px;
   }
 }
 
