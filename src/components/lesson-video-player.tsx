@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { CSSProperties, KeyboardEvent, ChangeEvent } from "react";
+import type {
+  CSSProperties,
+  KeyboardEvent,
+  ChangeEvent,
+  PointerEvent as ReactPointerEvent,
+} from "react";
 import {
   Maximize,
   Lock,
@@ -89,6 +94,35 @@ interface LessonVideoPlayerProps {
   videoId: string | null;
   title: string;
   videoUrl?: string | null;
+  videoStartTime?: number | null;
+  videoEndTime?: number | null;
+  durationMinutes?: number | null;
+}
+
+type GestureZone = "left" | "center" | "right";
+type GestureMode =
+  | "pending"
+  | "vertical"
+  | "horizontal"
+  | "hold"
+  | "ignored";
+
+interface TouchGesture {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  zone: GestureZone;
+  mode: GestureMode;
+  initialValue: number;
+  lastValue: number;
+  initialTime: number;
+  lastSeekTime: number;
+  previousRate: number;
+  wasPlaying: boolean;
+  rewindTime: number;
+  reversePlayback: boolean;
+  holdTimer: ReturnType<typeof setTimeout> | null;
+  reverseTimer: ReturnType<typeof setInterval> | null;
 }
 
 /**
@@ -100,6 +134,9 @@ export function LessonVideoPlayer({
   lessonId,
   videoId,
   videoUrl,
+  videoStartTime,
+  videoEndTime,
+  durationMinutes,
   title,
 }: LessonVideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -108,6 +145,12 @@ export function LessonVideoPlayer({
   const [ytReady, setYtReady] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gestureRef = useRef<TouchGesture | null>(null);
+  const pendingTapRef = useRef<{
+    zone: GestureZone;
+    timer: ReturnType<typeof setTimeout>;
+  } | null>(null);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressRestoredRef = useRef(false);
   const lastSavedTimeRef = useRef(0);
   const [rateMenuOpen, setRateMenuOpen] = useState(false);
@@ -134,6 +177,31 @@ export function LessonVideoPlayer({
   const [hasStarted, setHasStarted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const configuredStartTime = Math.max(0, videoStartTime ?? 0);
+  const durationLimit =
+    durationMinutes != null && durationMinutes > 0
+      ? configuredStartTime + durationMinutes * 60
+      : null;
+  const requestedEndTime =
+    [videoEndTime, durationLimit].reduce<number | null>(
+      (endTime, candidate) =>
+        candidate != null &&
+        Number.isFinite(candidate) &&
+        candidate > configuredStartTime
+          ? endTime == null
+            ? candidate
+            : Math.min(endTime, candidate)
+          : endTime,
+      null,
+    );
+  const clipStartTime =
+    duration > 0
+      ? Math.min(configuredStartTime, duration)
+      : configuredStartTime;
+  const clipEndTime =
+    duration > 0
+      ? Math.min(requestedEndTime ?? duration, duration)
+      : requestedEndTime ?? duration;
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [rateIndex, setRateIndex] = useState(2);
@@ -142,10 +210,34 @@ export function LessonVideoPlayer({
   const [isBuffering, setIsBuffering] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [brightnessState, setBrightnessState] = useState({
+    lessonId,
+    videoId,
+    value: 1,
+  });
+  const brightness =
+    brightnessState.lessonId === lessonId &&
+    brightnessState.videoId === videoId
+      ? brightnessState.value
+      : 1;
+  const [gestureFeedback, setGestureFeedback] = useState("");
   const [isRotated, setIsRotated] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isPortrait, setIsPortrait] = useState(false);
   const [isOrientationLocked, setIsOrientationLocked] = useState(false);
+  const updateBrightness = (value: number) =>
+    setBrightnessState({ lessonId, videoId, value });
+
+  const showGestureFeedback = useCallback((message: string, duration = 0) => {
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    setGestureFeedback(message);
+    if (message && duration > 0) {
+      feedbackTimerRef.current = setTimeout(() => {
+        setGestureFeedback("");
+        feedbackTimerRef.current = null;
+      }, duration);
+    }
+  }, []);
 
   useEffect(() => {
   const media = window.matchMedia("(max-width: 1024px)");
@@ -187,7 +279,7 @@ export function LessonVideoPlayer({
   useEffect(() => {
     progressRestoredRef.current = false;
     lastSavedTimeRef.current = 0;
-  }, [videoId]);
+  }, [lessonId, videoId]);
 
   const saveProgress = useCallback(() => {
     if (!lessonId) return;
@@ -247,10 +339,25 @@ export function LessonVideoPlayer({
   }, []);
 
   useEffect(() => {
+    const video = videoRef.current;
     return () => {
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+      if (pendingTapRef.current) clearTimeout(pendingTapRef.current.timer);
+      const gesture = gestureRef.current;
+      if (gesture?.holdTimer) clearTimeout(gesture.holdTimer);
+      if (gesture?.reverseTimer) clearInterval(gesture.reverseTimer);
+      if (gesture?.mode === "hold") {
+        if (gesture.zone === "left" && gesture.reversePlayback && video) {
+          video.playbackRate = gesture.previousRate;
+        } else if (gesture.zone === "right" && isYouTube) {
+          ytPlayerRef.current?.setPlaybackRate?.(gesture.previousRate);
+        } else if (gesture.zone === "right" && video) {
+          video.playbackRate = gesture.previousRate;
+        }
+      }
     };
-  }, []);
+  }, [isYouTube]);
 
   useEffect(() => {
     const syncFullscreen = () => {
@@ -320,6 +427,28 @@ export function LessonVideoPlayer({
         try {
           const t = p.getCurrentTime?.();
           if (typeof t === "number") {
+            const d = p.getDuration?.() ?? 0;
+            const start =
+              d > 0 ? Math.min(configuredStartTime, d) : configuredStartTime;
+            if (
+              requestedEndTime !== null &&
+              d > 0 &&
+              requestedEndTime < d
+            ) {
+              const end = Math.min(requestedEndTime, d);
+              if (t >= end) {
+                p.seekTo?.(end, true);
+                p.pauseVideo?.();
+                setCurrentTime(end);
+                stopPolling();
+                return;
+              }
+            }
+            if (t < start) {
+              p.seekTo?.(start, true);
+              setCurrentTime(start);
+              return;
+            }
             setCurrentTime(t);
             if (Math.abs(t - lastSavedTimeRef.current) >= 5) {
               lastSavedTimeRef.current = t;
@@ -364,7 +493,7 @@ export function LessonVideoPlayer({
             setYtReady(true);
             const p = event.target;
             const d = p.getDuration?.();
-            if (typeof d === "number") setDuration(d);
+            if (typeof d === "number" && d > 0) setDuration(d);
             try {
               const vol = Number(window.localStorage.getItem(VOLUME_KEY));
               if (Number.isFinite(vol)) {
@@ -379,7 +508,15 @@ export function LessonVideoPlayer({
             } catch {
               // ignore
             }
-            // restore progress
+            const start = Math.min(
+              configuredStartTime,
+              typeof d === "number" && d > 0 ? d : configuredStartTime,
+            );
+            const end =
+              typeof d === "number" && d > 0
+                ? Math.min(requestedEndTime ?? d, d)
+                : requestedEndTime ?? start;
+            let restoreTime = start;
             if (lessonId) {
               try {
                 const raw = window.localStorage.getItem(
@@ -388,17 +525,17 @@ export function LessonVideoPlayer({
                 const saved = raw === null ? NaN : Number(raw);
                 if (
                   Number.isFinite(saved) &&
-                  saved > 1 &&
-                  typeof d === "number" &&
-                  saved < d - 1
+                  saved > start + 1 &&
+                  saved < end - 1
                 ) {
-                  p.seekTo(saved, true);
-                  setCurrentTime(saved);
+                  restoreTime = saved;
                 }
               } catch {
                 // ignore
               }
             }
+            p.seekTo?.(restoreTime, true);
+            setCurrentTime(restoreTime);
             progressRestoredRef.current = true;
           },
           onStateChange: (event: any) => {
@@ -473,26 +610,55 @@ export function LessonVideoPlayer({
       ytPlayerRef.current = null;
       setYtReady(false);
     };
-  }, [isYouTube, youtubeId, lessonId]);
+  }, [
+    configuredStartTime,
+    durationMinutes,
+    isYouTube,
+    lessonId,
+    requestedEndTime,
+    youtubeId,
+  ]);
 
   const togglePlay = useCallback(() => {
     if (isYouTube) {
       const p = ytPlayerRef.current;
       if (!p) return;
       if (isPlaying) p.pauseVideo?.();
-      else p.playVideo?.();
+      else {
+        const time = p.getCurrentTime?.() ?? currentTime;
+        if (requestedEndTime !== null && time >= clipEndTime - 0.25) {
+          p.seekTo?.(clipStartTime, true);
+          setCurrentTime(clipStartTime);
+        }
+        p.playVideo?.();
+      }
       revealControls();
       return;
     }
     const video = videoRef.current;
     if (!video) return;
     if (video.paused) {
+      if (
+        requestedEndTime !== null &&
+        video.currentTime >= Math.min(requestedEndTime, video.duration) - 0.25
+      ) {
+        video.currentTime = clipStartTime;
+        setCurrentTime(clipStartTime);
+      }
       void video.play().catch(() => undefined);
     } else {
       video.pause();
     }
     revealControls();
-  }, [isYouTube, isPlaying, revealControls]);
+  }, [
+    clipEndTime,
+    clipStartTime,
+    currentTime,
+    isYouTube,
+    isPlaying,
+    requestedEndTime,
+    revealControls,
+  ]);
 
   const skip = useCallback(
     (delta: number) => {
@@ -501,7 +667,15 @@ export function LessonVideoPlayer({
         if (!p) return;
         const target = (p.getCurrentTime?.() ?? 0) + delta;
         const dur = p.getDuration?.() ?? 0;
-        const clamped = Math.min(Math.max(target, 0), dur || target);
+        const lower = Math.min(
+          configuredStartTime,
+          dur > 0 ? dur : configuredStartTime,
+        );
+        const upper =
+          dur > 0
+            ? Math.min(requestedEndTime ?? dur, dur)
+            : requestedEndTime ?? Math.max(target, lower);
+        const clamped = Math.min(Math.max(target, lower), Math.max(lower, upper));
         p.seekTo?.(clamped, true);
         setCurrentTime(clamped);
         revealControls();
@@ -510,14 +684,23 @@ export function LessonVideoPlayer({
       const video = videoRef.current;
       if (!video) return;
       const target = video.currentTime + delta;
+      const mediaDuration = Number.isFinite(video.duration) ? video.duration : 0;
+      const lower = Math.min(
+        configuredStartTime,
+        mediaDuration > 0 ? mediaDuration : configuredStartTime,
+      );
+      const upper =
+        mediaDuration > 0
+          ? Math.min(requestedEndTime ?? mediaDuration, mediaDuration)
+          : requestedEndTime ?? Math.max(target, lower);
       video.currentTime = Math.min(
-        Math.max(target, 0),
-        Number.isFinite(video.duration) ? video.duration : 0,
+        Math.max(target, lower),
+        Math.max(lower, upper),
       );
       setCurrentTime(video.currentTime);
       revealControls();
     },
-    [isYouTube, revealControls],
+    [configuredStartTime, isYouTube, requestedEndTime, revealControls],
   );
 
   const toggleMute = useCallback(() => {
@@ -544,6 +727,44 @@ export function LessonVideoPlayer({
     }
     revealControls();
   }, [isYouTube, isMuted, revealControls]);
+
+  const applyPlaybackRate = useCallback(
+    (rate: number) => {
+      if (isYouTube) ytPlayerRef.current?.setPlaybackRate?.(rate);
+      else if (videoRef.current) videoRef.current.playbackRate = rate;
+    },
+    [isYouTube],
+  );
+
+  const applyVolume = useCallback(
+    (value: number) => {
+      const clamped = Math.min(1, Math.max(0, value));
+      setVolume(clamped);
+      setIsMuted(clamped === 0);
+      if (isYouTube) {
+        const player = ytPlayerRef.current;
+        player?.setVolume?.(Math.round(clamped * 100));
+        if (clamped === 0) player?.mute?.();
+        else player?.unMute?.();
+      } else {
+        const video = videoRef.current;
+        if (video) {
+          video.volume = clamped;
+          video.muted = clamped === 0;
+        }
+      }
+    },
+    [isYouTube],
+  );
+
+  const persistVolume = useCallback((value: number) => {
+    try {
+      window.localStorage.setItem(VOLUME_KEY, String(value));
+      window.localStorage.setItem(MUTED_KEY, value === 0 ? "1" : "0");
+    } catch {
+      // Storage unavailable.
+    }
+  }, []);
 
   const toggleFullscreen = useCallback(async () => {
     if (isMobile) {
@@ -673,7 +894,11 @@ export function LessonVideoPlayer({
   };
 
   const handleSeek = (event: ChangeEvent<HTMLInputElement>) => {
-    const value = Number(event.target.value);
+    const upper = Math.max(clipStartTime, clipEndTime || duration);
+    const value = Math.min(
+      Math.max(Number(event.target.value), clipStartTime),
+      upper,
+    );
     setCurrentTime(value);
     if (isYouTube) {
       ytPlayerRef.current?.seekTo?.(value, true);
@@ -685,29 +910,284 @@ export function LessonVideoPlayer({
 
   const handleVolume = (event: ChangeEvent<HTMLInputElement>) => {
     const value = Number(event.target.value);
-    setVolume(value);
-    setIsMuted(value === 0);
-    if (isYouTube) {
-      const p = ytPlayerRef.current;
-      p?.setVolume?.(Math.round(value * 100));
-      if (value === 0) p?.mute?.();
-      else p?.unMute?.();
-    } else {
-      const video = videoRef.current;
-      if (video) {
-        video.volume = value;
-        video.muted = value === 0;
-      }
-    }
-    try {
-      window.localStorage.setItem(VOLUME_KEY, String(value));
-      window.localStorage.setItem(MUTED_KEY, value === 0 ? "1" : "0");
-    } catch {
-      // Storage unavailable.
+    applyVolume(value);
+    persistVolume(value);
+  };
+
+  const handleGesturePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== "touch" || gestureRef.current) return;
+    event.preventDefault();
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - bounds.left;
+    const zone: GestureZone =
+      x < bounds.width * 0.4 ? "left" : x > bounds.width * 0.6 ? "right" : "center";
+    const videoRate = videoRef.current?.playbackRate;
+    const playerRate = ytPlayerRef.current?.getPlaybackRate?.();
+    const previousRate =
+      (typeof playerRate === "number" && playerRate) ||
+      videoRate ||
+      RATES[rateIndex];
+    const playerTime = isYouTube
+      ? ytPlayerRef.current?.getCurrentTime?.()
+      : videoRef.current?.currentTime;
+    const initialTime =
+      typeof playerTime === "number" && Number.isFinite(playerTime)
+        ? playerTime
+        : currentTime;
+    const gesture: TouchGesture = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      zone,
+      mode: "pending",
+      initialValue: zone === "left" ? brightness : volume,
+      lastValue: zone === "left" ? brightness : volume,
+      initialTime,
+      lastSeekTime: currentTime,
+      previousRate,
+      wasPlaying: isYouTube
+        ? ytPlayerRef.current?.getPlayerState?.() === 1
+        : Boolean(videoRef.current && !videoRef.current.paused),
+      rewindTime: currentTime,
+      reversePlayback: false,
+      holdTimer: null,
+      reverseTimer: null,
+    };
+
+    gestureRef.current = gesture;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    if (zone !== "center") {
+      gesture.holdTimer = setTimeout(() => {
+        if (gestureRef.current !== gesture || gesture.mode !== "pending") return;
+        gesture.mode = "hold";
+        if (gesture.zone === "left") {
+          const video = videoRef.current;
+          if (!isYouTube && gesture.wasPlaying && video) {
+            try {
+              video.playbackRate = -2;
+              gesture.reversePlayback = video.playbackRate === -2;
+            } catch {
+              video.playbackRate = gesture.previousRate;
+            }
+          }
+          if (!gesture.reversePlayback) {
+            if (isYouTube) ytPlayerRef.current?.pauseVideo?.();
+            else video?.pause();
+            const playerTime = isYouTube
+              ? ytPlayerRef.current?.getCurrentTime?.()
+              : video?.currentTime;
+            if (typeof playerTime === "number" && Number.isFinite(playerTime)) {
+              gesture.rewindTime = playerTime;
+            }
+            gesture.reverseTimer = setInterval(() => {
+              gesture.rewindTime = Math.max(
+                clipStartTime,
+                gesture.rewindTime - 0.5,
+              );
+              if (isYouTube) {
+                ytPlayerRef.current?.seekTo?.(gesture.rewindTime, true);
+              } else if (videoRef.current) {
+                videoRef.current.currentTime = gesture.rewindTime;
+              }
+              setCurrentTime(gesture.rewindTime);
+            }, 250);
+          }
+          showGestureFeedback("2× rewind");
+        } else {
+          applyPlaybackRate(2);
+          showGestureFeedback("2× speed");
+        }
+        revealControls();
+      }, 350);
     }
   };
 
-  const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const handleGesturePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const gesture = gestureRef.current;
+    if (
+      event.pointerType !== "touch" ||
+      !gesture ||
+      gesture.pointerId !== event.pointerId
+    ) {
+      return;
+    }
+
+    const deltaY = gesture.startY - event.clientY;
+    const deltaX = event.clientX - gesture.startX;
+    if (gesture.mode === "pending") {
+      if (Math.abs(deltaX) > 16 && Math.abs(deltaX) > Math.abs(deltaY)) {
+        if (gesture.holdTimer) clearTimeout(gesture.holdTimer);
+        gesture.mode = "horizontal";
+        revealControls();
+      } else if (Math.abs(deltaY) > 12 && Math.abs(deltaY) > Math.abs(deltaX)) {
+        if (gesture.holdTimer) clearTimeout(gesture.holdTimer);
+        gesture.mode = gesture.zone === "center" ? "ignored" : "vertical";
+      }
+    }
+
+    if (gesture.mode === "horizontal") {
+      event.preventDefault();
+      const bounds = event.currentTarget.getBoundingClientRect();
+      const endTime = Math.max(clipStartTime, clipEndTime || duration);
+      const range = endTime - clipStartTime;
+      if (range <= 0) return;
+      gesture.lastSeekTime = Math.min(
+        endTime,
+        Math.max(
+          clipStartTime,
+          gesture.initialTime + (deltaX / Math.max(bounds.width, 1)) * range,
+        ),
+      );
+      setCurrentTime(gesture.lastSeekTime);
+      if (isYouTube) {
+        ytPlayerRef.current?.seekTo?.(gesture.lastSeekTime, true);
+      } else if (videoRef.current) {
+        videoRef.current.currentTime = gesture.lastSeekTime;
+      }
+      showGestureFeedback(
+        `${formatTime(gesture.lastSeekTime)} / ${formatTime(endTime)}`,
+      );
+      return;
+    }
+
+    if (gesture.mode !== "vertical") return;
+    event.preventDefault();
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const amount = (deltaY / Math.max(bounds.height, 1)) * 1.5;
+    gesture.lastValue = Math.min(
+      gesture.zone === "left" ? 1.5 : 1,
+      Math.max(gesture.zone === "left" ? 0.2 : 0, gesture.initialValue + amount),
+    );
+    if (gesture.zone === "left") {
+      updateBrightness(gesture.lastValue);
+      showGestureFeedback(`Brightness ${Math.round(gesture.lastValue * 100)}%`);
+    } else {
+      applyVolume(gesture.lastValue);
+      showGestureFeedback(`Volume ${Math.round(gesture.lastValue * 100)}%`);
+    }
+  };
+
+  const finishGesture = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const gesture = gestureRef.current;
+    if (
+      event.pointerType !== "touch" ||
+      !gesture ||
+      gesture.pointerId !== event.pointerId
+    ) {
+      return;
+    }
+
+    if (gesture.holdTimer) clearTimeout(gesture.holdTimer);
+    gestureRef.current = null;
+    if (gesture.mode === "hold") {
+      if (gesture.reverseTimer) clearInterval(gesture.reverseTimer);
+      if (gesture.zone === "left" && gesture.wasPlaying) {
+        if (gesture.reversePlayback && videoRef.current) {
+          videoRef.current.playbackRate = gesture.previousRate;
+          if (videoRef.current.paused) {
+            void videoRef.current.play().catch(() => undefined);
+          }
+        } else if (isYouTube) {
+          ytPlayerRef.current?.playVideo?.();
+        } else if (videoRef.current) {
+          void videoRef.current.play().catch(() => undefined);
+        }
+      } else if (gesture.zone === "right") {
+        applyPlaybackRate(gesture.previousRate);
+      }
+      showGestureFeedback("");
+      return;
+    }
+    if (gesture.mode === "vertical") {
+      if (gesture.zone === "right") persistVolume(gesture.lastValue);
+      showGestureFeedback(
+        gesture.zone === "right"
+          ? `Volume ${Math.round(gesture.lastValue * 100)}%`
+          : `Brightness ${Math.round(gesture.lastValue * 100)}%`,
+        500,
+      );
+      return;
+    }
+    if (gesture.mode === "horizontal") {
+      showGestureFeedback(
+        `${formatTime(gesture.lastSeekTime)} / ${formatTime(
+          Math.max(clipStartTime, clipEndTime || duration),
+        )}`,
+        500,
+      );
+      return;
+    }
+    if (gesture.mode !== "pending") return;
+
+    if (gesture.zone === "center") {
+      togglePlay();
+      return;
+    }
+
+    const pendingTap = pendingTapRef.current;
+    if (pendingTap?.zone === gesture.zone) {
+      clearTimeout(pendingTap.timer);
+      pendingTapRef.current = null;
+      const delta = gesture.zone === "left" ? -10 : 10;
+      skip(delta);
+      showGestureFeedback(`${delta > 0 ? "+" : ""}${delta}s`, 700);
+      return;
+    }
+
+    if (pendingTap) {
+      clearTimeout(pendingTap.timer);
+      pendingTapRef.current = null;
+      togglePlay();
+    }
+    const timer = setTimeout(() => {
+      pendingTapRef.current = null;
+      togglePlay();
+    }, 260);
+    pendingTapRef.current = { zone: gesture.zone, timer };
+  };
+
+  const handleGesturePointerCancel = (
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
+    const gesture = gestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    if (gesture.holdTimer) clearTimeout(gesture.holdTimer);
+    if (gesture.reverseTimer) clearInterval(gesture.reverseTimer);
+    if (gesture.mode === "hold" && gesture.zone === "left" && gesture.wasPlaying) {
+      if (gesture.reversePlayback && videoRef.current) {
+        videoRef.current.playbackRate = gesture.previousRate;
+        if (videoRef.current.paused) {
+          void videoRef.current.play().catch(() => undefined);
+        }
+      } else if (isYouTube) {
+        ytPlayerRef.current?.playVideo?.();
+      } else if (videoRef.current) {
+        void videoRef.current.play().catch(() => undefined);
+      }
+    } else if (gesture.mode === "hold" && gesture.zone === "right") {
+      applyPlaybackRate(gesture.previousRate);
+    }
+    if (gesture.mode === "vertical" && gesture.zone === "right") {
+      persistVolume(gesture.lastValue);
+    }
+    gestureRef.current = null;
+    showGestureFeedback("");
+  };
+
+  const progressEndTime = Math.max(clipStartTime, clipEndTime || duration);
+  const progressRange = progressEndTime - clipStartTime;
+  const clipElapsedTime = Math.max(
+    0,
+    Math.min(currentTime, progressEndTime) - clipStartTime,
+  );
+  const progressPct =
+    progressRange > 0
+      ? Math.min(
+          100,
+          Math.max(0, ((currentTime - clipStartTime) / progressRange) * 100),
+        )
+      : 0;
   const volumePct = (isMuted ? 0 : volume) * 100;
 
   return (
@@ -728,12 +1208,17 @@ export function LessonVideoPlayer({
         <div
           ref={ytContainerRef}
           className="lvp-yt-container"
-          style={{ width: "100%", height: "100%" }}
+          style={{
+            width: "100%",
+            height: "100%",
+            filter: `brightness(${brightness})`,
+          }}
         />
       ) : (
         <video
           ref={videoRef}
           src={src ?? undefined}
+          style={{ filter: `brightness(${brightness})` }}
           playsInline
           preload="metadata"
           onClick={togglePlay}
@@ -758,7 +1243,30 @@ export function LessonVideoPlayer({
             }
           }}
           onTimeUpdate={(event) => {
-            const time = event.currentTarget.currentTime;
+            const video = event.currentTarget;
+            const time = video.currentTime;
+            if (
+              requestedEndTime !== null &&
+              Number.isFinite(video.duration) &&
+              requestedEndTime < video.duration &&
+              video.playbackRate >= 0
+            ) {
+              const end = Math.min(requestedEndTime, video.duration);
+              if (time >= end) {
+                video.currentTime = end;
+                setCurrentTime(end);
+                video.pause();
+                saveProgress();
+                return;
+              }
+            }
+            if (video.playbackRate < 0 && time <= clipStartTime) {
+              video.currentTime = clipStartTime;
+              setCurrentTime(clipStartTime);
+              video.pause();
+              saveProgress();
+              return;
+            }
             setCurrentTime(time);
             if (Math.abs(time - lastSavedTimeRef.current) >= 5) {
               lastSavedTimeRef.current = time;
@@ -768,25 +1276,33 @@ export function LessonVideoPlayer({
           onLoadedMetadata={(event) => {
             const video = event.currentTarget;
             setDuration(video.duration);
-            if (progressRestoredRef.current || !lessonId) return;
+            if (progressRestoredRef.current) return;
             progressRestoredRef.current = true;
-            try {
-              const raw = window.localStorage.getItem(
-                `${PROGRESS_PREFIX}${lessonId}`,
-              );
-              const saved = raw === null ? NaN : Number(raw);
-              if (
-                Number.isFinite(saved) &&
-                saved > 1 &&
-                Number.isFinite(video.duration) &&
-                saved < video.duration - 1
-              ) {
-                video.currentTime = saved;
-                setCurrentTime(saved);
+            const start = Math.min(configuredStartTime, video.duration);
+            const end = Math.min(
+              requestedEndTime ?? video.duration,
+              video.duration,
+            );
+            let restoreTime = start;
+            if (lessonId) {
+              try {
+                const raw = window.localStorage.getItem(
+                  `${PROGRESS_PREFIX}${lessonId}`,
+                );
+                const saved = raw === null ? NaN : Number(raw);
+                if (
+                  Number.isFinite(saved) &&
+                  saved > start + 1 &&
+                  saved < end - 1
+                ) {
+                  restoreTime = saved;
+                }
+              } catch {
+                // Storage unavailable.
               }
-            } catch {
-              // Storage unavailable.
             }
+            video.currentTime = restoreTime;
+            setCurrentTime(restoreTime);
           }}
           onWaiting={() => setIsBuffering(true)}
           onPlaying={() => {
@@ -799,6 +1315,23 @@ export function LessonVideoPlayer({
             setHasError(true);
           }}
         />
+      )}
+
+      {hasMedia && !hasError && (
+        <div
+          className="lvp-gesture-surface"
+          aria-hidden="true"
+          onPointerDown={handleGesturePointerDown}
+          onPointerMove={handleGesturePointerMove}
+          onPointerUp={finishGesture}
+          onPointerCancel={handleGesturePointerCancel}
+        />
+      )}
+
+      {gestureFeedback && (
+        <div className="lvp-gesture-feedback" aria-live="polite">
+          {gestureFeedback}
+        </div>
       )}
 
       {!hasMedia && (
@@ -848,10 +1381,13 @@ export function LessonVideoPlayer({
         <input
           type="range"
           className="lvp-progress"
-          min={0}
-          max={duration || 0}
+          max={progressEndTime}
           step={0.1}
-          value={Math.min(currentTime, duration || 0)}
+          min={clipStartTime}
+          value={Math.min(
+            Math.max(currentTime, clipStartTime),
+            progressEndTime,
+          )}
           aria-label="Seek"
           onChange={handleSeek}
           style={{ "--lvp-pct": `${progressPct}%` } as CSSProperties}
@@ -886,7 +1422,7 @@ export function LessonVideoPlayer({
             <RotateCw size={14} />
           </button>
           <span className="lvp-time">
-            {formatTime(currentTime)} / {formatTime(duration)}
+            {formatTime(clipElapsedTime)} / {formatTime(progressRange)}
           </span>
           <span className="lvp-spacer" />
           <button
@@ -934,7 +1470,7 @@ export function LessonVideoPlayer({
           onClick={() => {
             const index = RATES.indexOf(rate);
             setRateIndex(index);
-            if (isYouTube) ytPlayerRef.current?.setPlaybackRate?.(rate); else if (videoRef.current) videoRef.current.playbackRate = rate;
+            applyPlaybackRate(rate);
             setRateMenuOpen(false);
           }}
         >

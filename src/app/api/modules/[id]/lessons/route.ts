@@ -9,9 +9,16 @@ const lessonInput = z.object({
   title: z.string().trim().min(2).max(160),
   description: z.string().trim().max(1000).optional(),
   videoUrl: z.union([z.string().url(), z.literal("")]).optional(),
+  videoStartTime: z.number().int().min(0).nullable().optional(),
+  videoEndTime: z.number().int().min(0).nullable().optional(),
   duration: z.number().int().min(0).max(10000).optional(),
   isFree: z.boolean().optional(),
-});
+}).refine(
+  (data) =>
+    data.videoEndTime == null ||
+    data.videoEndTime > (data.videoStartTime ?? 0),
+  { path: ["videoEndTime"], message: "End time must be after start time" },
+);
 
 const reorderInput = z.object({
   lessonIds: z.array(z.string().trim().min(1)).min(1),
@@ -61,6 +68,8 @@ export async function POST(
         description: parsed.data.description || null,
         videoUrl,
         videoId: videoUrl ? extractYouTubeId(videoUrl) : null,
+        videoStartTime: parsed.data.videoStartTime ?? null,
+        videoEndTime: parsed.data.videoEndTime ?? null,
         duration: parsed.data.duration ?? null,
         isFree: parsed.data.isFree ?? false,
         order: (lastLesson?.order ?? 0) + 1,

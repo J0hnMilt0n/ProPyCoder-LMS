@@ -5909,6 +5909,36 @@ html[data-theme="light"] .lab-frame {
   background: #0e0f12;
   cursor: pointer;
 }
+.lvp-gesture-surface {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: none;
+  touch-action: none;
+}
+.lvp-gesture-feedback {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 4;
+  max-width: calc(100% - 32px);
+  transform: translate(-50%, -50%);
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(8, 9, 11, 0.78);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+}
+@media (hover: none) and (pointer: coarse) {
+  .lvp-gesture-surface {
+    display: block;
+  }
+}
 .lvp-loading {
   position: absolute;
   inset: 0;
@@ -5949,6 +5979,7 @@ html[data-theme="light"] .lab-frame {
   position: absolute;
   top: 50%;
   left: 50%;
+  z-index: 2;
   display: grid;
   width: 76px;
   height: 76px;
@@ -6069,6 +6100,7 @@ html[data-theme="light"] .lab-frame {
   right: 0;
   bottom: 0;
   left: 0;
+  z-index: 3;
   display: flex;
   flex-direction: column;
   gap: 8px;

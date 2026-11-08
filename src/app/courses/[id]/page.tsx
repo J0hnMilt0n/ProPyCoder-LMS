@@ -61,6 +61,8 @@ interface Lesson {
   order: number;
   videoUrl: string | null;
   videoId: string | null;
+  videoStartTime: number | null;
+  videoEndTime: number | null;
   duration: number | null;
   isFree: boolean;
 }
@@ -979,6 +981,9 @@ export default function CourseDetailPage({ params }: Props) {
             lessonId={selectedLesson.id}
             videoId={selectedLesson.videoId}
             videoUrl={selectedLesson.videoUrl}
+            videoStartTime={selectedLesson.videoStartTime}
+            videoEndTime={selectedLesson.videoEndTime}
+            durationMinutes={selectedLesson.duration}
             title={selectedLesson.title}
           />
         ) : (

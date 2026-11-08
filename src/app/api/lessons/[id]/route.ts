@@ -9,6 +9,8 @@ const lessonUpdateInput = z.object({
   title: z.string().trim().min(2).max(160).optional(),
   description: z.string().trim().max(1000).optional(),
   videoUrl: z.union([z.string().url(), z.literal("")]).optional(),
+  videoStartTime: z.number().int().min(0).nullable().optional(),
+  videoEndTime: z.number().int().min(0).nullable().optional(),
   duration: z.number().int().min(0).max(10000).nullable().optional(),
   isFree: z.boolean().optional(),
 });
@@ -22,7 +24,12 @@ export async function PATCH(
     const { id } = await params;
     const lesson = await prisma.lesson.findUnique({
       where: { id },
-      select: { id: true, module: { select: { courseId: true } } },
+      select: {
+        id: true,
+        videoStartTime: true,
+        videoEndTime: true,
+        module: { select: { courseId: true } },
+      },
     });
     if (!lesson) {
       return NextResponse.json({ error: "Lesson not found" }, { status: 404 });
@@ -44,11 +51,31 @@ export async function PATCH(
       );
     }
 
+    const videoStartTime =
+      parsed.data.videoStartTime === undefined
+        ? lesson.videoStartTime
+        : parsed.data.videoStartTime;
+    const videoEndTime =
+      parsed.data.videoEndTime === undefined
+        ? lesson.videoEndTime
+        : parsed.data.videoEndTime;
+    if (
+      videoEndTime !== null &&
+      videoEndTime <= (videoStartTime ?? 0)
+    ) {
+      return NextResponse.json(
+        { error: "Video end time must be after the start time" },
+        { status: 400 },
+      );
+    }
+
     const data: {
       title?: string;
       description?: string | null;
       videoUrl?: string | null;
       videoId?: string | null;
+      videoStartTime?: number | null;
+      videoEndTime?: number | null;
       duration?: number | null;
       isFree?: boolean;
     } = {};
@@ -63,6 +90,10 @@ export async function PATCH(
     }
     if (parsed.data.duration !== undefined)
       data.duration = parsed.data.duration;
+    if (parsed.data.videoStartTime !== undefined)
+      data.videoStartTime = parsed.data.videoStartTime;
+    if (parsed.data.videoEndTime !== undefined)
+      data.videoEndTime = parsed.data.videoEndTime;
     if (parsed.data.isFree !== undefined) data.isFree = parsed.data.isFree;
 
     const updated = await prisma.lesson.update({ where: { id }, data });

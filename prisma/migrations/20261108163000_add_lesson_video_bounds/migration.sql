@@ -1,0 +1,2 @@
+ALTER TABLE "Lesson" ADD COLUMN "videoStartTime" INTEGER;
+ALTER TABLE "Lesson" ADD COLUMN "videoEndTime" INTEGER;

@@ -13,6 +13,8 @@ type Lesson = {
   order: number;
   videoUrl: string | null;
   videoId: string | null;
+  videoStartTime: number | null;
+  videoEndTime: number | null;
   duration: number | null;
   isFree: boolean;
 };
@@ -31,6 +33,8 @@ type LessonForm = {
   title: string;
   description: string;
   videoUrl: string;
+  videoStartTime: string;
+  videoEndTime: string;
   duration: string;
   isFree: boolean;
 };
@@ -41,9 +45,51 @@ const EMPTY_LESSON_FORM: LessonForm = {
   title: "",
   description: "",
   videoUrl: "",
+  videoStartTime: "",
+  videoEndTime: "",
   duration: "",
   isFree: false,
 };
+
+function secondsToTimeInput(seconds: number | null): string {
+  if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return "";
+
+  const totalSeconds = Math.floor(seconds);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const remainingSeconds = totalSeconds % 60;
+
+  return [hours, minutes, remainingSeconds]
+    .map((part) => String(part).padStart(2, "0"))
+    .join(":");
+}
+
+function formatTimeInput(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length <= 2) return digits;
+  const hourLength = Math.max(2, digits.length - 4);
+  if (digits.length <= hourLength + 2) {
+    return `${digits.slice(0, hourLength)}:${digits.slice(hourLength)}`;
+  }
+  return `${digits.slice(0, hourLength)}:${digits.slice(
+    hourLength,
+    hourLength + 2,
+  )}:${digits.slice(hourLength + 2)}`;
+}
+
+function timeInputToSeconds(value: string): number | null {
+  if (!value) return null;
+
+  const match = /^(\d{2,}):(\d{2})(?::(\d{2}))?$/.exec(value);
+  if (!match) return Number.NaN;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const seconds = Number(match[3] ?? 0);
+  if (minutes > 59 || seconds > 59) return Number.NaN;
+
+  return hours * 3600 + minutes * 60 + seconds;
+}
 
 async function callApi(url: string, method: string, body?: unknown) {
   const response = await fetch(url, {
@@ -197,6 +243,8 @@ export function CourseContentManager({
       title: lesson.title,
       description: lesson.description ?? "",
       videoUrl: lesson.videoUrl ?? "",
+      videoStartTime: secondsToTimeInput(lesson.videoStartTime),
+      videoEndTime: secondsToTimeInput(lesson.videoEndTime),
       duration: lesson.duration != null ? String(lesson.duration) : "",
       isFree: lesson.isFree,
     });
@@ -210,11 +258,30 @@ export function CourseContentManager({
     lessonId: string | null,
   ) {
     event.preventDefault();
+    const videoStartTime = timeInputToSeconds(lessonForm.videoStartTime);
+    const videoEndTime = timeInputToSeconds(lessonForm.videoEndTime);
+    if (
+      (videoStartTime !== null && !Number.isInteger(videoStartTime)) ||
+      (videoEndTime !== null && !Number.isInteger(videoEndTime))
+    ) {
+      toast.error("Choose a valid start and end time.");
+      return;
+    }
+    if (
+      videoEndTime !== null &&
+      videoEndTime <= (videoStartTime ?? 0)
+    ) {
+      toast.error("Video end time must be after the start time.");
+      return;
+    }
+
     await run(async () => {
       const payload = {
         title: lessonForm.title.trim(),
         description: lessonForm.description.trim(),
         videoUrl: lessonForm.videoUrl.trim(),
+        videoStartTime,
+        videoEndTime,
         duration:
           lessonForm.duration === "" ? undefined : Number(lessonForm.duration),
         isFree: lessonForm.isFree,
@@ -447,6 +514,40 @@ export function CourseContentManager({
               }
             />
             Free preview lesson
+          </label>
+        </div>
+        <div className="ccm-form-row">
+          <label>
+            Start time <span className="instructor-optional">Optional</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={lessonForm.videoStartTime}
+              placeholder="00:00:00"
+              aria-label="Video start time"
+              onChange={(event) =>
+                setLessonForm({
+                  ...lessonForm,
+                  videoStartTime: formatTimeInput(event.target.value),
+                })
+              }
+            />
+          </label>
+          <label>
+            End time <span className="instructor-optional">Optional</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={lessonForm.videoEndTime}
+              placeholder="00:00:00"
+              aria-label="Video end time"
+              onChange={(event) =>
+                setLessonForm({
+                  ...lessonForm,
+                  videoEndTime: formatTimeInput(event.target.value),
+                })
+              }
+            />
           </label>
         </div>
         <label>

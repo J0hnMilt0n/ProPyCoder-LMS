@@ -104,6 +104,8 @@ model Lesson {
   order       Int
   videoUrl    String? // YouTube video URL
   videoId     String? // YouTube video ID (extracted from URL)
+  videoStartTime Int? // Optional playback start offset in seconds
+  videoEndTime   Int? // Optional playback end offset in seconds
   duration    Int? // Duration in minutes
   isFree      Boolean  @default(false) // Free preview lesson
   module      Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
