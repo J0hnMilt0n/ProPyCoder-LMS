@@ -12,6 +12,7 @@ import {
   Clock3,
   GraduationCap,
   LoaderCircle,
+  Lock,
   Radio,
   Search,
 } from "lucide-react";
@@ -49,10 +50,23 @@ interface LiveClassItem {
   course?: { id: string; title: string };
 }
 
+function formatStartsIn(startTime: number, now: number): string {
+  const minutesUntil = Math.max(1, Math.ceil((startTime - now) / 60_000));
+  const hours = Math.floor(minutesUntil / 60);
+  const minutes = minutesUntil % 60;
+  const parts = [
+    hours > 0 ? `${hours} hr${hours === 1 ? "" : "s"}` : "",
+    minutes > 0 ? `${minutes} min${minutes === 1 ? "" : "s"}` : "",
+  ].filter(Boolean);
+
+  return `Starts in ${parts.join(" ")}`;
+}
+
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const [now, setNow] = useState(() => Date.now());
   const userId = session?.user?.id ?? "";
 
   // Stale-while-revalidate: paint cached courses instantly, then refresh in
@@ -77,6 +91,12 @@ export default function Dashboard() {
   const liveClasses = liveRes.data ?? [];
   const isLoading = enrollmentsRes.isLoading;
   const loadError = enrollmentsRes.error;
+
+  useEffect(() => {
+    if (liveClasses.length === 0) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, [liveClasses.length]);
 
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/auth/login");
@@ -182,13 +202,32 @@ export default function Dashboard() {
                   status: item.storedStatus,
                   startsAt: item.startsAt,
                   endsAt: item.endsAt,
-                });
+                }, new Date(now));
                 const start = new Date(item.startsAt);
                 const end = new Date(item.endsAt);
+                const timeSummary =
+                  status === "SCHEDULED"
+                    ? formatStartsIn(start.getTime(), now)
+                    : status === "LIVE"
+                      ? `Ends at ${end.toLocaleTimeString(undefined, {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}`
+                      : `${start.toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })} · ${start.toLocaleTimeString(undefined, {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })} – ${end.toLocaleTimeString(undefined, {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}`;
                 return (
                   <article
                     key={item.id}
-                    className={`learning-live-row is-${status.toLowerCase()}`}
+                    className={`live-row learning-live-row is-${status.toLowerCase()}`}
                   >
                     <div className="live-row-date">
                       <span>
@@ -196,42 +235,61 @@ export default function Dashboard() {
                           month: "short",
                         })}
                       </span>
-                      <strong>{start.getDate()}</strong>
-                    </div>
-                    <div className="learning-live-copy">
-                      <strong>{item.title}</strong>
-                      <span>
-                        {item.course?.title ?? "Course"} ·{" "}
+                      <strong>
                         {start.toLocaleDateString(undefined, {
-                          weekday: "short",
-                        })}{" "}
+                          day: "numeric",
+                        })}
+                      </strong>
+                      <small>
                         {start.toLocaleTimeString(undefined, {
                           hour: "2-digit",
                           minute: "2-digit",
                         })}
-                        {" – "}
-                        {end.toLocaleTimeString(undefined, {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                        {" · "}
-                        {PROVIDER_LABELS[item.provider] ?? item.provider}
-                      </span>
+                      </small>
                     </div>
-                    <span className={`live-pill is-${status.toLowerCase()}`}>
-                      {status === "LIVE" && <span className="live-pill-dot" />}
-                      {STATUS_LABELS[status]}
-                    </span>
-                    {(status === "SCHEDULED" || status === "LIVE") && (
-                      <a
-                        className="learning-live-join"
-                        href={item.meetingUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Radio size={15} /> Join
-                      </a>
-                    )}
+                    <div className="live-row-content learning-live-content">
+                      <div className="live-row-main">
+                        <div className="live-row-title">
+                          <h3>{item.title}</h3>
+                          <span
+                            className={`live-pill is-${status.toLowerCase()}`}
+                          >
+                            {status === "LIVE" && (
+                              <span className="live-pill-dot" />
+                            )}
+                            {STATUS_LABELS[status]}
+                          </span>
+                        </div>
+                        <p className="live-row-meta">
+                          {item.course?.title ?? "Course"}
+                          {" · "}
+                          {PROVIDER_LABELS[item.provider] ?? item.provider}
+                          {" · "}
+                          {timeSummary}
+                        </p>
+                      </div>
+                      {(status === "SCHEDULED" || status === "LIVE") && (
+                        <div className="live-row-actions">
+                          {item.meetingUrl ? (
+                            <a
+                              className="live-action is-primary"
+                              href={item.meetingUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Radio size={14} /> Join class
+                            </a>
+                          ) : (
+                            <span
+                              className="live-action is-locked"
+                              aria-disabled="true"
+                            >
+                              <Lock size={14} /> Join link unavailable
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </article>
                 );
               })}

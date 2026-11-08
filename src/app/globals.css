@@ -8720,50 +8720,65 @@ html[data-theme="dark"] .certificate-logo .site-brand {
   gap: 10px;
   margin-top: 10px;
 }
-.learning-live-row {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 13px 16px;
-  border: 1px solid #ececee;
-  border-radius: 14px;
-  background: #fff;
-}
-.learning-live-row.is-live {
-  border-color: rgba(233, 95, 50, 0.5);
-  box-shadow: 0 0 0 3px rgba(233, 95, 50, 0.07);
-}
-.learning-live-copy {
-  flex: 1;
+.learning-live .live-row {
+  position: relative;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
 }
-.learning-live-copy strong {
+.learning-live .live-row-content {
+  display: contents;
+}
+.learning-live .live-row-title {
+  padding-right: 88px;
+}
+.learning-live .live-row-title .live-pill {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+.learning-live .live-row-title h3 {
   font-size: 14.5px;
-  color: #18181b;
 }
-.learning-live-copy span {
-  font-size: 13px;
-  color: #71717a;
+.learning-live .live-row-meta {
+  overflow-wrap: anywhere;
 }
-.learning-live-join {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 15px;
-  border-radius: 9px;
-  background: #e95f32;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  text-decoration: none;
-  white-space: nowrap;
-  transition: background 0.15s ease;
+.learning-live .live-row-actions {
+  align-self: flex-end;
+  padding-top: 40px;
 }
-.learning-live-join:hover {
-  background: #d94f22;
+
+@media (max-width: 425px) {
+  .learning-live .live-row {
+    display: flex;
+    flex-direction: row;
+    align-items: start;
+    flex-wrap: wrap;
+    gap: 10px 12px;
+  }
+  .learning-live .live-row-date {
+    flex: 0 0 58px;
+    margin-inline: auto;
+  }
+  .learning-live .live-row-content {
+    display: flex;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px 12px;
+    min-width: 0;
+  }
+  .learning-live .live-row-main {
+    flex: 1 1 180px;
+    min-width: 0;
+  }
+  .learning-live .live-row-actions {
+    flex: 0 1 auto;
+    align-self: flex-start;
+    margin-left: auto;
+    padding-top: 0;
+  }
+  .learning-live .live-row-title {
+    padding-right: 82px;
+  }
 }
 
 /* Profile picture surfaces */
@@ -8887,9 +8902,9 @@ html[data-theme="dark"] .certificate-logo .site-brand {
     line-height: 1.2;
   }
 
-  .live-row{
-display: flex;
-flex-direction: column;
+  .live-row:not(.learning-live-row) {
+    display: flex;
+    flex-direction: column;
   }
 
   .home-section-heading h2,
