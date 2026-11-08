@@ -111,6 +111,8 @@ interface TouchGesture {
   startX: number;
   startY: number;
   zone: GestureZone;
+  inlineTouch: boolean;
+  mobileTap: boolean;
   mode: GestureMode;
   initialValue: number;
   lastValue: number;
@@ -220,6 +222,7 @@ export function LessonVideoPlayer({
   const [isBuffering, setIsBuffering] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [showMobileCenterAction, setShowMobileCenterAction] = useState(false);
   const [gestureFeedback, setGestureFeedback] = useState("");
   const [isRotated, setIsRotated] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -352,6 +355,7 @@ export function LessonVideoPlayer({
           setIsFullscreen(false);
           setIsRotated(false);
           setIsOrientationLocked(false);
+          setShowMobileCenterAction(false);
           try {
             const orientation = window.screen.orientation as ScreenOrientation & {
               unlock?: () => void;
@@ -393,8 +397,9 @@ export function LessonVideoPlayer({
     hideTimerRef.current = setTimeout(() => {
       if (videoRef.current && !videoRef.current.paused) {
         setControlsVisible(false);
+        setShowMobileCenterAction(false);
       }
-    }, 1000);
+    }, 1800);
   }, []);
 
   // YouTube IFrame API integration (custom controls over YouTube)
@@ -643,6 +648,16 @@ export function LessonVideoPlayer({
     revealControls,
   ]);
 
+  const handleVideoClick = useCallback(() => {
+    if (isMobile) {
+      revealControls();
+      setShowMobileCenterAction(true);
+      return;
+    }
+
+    togglePlay();
+  }, [isFullscreen, isMobile, revealControls, togglePlay]);
+
   const skip = useCallback(
     (delta: number) => {
       if (isYouTube) {
@@ -772,6 +787,7 @@ export function LessonVideoPlayer({
         setIsNativeFullscreen(false);
         setIsRotated(false);
         setIsOrientationLocked(false);
+        setShowMobileCenterAction(false);
         try {
           const orientation = window.screen.orientation as ScreenOrientation & {
             unlock?: () => void;
@@ -933,7 +949,8 @@ export function LessonVideoPlayer({
 
   const handleGesturePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType !== "touch" || gestureRef.current) return;
-    event.preventDefault();
+    const inlineTouch = isMobile && !isFullscreen;
+    if (!inlineTouch) event.preventDefault();
 
     const position = getGestureCoordinates(event);
     const zone: GestureZone =
@@ -960,6 +977,8 @@ export function LessonVideoPlayer({
       startX: position.x,
       startY: position.y,
       zone,
+      inlineTouch,
+      mobileTap: isMobile,
       mode: "pending",
       initialValue: zone === "left" ? rateIndex : volume,
       lastValue: zone === "left" ? rateIndex : volume,
@@ -976,8 +995,10 @@ export function LessonVideoPlayer({
     };
 
     gestureRef.current = gesture;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    if (zone !== "center") {
+    if (!inlineTouch) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+    if (!inlineTouch && zone !== "center") {
       gesture.holdTimer = setTimeout(() => {
         if (gestureRef.current !== gesture || gesture.mode !== "pending") return;
         gesture.mode = "hold";
@@ -1040,10 +1061,16 @@ export function LessonVideoPlayer({
       if (Math.abs(deltaX) > 16 && Math.abs(deltaX) > Math.abs(deltaY)) {
         if (gesture.holdTimer) clearTimeout(gesture.holdTimer);
         gesture.mode = "horizontal";
+        if (gesture.inlineTouch) {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }
         revealControls();
       } else if (Math.abs(deltaY) > 12 && Math.abs(deltaY) > Math.abs(deltaX)) {
         if (gesture.holdTimer) clearTimeout(gesture.holdTimer);
-        gesture.mode = gesture.zone === "center" ? "ignored" : "vertical";
+        gesture.mode =
+          gesture.inlineTouch || gesture.zone === "center"
+            ? "ignored"
+            : "vertical";
       }
     }
 
@@ -1154,8 +1181,51 @@ export function LessonVideoPlayer({
     }
     if (gesture.mode !== "pending") return;
 
+    if (gesture.mobileTap) {
+      revealControls();
+      setShowMobileCenterAction(true);
+
+      if (gesture.zone === "center") {
+        if (pendingTapRef.current) {
+          clearTimeout(pendingTapRef.current.timer);
+          pendingTapRef.current = null;
+        }
+        return;
+      }
+
+      const pendingTap = pendingTapRef.current;
+      if (pendingTap?.zone === gesture.zone) {
+        clearTimeout(pendingTap.timer);
+        pendingTapRef.current = null;
+        const delta = gesture.zone === "left" ? -10 : 10;
+        skip(delta);
+        showGestureFeedback(`${delta > 0 ? "+" : ""}${delta}s`, 700);
+        return;
+      }
+
+      if (pendingTap) clearTimeout(pendingTap.timer);
+      const timer = setTimeout(() => {
+        if (pendingTapRef.current?.timer === timer) {
+          pendingTapRef.current = null;
+        }
+      }, 260);
+      pendingTapRef.current = { zone: gesture.zone, timer };
+      return;
+    }
+
     if (gesture.zone === "center") {
+      if (gesture.inlineTouch) {
+        revealControls();
+        setShowMobileCenterAction(true);
+        return;
+      }
       togglePlay();
+      return;
+    }
+
+    if (gesture.inlineTouch) {
+      revealControls();
+      setShowMobileCenterAction(true);
       return;
     }
 
@@ -1250,7 +1320,7 @@ export function LessonVideoPlayer({
           src={src ?? undefined}
           playsInline
           preload="metadata"
-          onClick={togglePlay}
+          onClick={handleVideoClick}
           onPlay={() => {
             setIsPlaying(true);
             setHasStarted(true);
@@ -1391,21 +1461,31 @@ export function LessonVideoPlayer({
         <div className="lvp-spinner" role="status" aria-label="Buffering" />
       )}
 
-      {hasMedia && !hasStarted && (
+      {hasMedia &&
+        (!hasStarted ||
+          (showMobileCenterAction && isMobile)) && (
         <button
           type="button"
-          className="lvp-big-play"
-          aria-label={`Play ${title}`}
-          onClick={togglePlay}
+          className={`lvp-big-play ${hasStarted ? "is-mobile-action" : ""}`}
+          aria-label={isPlaying ? `Pause ${title}` : `Play ${title}`}
+          onClick={() => {
+            setShowMobileCenterAction(false);
+            togglePlay();
+          }}
         >
-          <Play size={34} fill="currentColor" strokeWidth={1.5} />
+          {isPlaying ? (
+            <Pause size={34} fill="currentColor" strokeWidth={1.5} />
+          ) : (
+            <Play size={34} fill="currentColor" strokeWidth={1.5} />
+          )}
         </button>
       )}
 
       <div
         className={`lvp-controls ${
           (hasStarted && (controlsVisible || !isPlaying)) ||
-          (isMobile && isFullscreen && controlsVisible)
+          (isMobile && isFullscreen && controlsVisible) ||
+          (isMobile && showMobileCenterAction)
             ? "is-visible"
             : ""
         }`}

@@ -5893,9 +5893,9 @@ html[data-theme="light"] .lab-frame {
   container-type: inline-size;
   overflow: visible;
   aspect-ratio: 16 / 9;
-  border: 1px solid #17181c;
+  /* border: 1px solid #17181c; */
   border-radius: 5px;
-  background: #0e0f12;
+  /* background: #0e0f12; */
   outline: none;
 }
 .lvp-root:focus-visible {
@@ -5937,6 +5937,10 @@ html[data-theme="light"] .lab-frame {
 @media (hover: none) and (pointer: coarse) {
   .lvp-gesture-surface {
     display: block;
+  }
+
+  .lvp-root:not(.is-mobile-fullscreen) .lvp-gesture-surface {
+    touch-action: pan-y;
   }
 }
 .lvp-loading {
@@ -6246,7 +6250,7 @@ html[data-theme="light"] .lab-frame {
 
   .lvp-btn {
     min-width: 36px;
-    height: 44px;
+    height: 20px;
     padding: 0 3px;
   }
 
@@ -6268,7 +6272,6 @@ html[data-theme="light"] .lab-frame {
   .lvp-btn,
   .lvp-rate {
     min-width: 32px;
-    height: 40px;
     padding: 0 2px;
   }
 }
