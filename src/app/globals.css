@@ -6074,6 +6074,10 @@ html[data-theme="light"] .lab-frame {
   padding: 0 3px;
 }
 
+.lvp-root.is-mobile-fullscreen.is-rotated .lvp-btn {
+  height: 34px;
+}
+
 .lvp-root.is-mobile-fullscreen.is-rotated .lvp-rate {
   min-width: 36px;
 }
