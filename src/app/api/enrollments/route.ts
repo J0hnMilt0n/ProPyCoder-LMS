@@ -3,9 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { invalidateCatalog, invalidateCourse } from "@/lib/course-cache";
 import { NS, invalidateUser, userCached } from "@/lib/page-cache";
+import { imageUrl } from "@/lib/image-urls";
 
 // GET user's enrollments
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await auth();
 
@@ -18,12 +19,20 @@ export async function GET(request: NextRequest) {
     const { data } = await userCached(
       NS.enrollments,
       session.user.id,
-      async () => ({
-        data: await prisma.enrollment.findMany({
+      async () => {
+        const enrollments = await prisma.enrollment.findMany({
           where: { studentId: session.user.id },
-          include: {
+          select: {
+            id: true,
+            progress: true,
+            status: true,
             course: {
-              include: {
+              select: {
+                id: true,
+                title: true,
+                description: true,
+                image: true,
+                duration: true,
                 instructor: {
                   select: {
                     firstName: true,
@@ -34,8 +43,21 @@ export async function GET(request: NextRequest) {
             },
           },
           orderBy: { enrolledAt: "desc" },
-        }),
-      }),
+        });
+        return {
+          data: enrollments.map((enrollment) => ({
+            ...enrollment,
+            course: {
+              ...enrollment.course,
+              image: imageUrl(
+                enrollment.course.image,
+                "course",
+                enrollment.course.id,
+              ),
+            },
+          })),
+        };
+      },
     );
 
     return NextResponse.json({ data });
@@ -83,9 +105,7 @@ export async function POST(request: NextRequest) {
         courseId,
         status: "ACTIVE",
       },
-      include: {
-        course: true,
-      },
+      select: { id: true, courseId: true, status: true },
     });
 
     // The catalog and course detail cache the enrollment count.

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { getBundle } from "@/lib/page-cache";
+import { imageUrl } from "@/lib/image-urls";
 
 export const revalidate = 2592000;
 
@@ -13,8 +14,8 @@ export async function GET(
     const { id } = await params;
     // Public and identical for every visitor — cache per bundle id. Bundle
     // writes call invalidateBundles() so the detail page refreshes on change.
-    const { bundle } = await getBundle(id, async () => ({
-      bundle: await prisma.bundle.findFirst({
+    const { bundle } = await getBundle(id, async () => {
+      const bundle = await prisma.bundle.findFirst({
         where: { id, status: "PUBLISHED" },
         select: {
           id: true,
@@ -36,7 +37,12 @@ export async function GET(
                   level: true,
                   duration: true,
                   instructor: {
-                    select: { firstName: true, lastName: true, avatar: true },
+                    select: {
+                      id: true,
+                      firstName: true,
+                      lastName: true,
+                      avatar: true,
+                    },
                   },
                 },
               },
@@ -44,8 +50,35 @@ export async function GET(
             orderBy: { order: "asc" },
           },
         },
-      }),
-    }));
+      });
+      return {
+        bundle: bundle
+          ? {
+              ...bundle,
+              image: imageUrl(bundle.image, "bundle", bundle.id),
+              courses: bundle.courses.map((entry) => ({
+                ...entry,
+                course: {
+                  ...entry.course,
+                  image: imageUrl(
+                    entry.course.image,
+                    "course",
+                    entry.course.id,
+                  ),
+                  instructor: {
+                    ...entry.course.instructor,
+                    avatar: imageUrl(
+                      entry.course.instructor.avatar,
+                      "avatar",
+                      entry.course.instructor.id,
+                    ),
+                  },
+                },
+              })),
+            }
+          : null,
+      };
+    });
     if (!bundle) {
       return NextResponse.json({ error: "Bundle not found" }, { status: 404 });
     }

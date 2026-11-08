@@ -157,12 +157,13 @@ export default function BundleDetailPage() {
                 <li key={course.id} className="bundle-detail-item">
                   <Link
                     href={`/courses/${course.id}`}
+                    prefetch={false}
                     className="bundle-detail-link"
                     aria-label={`Open ${course.title}`}
                   >
                     {course.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={course.image ? `/api/images/course/${course.id}` : undefined} alt={course.title} />
+                      <img src={course.image} alt={course.title} />
                     ) : (
                       <div className="bundle-store-cover">
                         <Package size={22} />

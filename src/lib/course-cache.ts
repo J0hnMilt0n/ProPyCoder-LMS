@@ -1,7 +1,8 @@
 import { unstable_cache } from "next/cache";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { cached, invalidate, preload, type CacheOptions } from "@/lib/data-cache";
+import { cached, invalidate, type CacheOptions } from "@/lib/data-cache";
 import { prisma } from "@/lib/prisma";
+import { imageUrl } from "@/lib/image-urls";
 
 /**
  * Course catalog/detail/content change rarely and are read far more often
@@ -30,7 +31,16 @@ export const CATALOG_TAG = "catalog";
 export function loadCourseDetail(courseId: string) {
   return prisma.course.findUnique({
     where: { id: courseId },
-    include: {
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      category: true,
+      level: true,
+      price: true,
+      offerPrice: true,
+      duration: true,
+      image: true,
       instructor: {
         select: { id: true, firstName: true, lastName: true, avatar: true },
       },
@@ -49,9 +59,26 @@ export function loadCourseDetail(courseId: string) {
 
 /** Persistent (shared, restart-surviving) copy, purged by revalidateTag. */
 const getPersistentCourseDetail = (courseId: string) =>
-  unstable_cache(() => loadCourseDetail(courseId), ["course", courseId], {
-    tags: [courseTag(courseId), CATALOG_TAG],
-  });
+  unstable_cache(
+    async () => {
+    const course = await loadCourseDetail(courseId);
+    if (!course) return null;
+    return {
+      ...course,
+      image: imageUrl(course.image, "course", course.id),
+      instructor: {
+        ...course.instructor,
+        avatar: imageUrl(
+          course.instructor.avatar,
+          "avatar",
+          course.instructor.id,
+        ),
+      },
+    };
+    },
+    ["course", courseId],
+    { tags: [courseTag(courseId), CATALOG_TAG] },
+  );
 
 export function getCourseDetail(courseId: string) {
   return cached(
@@ -81,15 +108,6 @@ export function getCourseModules(courseId: string) {
     () => getPersistentCourseModules(courseId)(),
     COURSE_CACHE,
   );
-}
-
-/**
- * Warm both course-detail and course-content caches in the background —
- * used after a catalog load so opening a course skips the database.
- */
-export function preloadCourse(courseId: string): void {
-  preload(`course:${courseId}:`, () => getPersistentCourseDetail(courseId)(), COURSE_CACHE);
-  preload(`modules:${courseId}:`, () => getPersistentCourseModules(courseId)(), COURSE_CACHE);
 }
 
 /**

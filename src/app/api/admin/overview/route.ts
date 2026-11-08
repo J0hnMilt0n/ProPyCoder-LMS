@@ -2,6 +2,7 @@ import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { getAdminOverview } from "@/lib/page-cache";
+import { imageUrl } from "@/lib/image-urls";
 
 export async function GET() {
   try {
@@ -160,10 +161,16 @@ export async function GET() {
         revenue: completedPayments._sum.amount ?? 0,
         completedPayments: completedPayments._count.id,
       },
-      recentUsers,
+      recentUsers: recentUsers.map((user) => ({
+        ...user,
+        avatar: imageUrl(user.avatar, "avatar", user.id),
+      })),
       recentCourses,
       recentEnrollments,
-      instructors,
+      instructors: instructors.map((instructor) => ({
+        ...instructor,
+        avatar: imageUrl(instructor.avatar, "avatar", instructor.id),
+      })),
       recentAnnouncements,
     };
     });

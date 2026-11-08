@@ -14,6 +14,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { prisma } from "@/lib/prisma";
 import { getHomeData } from "@/lib/page-cache";
 import { HomeCoursePrice } from "@/components/home-course-price";
+import { imageUrl } from "@/lib/image-urls";
 
 export const revalidate = 2592000;
 
@@ -21,8 +22,8 @@ export default async function Home() {
   // Public marketing page — cache the featured courses + counts globally.
   // Course/enrollment writes invalidate the "home" tag, so the numbers stay
   // fresh without every visit hitting the remote database.
-  const [courses, studentCount, enrollmentCount] = await getHomeData(async () =>
-    Promise.all([
+  const [courses, studentCount, enrollmentCount] = await getHomeData(async () => {
+    const [courses, studentCount, enrollmentCount] = await Promise.all([
       prisma.course.findMany({
         where: { status: "PUBLISHED" },
         select: {
@@ -43,8 +44,16 @@ export default async function Home() {
       }),
       prisma.user.count({ where: { role: "STUDENT", isActive: true } }),
       prisma.enrollment.count(),
-    ]),
-  );
+    ]);
+    return [
+      courses.map((course) => ({
+        ...course,
+        image: imageUrl(course.image, "course", course.id),
+      })),
+      studentCount,
+      enrollmentCount,
+    ] as const;
+  });
 
   return (
     <main className="site-home">
@@ -160,6 +169,7 @@ export default async function Home() {
             {courses.map((course, index) => (
               <Link
                 href={`/courses/${course.id}`}
+                prefetch={false}
                 className="home-course"
                 key={course.id}
               >

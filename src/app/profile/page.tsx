@@ -25,7 +25,7 @@ interface Profile {
   email: string;
   firstName: string;
   lastName: string;
-  avatar: string | null;
+  avatarUrl: string | null;
   role: string;
   createdAt: string;
 }
@@ -43,7 +43,7 @@ export default function ProfilePage() {
   // Stale-while-revalidate: paint the cached profile instantly, refresh in the
   // background, patch only when it actually changes.
   const profileRes = useResource<Profile>({
-    key: "profile",
+    key: "profile-v2",
     url: "/api/profile",
     scope: "me",
     enabled: authenticated,
@@ -71,7 +71,7 @@ export default function ProfilePage() {
     syncedIdRef.current = profile.id;
     setFirstName(profile.firstName);
     setLastName(profile.lastName);
-    setAvatar(profile.avatar);
+    setAvatar(profile.avatarUrl);
   }, [profile]);
 
   useEffect(() => {
@@ -111,7 +111,11 @@ export default function ProfilePage() {
       const response = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstName, lastName, avatar }),
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          ...(avatar !== profile?.avatarUrl ? { avatar } : {}),
+        }),
       });
       if (!response.ok) {
         const error = await response.json();
@@ -124,7 +128,7 @@ export default function ProfilePage() {
       // Refresh the session so the navbar avatar/name update immediately.
       await update({
         name: `${updated.firstName} ${updated.lastName}`,
-        image: updated.avatar,
+        image: updated.avatarUrl,
       });
       toast.success("Profile updated");
     } catch (error) {

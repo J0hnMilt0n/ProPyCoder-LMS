@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { CredentialsSignin } from "next-auth";
 import { prisma } from "@/lib/prisma";
+import { imageUrl } from "@/lib/image-urls";
 import bcrypt from "bcryptjs";
 
 class InvalidEmailSignin extends CredentialsSignin {
@@ -142,6 +143,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 });
                 if (!dbUser) return null;
                 const name = `${dbUser.firstName} ${dbUser.lastName}`;
+                const avatar = imageUrl(dbUser.avatar, "avatar", userId);
                 // Opportunistic cleanup so the cache cannot grow unbounded.
                 if (sessionProfileCache.size > 1_000) {
                   const now = Date.now();
@@ -151,10 +153,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 }
                 sessionProfileCache.set(userId, {
                   name,
-                  avatar: dbUser.avatar,
+                  avatar,
                   expires: Date.now() + SESSION_PROFILE_TTL_MS,
                 });
-                return { name, avatar: dbUser.avatar };
+                return { name, avatar };
               })();
               sessionProfileInflight.set(userId, load);
               const profile = await load.catch(() => null);

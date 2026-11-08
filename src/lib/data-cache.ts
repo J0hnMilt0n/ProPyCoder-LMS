@@ -99,20 +99,6 @@ export async function cached<T>(
 }
 
 /**
- * Warm a key in the background without blocking the caller — used to
- * preload likely-next requests (e.g. course details after a catalog load).
- */
-export function preload<T>(
-  key: string,
-  load: () => Promise<T>,
-  opts: CacheOptions,
-): void {
-  const entry = store.get(key);
-  if (entry && entry.freshUntil > Date.now()) return; // already warm
-  void runLoad(key, load, opts).catch(() => undefined);
-}
-
-/**
  * Drop every key equal to `prefix` or starting with it, and make sure any
  * load already in flight for those keys cannot write back pre-invalidation
  * data. Id-scoped keys must end with a delimiter (e.g. `course:<id>:`) so

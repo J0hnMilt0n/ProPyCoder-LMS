@@ -117,6 +117,7 @@ export function Navbar() {
         <div className={`site-nav-links ${isOpen ? "is-open" : ""}`}>
           <Link
             href="/pycoder"
+            prefetch={false}
             className="site-nav-link-lab"
             onClick={() => setIsOpen(false)}
           >

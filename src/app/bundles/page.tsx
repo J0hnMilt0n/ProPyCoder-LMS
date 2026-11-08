@@ -508,13 +508,14 @@ export default function BundlesPage() {
                       {/* COVER */}
                       <Link
                         href={`/bundles/${bundle.id}`}
+                        prefetch={false}
                         className="bundle-store-cover"
                         aria-label={`View ${bundle.title}`}
                       >
                         {bundle.image ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
-                            src={bundle.image ? `/api/images/bundle/${bundle.id}` : undefined}
+                            src={bundle.image ?? undefined}
                             alt={bundle.title}
                             loading="lazy"
                           />
@@ -528,6 +529,7 @@ export default function BundlesPage() {
                         <h3>
                           <Link
                             href={`/bundles/${bundle.id}`}
+                            prefetch={false}
                             className="bundle-store-title"
                           >
                             {bundle.title}

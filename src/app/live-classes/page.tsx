@@ -103,7 +103,11 @@ export default function LiveClassesPage() {
                     With {liveClass.instructor.firstName} {liveClass.instructor.lastName}
                   </p>
                   <div className="bundle-store-foot">
-                    <Link href={`/courses/${liveClass.courseId}`} className="bundle-buy">
+                    <Link
+                      href={`/courses/${liveClass.courseId}`}
+                      prefetch={false}
+                      className="bundle-buy"
+                    >
                       View course <ArrowRight size={15} />
                     </Link>
                   </div>

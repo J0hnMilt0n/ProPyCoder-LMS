@@ -247,6 +247,7 @@ export default function InstructorPage() {
                     </button>
                     <Link
                       href={`/courses/${course.id}`}
+                      prefetch={false}
                       aria-label={`Open ${course.title}`}
                     >
                       <ArrowRight size={16} />

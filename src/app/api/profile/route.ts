@@ -3,7 +3,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { NS, invalidateUser, userCached } from "@/lib/page-cache";
+import {
+  NS,
+  invalidateAdminOverview,
+  invalidateHome,
+  invalidateUser,
+  userCached,
+} from "@/lib/page-cache";
+import { invalidateCatalog } from "@/lib/course-cache";
+import { imageUrl } from "@/lib/image-urls";
 
 const updateSchema = z.object({
   firstName: z.string().trim().min(1).max(60).optional(),
@@ -45,7 +53,11 @@ export async function GET() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json(user);
+    const { avatar, ...profile } = user;
+    return NextResponse.json({
+      ...profile,
+      avatarUrl: imageUrl(avatar, "avatar", user.id),
+    });
   } catch (error) {
     console.error("Profile fetch error:", error);
     return NextResponse.json(
@@ -131,7 +143,17 @@ export async function PATCH(request: NextRequest) {
     // fresh (the navbar avatar/name refresh via the session update too).
     invalidateUser(NS.profile, session.user.id);
 
-    return NextResponse.json(updated);
+    invalidateAdminOverview();
+    if (updated.role === "INSTRUCTOR") {
+      invalidateCatalog();
+      invalidateHome();
+    }
+
+    const { avatar: updatedAvatar, ...profile } = updated;
+    return NextResponse.json({
+      ...profile,
+      avatarUrl: imageUrl(updatedAvatar, "avatar", updated.id),
+    });
   } catch (error) {
     console.error("Profile update error:", error);
     return NextResponse.json(

@@ -69,6 +69,7 @@ const LEGACY_CACHE_KEY = "courses-list:1:::";
 const PURCHASED_COURSES_CACHE_KEY = "courses-purchased";
 
 const PAGE_SIZE = 9;
+const CATALOG_FETCH_PAGE_SIZE = 50;
 
 const CATALOG_STALE_AFTER = 30_000;
 const REVALIDATION_EVENT_GUARD = 1_500;
@@ -82,19 +83,6 @@ let catalogAttemptedAt = 0;
 
 // Prevent duplicate catalog requests across component remounts.
 let catalogRequestPromise: Promise<Course[]> | null = null;
-
-// Warm course details once per course ID.
-const warmedCourses = new Set<string>();
-
-function warmCourse(id: string) {
-  if (!id || warmedCourses.has(id)) return;
-
-  warmedCourses.add(id);
-
-  void fetch(`/api/courses/${id}/warm`).catch(() => {
-    warmedCourses.delete(id);
-  });
-}
 
 const normalize = (value: string | null | undefined) =>
   (value ?? "").trim().toLocaleLowerCase();
@@ -110,7 +98,7 @@ async function fetchAllCourses(
 ): Promise<Course[]> {
   const firstParams = new URLSearchParams({
     page: "1",
-    limit: String(PAGE_SIZE),
+    limit: String(CATALOG_FETCH_PAGE_SIZE),
   });
 
   const firstResponse = await fetch(
@@ -148,7 +136,7 @@ async function fetchAllCourses(
 
         const params = new URLSearchParams({
           page: String(page),
-          limit: String(PAGE_SIZE),
+          limit: String(CATALOG_FETCH_PAGE_SIZE),
         });
 
         const response = await fetch(
@@ -900,14 +888,9 @@ export default function CoursesPage() {
               (course, index) => (
                 <Link
                   href={`/courses/${course.id}`}
+                  prefetch={false}
                   key={course.id}
                   className="catalog-card cursor-pointer"
-                  onMouseEnter={() =>
-                    warmCourse(course.id)
-                  }
-                  onFocus={() =>
-                    warmCourse(course.id)
-                  }
                   aria-label={`View course: ${course.title}`}
                 >
                   <div

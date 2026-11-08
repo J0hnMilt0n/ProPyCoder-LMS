@@ -344,6 +344,7 @@ export default function Dashboard() {
               <Link
                 className="learning-continue-button"
                 href={`/courses/${nextCourse.course.id}`}
+                prefetch={false}
                 aria-label={`Continue ${nextCourse.course.title}`}
               >
                 <ArrowRight size={19} />
@@ -400,6 +401,7 @@ export default function Dashboard() {
               {visibleCourses.map((enrollment) => (
                 <Link
                   href={`/courses/${enrollment.course.id}`}
+                  prefetch={false}
                   className="learning-course-item"
                   key={enrollment.id}
                 >

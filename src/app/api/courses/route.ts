@@ -9,9 +9,9 @@ import { auth } from "@/app/api/auth/[...nextauth]/route";
 import {
   CATALOG_TAG,
   invalidateCatalog,
-  preloadCourse,
 } from "@/lib/course-cache";
 import { invalidateAdminOverview, invalidateHome } from "@/lib/page-cache";
+import { imageUrl } from "@/lib/image-urls";
 
 // GET all courses
 export async function GET(request: NextRequest) {
@@ -58,7 +58,16 @@ export async function GET(request: NextRequest) {
         const [courses, total] = await Promise.all([
           prisma.course.findMany({
             where,
-            include: {
+            select: {
+              id: true,
+              title: true,
+              description: true,
+              category: true,
+              level: true,
+              price: true,
+              offerPrice: true,
+              duration: true,
+              image: true,
               instructor: {
                 select: {
                   id: true,
@@ -78,7 +87,18 @@ export async function GET(request: NextRequest) {
           prisma.course.count({ where }),
         ]);
         return {
-          data: courses,
+          data: courses.map((course) => ({
+            ...course,
+            image: imageUrl(course.image, "course", course.id),
+            instructor: {
+              ...course.instructor,
+              avatar: imageUrl(
+                course.instructor.avatar,
+                "avatar",
+                course.instructor.id,
+              ),
+            },
+          })),
           pagination: {
             page,
             limit,
@@ -101,13 +121,6 @@ export async function GET(request: NextRequest) {
     // Read directly through `unstable_cache` so a client revalidation can
     // observe the persistent cache after course/catalog invalidation.
     const payload = await loader();
-
-    // Warm the detail + content caches for the first page of results in the
-    // background, so opening a course from this list skips the database.
-    // Capped so a 50-row page can't fire a flood of background queries.
-    for (const course of payload.data.slice(0, 12)) {
-      preloadCourse(course.id);
-    }
 
     return NextResponse.json(payload, {
       headers: {

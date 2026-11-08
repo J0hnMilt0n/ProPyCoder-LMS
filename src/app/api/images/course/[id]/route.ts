@@ -2,8 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 /**
- * Serve a course thumbnail image with immutable cache headers.
- * Course thumbnails never change once set, so browsers/CDN can cache forever.
+ * Serve a versioned course thumbnail with long-lived browser/edge caching.
  */
 export async function GET(
   _request: Request,
@@ -37,7 +36,8 @@ export async function GET(
     return new NextResponse(buffer, {
       headers: {
         "Content-Type": contentType,
-        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control":
+          "public, max-age=31536000, s-maxage=31536000, immutable",
       },
     });
   }
