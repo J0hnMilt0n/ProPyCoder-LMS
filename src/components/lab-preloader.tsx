@@ -5,8 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 
 /**
  * Warms up the PyCoder lab (Next proxy + upstream PythonAnywhere + iframe JS/CSS)
- * in a hidden background iframe, after idle, so opening /pycoder is
- * effectively instant. Runs for everyone — the lab is public.
+ * in a hidden background iframe after the user shows intent to open /pycoder.
  *
  * Honors:
  *  - data-saver / slow-2g (skips)
@@ -35,10 +34,16 @@ export function LabPreloader() {
     if (sessionStorage.getItem("pycoder-lab-warmed")) return;
 
     let fired = false;
-
-    const fire = () => {
+    const warmOnIntent = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const link = target.closest<HTMLAnchorElement>("a[href]");
+      const href = link?.getAttribute("href");
+      if (href !== "/pycoder" && !href?.startsWith("/pycoder/")) return;
       if (fired) return;
       fired = true;
+      document.removeEventListener("pointerover", warmOnIntent);
+      document.removeEventListener("focusin", warmOnIntent);
 
       // Kick off the Next-side route prefetch in parallel.
       router.prefetch("/pycoder");
@@ -46,22 +51,15 @@ export function LabPreloader() {
       // Mount hidden iframe to warm proxy + upstream + iframe JS/CSS.
       // ?preload=1 is stripped by the proxy before forwarding upstream.
       setIframeSrc("/api/pycoder/proxy?preload=1");
+      window.setTimeout(() => setIframeSrc(null), 15_000);
     };
 
-    const onIdle =
-      (window as Window & {
-        requestIdleCallback?: (cb: () => void) => void;
-      }).requestIdleCallback ||
-      ((cb: () => void) => setTimeout(cb, 3000));
-
-    const idleId = onIdle(fire);
-    const timeoutId = setTimeout(fire, 6000);
+    document.addEventListener("pointerover", warmOnIntent, { passive: true });
+    document.addEventListener("focusin", warmOnIntent);
 
     return () => {
-      clearTimeout(timeoutId);
-      if (idleId && typeof idleId === "number") clearTimeout(idleId);
-      // (requestIdleCallback id not cancelable portably, no-op)
-      setIframeSrc(null);
+      document.removeEventListener("pointerover", warmOnIntent);
+      document.removeEventListener("focusin", warmOnIntent);
     };
   }, [pathname, router]);
 

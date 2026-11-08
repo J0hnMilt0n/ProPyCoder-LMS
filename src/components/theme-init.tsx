@@ -9,13 +9,13 @@
 // the flash. (On client-side navigations the script is not re-run, but that is
 // fine: data-theme already persists on <html> and ThemeProvider keeps it in sync.)
 //
-// Reads the same source of truth as the client ThemeProvider.
+// Reads the same source of truth as the client ThemeProvider and navbar auth state.
 export function ThemeInitScript() {
   return (
     <script
       id="propycoder-theme-init"
       dangerouslySetInnerHTML={{
-        __html: `(function(){try{var s=window.localStorage.getItem('propycoder-theme');var t=(s==='light'||s==='dark')?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');var r=document.documentElement;r.dataset.theme=t;r.style.colorScheme=t;}catch(e){}})();`,
+        __html: `(function(){try{var s=window.localStorage.getItem('propycoder-theme');var t=(s==='light'||s==='dark')?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');var r=document.documentElement;r.dataset.theme=t;r.style.colorScheme=t;var a=window.localStorage.getItem('propycoder-auth-hint');r.dataset.authHint=a==='authenticated'?'authenticated':'unauthenticated';}catch(e){}})();`,
       }}
     />
   );

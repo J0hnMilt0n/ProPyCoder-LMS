@@ -67,6 +67,10 @@ export async function proxyPyCoderPage(request: NextRequest, pathname: string) {
     }
 
     let html = await response.text();
+    html = html.replace(
+      /<link\b(?=[^>]*\bhref=(["'])\/static\/style\.css\1)[^>]*>\s*/i,
+      "",
+    );
     html = html.replace(/<meta http-equiv="refresh"[^>]*>/gi, "");
     html = html.replace(
       'class="max-w-3xl mx-auto mt-10 bg-white rounded-xl shadow-2xl p-8"',
@@ -106,6 +110,19 @@ export async function proxyPyCoderPage(request: NextRequest, pathname: string) {
           ? `href=${quote}/api/pycoder/proxy/${path}${quote}`
           : `href=${quote}/${quote} target=${quote}_top${quote}`,
     );
+    if (route === "/") {
+      html = html.replace(
+        /fetch\((["'])\/api\/pycoder\/questions\/\1\)/,
+        "(window.__propycoderQuestionsRequest || fetch('/api/pycoder/questions/'))",
+      );
+      const earlyResources = `
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+        <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+        <link rel="preload" href="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/editor/editor.main.js" as="script">
+        <script>window.__propycoderQuestionsRequest=fetch('/api/pycoder/questions/').catch(function(){return null;});</script>
+      `;
+      html = html.replace(/<head\b[^>]*>/i, `$&${earlyResources}`);
+    }
 
     const themeBridge = `
     <style>

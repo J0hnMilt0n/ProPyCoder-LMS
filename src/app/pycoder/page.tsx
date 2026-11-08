@@ -25,6 +25,7 @@ export default async function PyCoderPage({ searchParams }: PyCoderPageProps) {
             title="PyCoder interactive coding lab"
             className="lab-frame"
             data-pycoder-lab
+            loading="eager"
             allow="clipboard-read; clipboard-write"
             referrerPolicy="same-origin"
           />

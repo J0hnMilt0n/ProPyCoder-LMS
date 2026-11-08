@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const response = await fetch(
       "https://propycoder.pythonanywhere.com/api/questions/",
+      { next: { revalidate: 600 } },
     );
     const text = await response.text();
     return new NextResponse(text, {

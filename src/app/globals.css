@@ -660,6 +660,62 @@ html[data-theme="dark"] .policy-operator {
   background: var(--orange);
   transform: translateY(-1px);
 }
+.site-user-avatar-skeleton {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    100deg,
+    rgba(127, 127, 127, 0.12) 35%,
+    rgba(127, 127, 127, 0.25) 50%,
+    rgba(127, 127, 127, 0.12) 65%
+  );
+  background-size: 200% 100%;
+  animation: account-shimmer 1.4s ease-in-out infinite;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+}
+.site-user-session-skeleton {
+  display: none;
+  flex: 0 0 31px;
+  width: 31px;
+  height: 31px;
+  margin-left: 20px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: linear-gradient(
+    100deg,
+    rgba(127, 127, 127, 0.12) 35%,
+    rgba(127, 127, 127, 0.25) 50%,
+    rgba(127, 127, 127, 0.12) 65%
+  );
+  background-size: 200% 100%;
+  animation: account-shimmer 1.4s ease-in-out infinite;
+}
+html[data-auth-hint="authenticated"] .site-user-session-skeleton {
+  display: inline-block;
+}
+html[data-auth-hint="authenticated"] .site-account-guest {
+  display: none;
+}
+.nav-account-reveal {
+  animation: account-reveal 0.2s ease-out both;
+}
+@keyframes account-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+@keyframes account-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 .theme-switch {
   display: inline-flex;
   align-items: center;
@@ -714,6 +770,16 @@ html[data-theme="dark"] .policy-operator {
   .theme-circle {
     transition: none;
   }
+  .nav-account-reveal {
+    animation: none;
+  }
+  .site-user-avatar-skeleton,
+  .site-user-session-skeleton {
+    animation: none;
+  }
+  .site-user-avatar {
+    transition: none;
+  }
 }
 .site-login {
   margin-left: 4px;
@@ -727,6 +793,13 @@ html[data-theme="dark"] .policy-operator {
   cursor: pointer;
   color: inherit;
   font-size: 13px;
+}
+.site-signout-toolbar {
+  margin-left: 12px;
+  white-space: nowrap;
+}
+.site-nav-links .site-signout-menu {
+  display: none;
 }
 .site-user-chip {
   display: inline-flex;
@@ -747,12 +820,29 @@ html[data-theme="dark"] .policy-operator {
   font-size: 13px;
   font-weight: 700;
 }
+.site-user-avatar-wrap {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 31px;
+  width: 31px;
+  height: 31px;
+  overflow: hidden;
+  border-radius: 50%;
+}
 .site-user-avatar {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   width: 31px;
   height: 31px;
   border-radius: 50%;
   border: 1px solid #f0c4b0;
   object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.site-user-avatar.is-loaded {
+  opacity: 1;
 }
 .site-bell {
   position: relative;
@@ -2898,6 +2988,39 @@ html[data-theme="dark"] .auth-dialog-success {
   background: #f6f7f4;
   color: #2f2f2f;
 }
+.course-load-error {
+  margin: 32px 0;
+  padding: clamp(24px, 5vw, 48px);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper);
+  text-align: center;
+}
+.course-load-error h1 {
+  margin: 0;
+  color: var(--foreground);
+  font-size: clamp(22px, 4vw, 30px);
+}
+.course-load-error p {
+  margin: 10px 0 20px;
+  color: var(--muted);
+}
+.course-load-error-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.course-player-loading {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--muted);
+  font-size: 13px;
+}
 .course-detail-shell {
   width: min(1160px, calc(100% - 64px));
   margin: 0 auto;
@@ -4020,7 +4143,6 @@ body:has(.lab-page) {
   border-radius: 0;
   background: var(--lab-frame-bg, var(--paper));
   box-shadow: none;
-  animation: page-arrive 0.65s 0.08s cubic-bezier(0.2, 0.7, 0.25, 1) backwards;
 }
 .lab-frame-topline {
   display: grid;
@@ -4890,7 +5012,16 @@ body:has(.lab-page) {
     margin-top: 12px;
     padding: 12px;
   }
+  .site-nav-links .site-signout-menu {
+    display: none;
+  }
+  .site-signout-toolbar {
+    margin-left: 5px;
+  }
   .site-user-chip {
+    margin-left: 5px;
+  }
+  .site-user-session-skeleton {
     margin-left: 5px;
   }
   .site-menu-toggle + .site-nav-links {
@@ -4898,6 +5029,13 @@ body:has(.lab-page) {
   }
 }
 @media (max-width: 640px) {
+  .site-signout-toolbar {
+    display: none;
+  }
+  .site-nav-links .site-signout-menu {
+    display: inline-flex;
+    align-self: flex-end;
+  }
   body {
     padding-top: 65px;
   }
@@ -8418,6 +8556,11 @@ html[data-theme="dark"] .certificate-logo .site-brand {
   background: #fef2f2;
   border-color: #fca5a5;
 }
+.live-action.is-locked {
+  background: #f4f4f5;
+  color: #71717a;
+  cursor: not-allowed;
+}
 .live-pill {
   display: inline-flex;
   align-items: center;
@@ -8464,10 +8607,9 @@ html[data-theme="dark"] .certificate-logo .site-brand {
 
 /* Course detail — live classes block */
 .course-live {
-  /* margin-bottom: 26px; */
   border: 1px solid #ececee;
   border-radius: 16px;
-  padding: 18px 18px 0;
+  padding: 18px;
   background: linear-gradient(180deg, #fffaf7, #ffffff);
 }
 .course-live-head {
@@ -8489,93 +8631,30 @@ html[data-theme="dark"] .certificate-logo .site-brand {
   flex-direction: column;
   gap: 10px;
 }
-.course-live-row {
+.course-live .live-row {
   position: relative;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 12px 14px;
-  border: 1px solid #ececee;
-  border-radius: 12px;
-  background: #fff;
-}
-.course-live-row.is-live {
-  border-color: rgba(233, 95, 50, 0.5);
-  background: #fff7f3;
-}
-.course-live-row.is-cancelled {
-  opacity: 0.6;
-}
-.course-live-when {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  min-width: 64px;
-}
-.course-live-when strong {
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #18181b;
-}
-.course-live-when span {
-  font-size: 11.5px;
-  color: #71717a;
-  white-space: nowrap;
-}
-.course-live-copy {
-  flex: 1;
   min-width: 0;
 }
-.course-live-copy > div {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  flex-wrap: wrap;
+.course-live .live-row-content {
+  display: contents;
 }
-.course-live-copy .live-pill {
+.course-live .live-row-title {
+  padding-right: 88px;
+}
+.course-live .live-row-title .live-pill {
   position: absolute;
-  top: 8px;
-  right: 10px;
-  z-index: 1;
+  top: 12px;
+  right: 12px;
 }
-.course-live-copy h4 {
-  margin: 0;
+.course-live .live-row-title h3 {
   font-size: 14.5px;
-  color: #18181b;
 }
-.course-live-copy p {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: #71717a;
-  min-width: 0;
-  line-height: 1.5;
-  white-space: normal;
+.course-live .live-row-meta {
   overflow-wrap: anywhere;
 }
-.course-live-join {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 15px;
-  /* margin-right: 110px; */
-  border-radius: 9px;
-  background: #e95f32;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  text-decoration: none;
-  white-space: nowrap;
-  transition: background 0.15s ease;
-}
-.course-live-join:hover {
-  background: #d94f22;
-}
-.course-live-join.is-locked {
-  background: #f4f4f5;
-  color: #a1a1aa;
-  cursor: default;
+.course-live .live-row-actions {
+  align-self: flex-end;
+  padding-top: 40px;
 }
 
 @media (max-width: 640px) {
@@ -8594,72 +8673,40 @@ html[data-theme="dark"] .certificate-logo .site-brand {
     font-size: 12px;
     line-height: 1.4;
   }
+}
 
-  .course-live-row {
-    display: grid;
-    /* grid-template-cols: 52px minmax(0, 1fr); */
+@media (max-width: 768px) {
+  .course-live .live-row {
+    display: flex;
+    flex-direction: row;
     align-items: start;
-    gap: 8px 11px;
-    padding: 11px;
-    border-radius: 9px;
+    flex-wrap: wrap;
+    gap: 10px 12px;
   }
-
-  .course-live-when {
-    min-width: 0;
-    /* align-items: flex-start; */
-    padding-top: 2px;
+  .course-live .live-row-date {
+    flex: 0 0 58px;
+    margin-inline: auto;
   }
-
-  .course-live-when strong {
-    font-size: 12px;
-  }
-
-  .course-live-when span {
-    white-space: normal;
-    font-size: 10px;
-  }
-
-  .course-live-copy {
-    min-width: 0;
-  }
-
-  .course-live-copy > div {
+  .course-live .live-row-content {
+    display: flex;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
     align-items: flex-start;
-    gap: 6px;
-  }
-
-  .course-live-copy .live-pill {
-    top: 6px;
-    right: 7px;
-  }
-
-  .course-live-copy h4 {
+    gap: 10px 12px;
     min-width: 0;
-    /* max-width: calc(100% - 105px); */
-    font-size: 13px;
-    line-height: 1.4;
-    overflow-wrap: anywhere;
   }
-
-  .course-live-copy p {
-    white-space: normal;
-    overflow-wrap: anywhere;
-    font-size: 12px;
-    line-height: 1.45;
+  .course-live .live-row-main {
+    flex: 1 1 180px;
+    min-width: 0;
   }
-
-  .course-live-join {
-    margin-right: 0;
+  .course-live .live-row-actions {
+    flex: 0 1 auto;
+    align-self: flex-start;
+    margin-left: auto;
+    padding-top: 0;
   }
-
-  .course-live-join {
-    grid-column: 2;
-    justify-self: start;
-    max-width: 100%;
-    padding: 8px 11px;
-    font-size: 12px;
-    white-space: normal;
-    text-align: center;
+  .course-live .live-row-title {
+    padding-right: 82px;
   }
 }
 
@@ -8987,7 +9034,7 @@ html[data-theme="dark"] .instructor-live {
 }
 html[data-theme="dark"] .live-row-date,
 html[data-theme="dark"] .live-row-code code,
-html[data-theme="dark"] .course-live-join.is-locked {
+html[data-theme="dark"] .live-action.is-locked {
   background: #141416;
   border-color: var(--line);
 }
@@ -9000,8 +9047,6 @@ html[data-theme="dark"] .live-row-title h3,
 html[data-theme="dark"] .live-row-code code,
 html[data-theme="dark"] .live-manager-empty strong,
 html[data-theme="dark"] .course-live-head h3,
-html[data-theme="dark"] .course-live-when strong,
-html[data-theme="dark"] .course-live-copy h4,
 html[data-theme="dark"] .learning-live-copy strong {
   color: var(--foreground);
 }
@@ -9013,8 +9058,6 @@ html[data-theme="dark"] .live-row-desc,
 html[data-theme="dark"] .live-row-code,
 html[data-theme="dark"] .live-manager-empty,
 html[data-theme="dark"] .live-manager-empty span,
-html[data-theme="dark"] .course-live-when span,
-html[data-theme="dark"] .course-live-copy p,
 html[data-theme="dark"] .learning-live-copy span {
   color: var(--muted);
 }

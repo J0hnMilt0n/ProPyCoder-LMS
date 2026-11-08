@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import {
   ArrowUpRight,
-  Bell,
   BookOpen,
   ChevronDown,
   FlaskConical,
@@ -18,13 +17,58 @@ import {
   X,
 } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
+import { useConfirm } from "@/components/confirm-dialog";
 import { useTheme } from "@/components/theme-provider";
 import { useResource, clearResourceCaches } from "@/lib/use-resource";
+
+function persistAuthHint(authenticated: boolean, userId?: string) {
+  const hint = authenticated ? "authenticated" : "unauthenticated";
+  document.documentElement.dataset.authHint = hint;
+  try {
+    localStorage.setItem("propycoder-auth-hint", hint);
+    if (authenticated && userId) {
+      sessionStorage.setItem("propycoder-auth-user-id", userId);
+    } else {
+      sessionStorage.removeItem("propycoder-auth-user-id");
+    }
+  } catch (error) {
+    console.warn("Could not persist the navbar auth hint", error);
+  }
+}
 
 export function Navbar() {
   const { data: session, status } = useSession();
   const [isOpen, setIsOpen] = useState(false);
+  const [loadedAvatarUrl, setLoadedAvatarUrl] = useState<string | null>(null);
   const user = session?.user;
+  const avatarUrl = user?.image;
+  const confirm = useConfirm();
+
+  const handleSignOut = async () => {
+    const shouldSignOut = await confirm({
+      title: "Sign out?",
+      message: "Are you sure you want to sign out?",
+      confirmLabel: "Sign out",
+      cancelLabel: "Cancel",
+      danger: true,
+    });
+    if (!shouldSignOut) return;
+
+    persistAuthHint(false);
+    // Wipe per-user resource caches so the next account on this
+    // browser never sees the previous user's cached data.
+    clearResourceCaches();
+    setIsOpen(false);
+    await signOut({ callbackUrl: "/" });
+  };
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      persistAuthHint(true, user?.id);
+    } else if (status === "unauthenticated") {
+      persistAuthHint(false);
+    }
+  }, [status, user?.id]);
   // Unread inbox count for the bell badge (logged-in users only).
   // Keyed on user id so logging out naturally resets the badge to 0.
   const userId = user?.id ?? null;
@@ -137,28 +181,24 @@ export function Navbar() {
           </button>
           {user && (
             <button
+              type="button"
               className="site-signout"
-              onClick={() => {
-                // Wipe per-user resource caches so the next account on this
-                // browser never sees the previous user's cached data.
-                clearResourceCaches();
-                signOut({ callbackUrl: "/" });
-              }}
+              onClick={handleSignOut}
             >
               <LogOut size={15} /> Sign out
             </button>
           )}
-          {status === "unauthenticated" && (
+          {status !== "authenticated" && (
             <>
               <Link
-                className="site-login"
+                className="site-login site-account-guest"
                 href="/auth/login"
                 onClick={() => setIsOpen(false)}
               >
                 Log in
               </Link>
               <Link
-                className="site-nav-cta"
+                className="site-nav-cta site-account-guest"
                 href="/auth/register"
                 onClick={() => setIsOpen(false)}
               >
@@ -181,34 +221,24 @@ export function Navbar() {
         >
           <BookOpen size={14} />
         </Link>
-        {status === "unauthenticated" && (
-          <Link
-            href="/announcements"
-            className="site-shortcut"
-            onClick={() => setIsOpen(false)}
-            aria-label="Announcements"
-            title="Announcements"
-          >
-            <Megaphone size={14} />
-          </Link>
-        )}
-        {user && (
-          <Link
-            href="/announcements"
-            className="site-shortcut site-bell"
-            aria-label={
-              unread > 0 ? `Announcements, ${unread} unread` : "Announcements"
-            }
-            title="Announcements"
-          >
-            <Megaphone size={14} />
-            {unread > 0 && (
-              <span className="site-bell-badge">
-                {unread > 9 ? "9+" : unread}
-              </span>
-            )}
-          </Link>
-        )}
+        <Link
+          href="/announcements"
+          className={`site-shortcut${user ? " site-bell" : ""}`}
+          aria-label={
+            user && unread > 0
+              ? `Announcements, ${unread} unread`
+              : "Announcements"
+          }
+          title="Announcements"
+          onClick={() => setIsOpen(false)}
+        >
+          <Megaphone size={14} />
+          {user && unread > 0 && (
+            <span className="site-bell-badge">
+              {unread > 9 ? "9+" : unread}
+            </span>
+          )}
+        </Link>
         <button
           className="site-shortcut site-theme-shortcut"
           type="button"
@@ -218,17 +248,37 @@ export function Navbar() {
         >
           {theme === "light" ? <Moon size={17} /> : <Sun size={17} />}
         </button>
+        {status === "loading" && !user && (
+          <span
+            className="site-user-session-skeleton"
+            aria-hidden="true"
+          />
+        )}
         {user && (
-          <Link className="site-user-chip" href="/profile" title="Your profile">
-            {user.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                className="site-user-avatar"
-                src={user.image}
-                alt={user.name ?? "Your avatar"}
-                width={26}
-                height={26}
-              />
+          <Link
+            className="site-user-chip nav-account-reveal"
+            href="/profile"
+            title="Your profile"
+          >
+            {avatarUrl ? (
+              <div className="site-user-avatar-wrap">
+                {loadedAvatarUrl !== avatarUrl && (
+                  <span
+                    className="site-user-avatar-skeleton"
+                    aria-hidden="true"
+                  />
+                )}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  className={`site-user-avatar${loadedAvatarUrl === avatarUrl ? " is-loaded" : ""}`}
+                  src={avatarUrl}
+                  alt={user.name ?? "Your avatar"}
+                  width={26}
+                  height={26}
+                  onLoad={() => setLoadedAvatarUrl(avatarUrl)}
+                  onError={() => setLoadedAvatarUrl(avatarUrl)}
+                />
+              </div>
             ) : (
               <span>
                 {user.name
@@ -241,6 +291,16 @@ export function Navbar() {
             <ChevronDown size={13} />
           </Link>
         )}
+        {/* {user && (
+          <button
+            type="button"
+            className="site-signout site-signout-toolbar nav-account-reveal"
+            onClick={handleSignOut}
+          >
+            <LogOut size={15} /> Sign out
+          </button>
+        )} */}
+
         <button
           className="site-menu-toggle"
           onClick={() => setIsOpen(!isOpen)}

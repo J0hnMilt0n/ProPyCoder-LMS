@@ -1,8 +1,17 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  use,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { PriceTag } from "@/components/price-tag";
@@ -21,7 +30,6 @@ import {
   Video,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { LessonVideoPlayer } from "@/components/lesson-video-player";
 import {
   primeResourceCache,
   readResourceCache,
@@ -31,6 +39,20 @@ import {
   STATUS_LABELS,
   effectiveStatus,
 } from "@/lib/live-classes";
+
+const LessonVideoPlayer = dynamic(
+  () =>
+    import("@/components/lesson-video-player").then(
+      (module) => module.LessonVideoPlayer,
+    ),
+  {
+    loading: () => (
+      <div className="course-player-loading" role="status">
+        Loading video player...
+      </div>
+    ),
+  },
+);
 
 interface Lesson {
   id: string;
@@ -49,6 +71,13 @@ interface Module {
   description: string | null;
   order: number;
   lessons: Lesson[];
+}
+
+interface CachedCourseAccess {
+  isEnrolled: boolean;
+  modules: Module[];
+  completedLessonIds?: string[];
+  certificateId?: string | null;
 }
 
 interface CourseDetail {
@@ -172,31 +201,40 @@ function settle(request: Promise<Response>): Promise<Response | null> {
   return request.catch(() => null);
 }
 
+function readAuthUserHint(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.sessionStorage.getItem("propycoder-auth-user-id");
+  } catch {
+    return null;
+  }
+}
+
+function formatStartsIn(startTime: number, now: number): string {
+  const minutesUntil = Math.max(1, Math.ceil((startTime - now) / 60_000));
+  const hours = Math.floor(minutesUntil / 60);
+  const minutes = minutesUntil % 60;
+  const parts = [
+    hours > 0 ? `${hours} hr${hours === 1 ? "" : "s"}` : "",
+    minutes > 0 ? `${minutes} min${minutes === 1 ? "" : "s"}` : "",
+  ].filter(Boolean);
+
+  return `Starts in ${parts.join(" ")}`;
+}
+
 export default function CourseDetailPage({ params }: Props) {
+  const { id: courseId } = use(params);
   const { data: session, status } = useSession();
+  const sessionUserId = session?.user?.id ?? null;
+  const authUserHint = status === "loading" ? readAuthUserHint() : null;
+  const cacheUserId = sessionUserId ?? authUserHint;
+  const accessCacheKey = `course-access:${courseId}`;
+  const accessCacheScope = cacheUserId ? `user:${cacheUserId}` : "public";
   const router = useRouter();
-  const pathname = usePathname();
-  // Resolve the route ID from Next.js navigation state after hydration.
-  const [courseId, setCourseId] = useState<string>("");
-  const [course, setCourse] = useState<CourseDetail | null>(() => {
-    if (!courseId) return null;
-    const cached = readResourceCache<CourseDetail>("course-detail", `public:${courseId}`);
-    // Placeholder / legacy cache entries may not carry `modules`;
-    // normalize once here so the render can trust the shape.
-    return cached ? { ...cached, modules: cached.modules ?? [] } : null;
-  });
-  const [modules, setModules] = useState<Module[]>(() => {
-    if (!courseId) return [];
-    const cached = readResourceCache<Module[]>(
-      "course-modules",
-      `public:${courseId}`,
-    );
-    return cached ?? [];
-  });
-  // Start unblocked when the first paint was primed from localStorage (back
-  // navigation, lab -> courses return) so the cached content paints instantly
-  // with no spinner flash. A true first visit still starts blocked.
-  const [isLoading, setIsLoading] = useState<boolean>(() => !course);
+  const [course, setCourse] = useState<CourseDetail | null>(null);
+  const [modules, setModules] = useState<Module[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [courseLoadError, setCourseLoadError] = useState<string | null>(null);
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [accessResolvedCourseId, setAccessResolvedCourseId] = useState("");
@@ -206,74 +244,108 @@ export default function CourseDetailPage({ params }: Props) {
   );
   const [isMarkingComplete, setIsMarkingComplete] = useState(false);
   const isRestoringScroll = useRef(false);
+  const lastInitialLoadKey = useRef("");
   const [certificateId, setCertificateId] = useState<string | null>(null);
   const [liveClasses, setLiveClasses] = useState<LiveClassItem[]>([]);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (liveClasses.length === 0) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, [liveClasses.length]);
+
   const totalLessons = modules.reduce(
     (total, module) => total + module.lessons.length,
     0,
   );
   const completedLessons = completedLessonIds.size;
 
-  // True only when the real page content is on screen (not the spinner or the
-  // empty access-loading shell). Scroll save/restore must wait for this,
-  // otherwise a collapsed layout clamps scroll to 0 and overwrites the saved
-  // position, or restore runs before the target is reachable.
+  // Restore scroll as soon as the course shell is visible; private enrollment
+  // checks can finish in the background without hiding the cached page.
   const contentReady =
     !isLoading &&
     !!course &&
-    status !== "loading" &&
-    accessResolvedCourseId === courseId;
+    course.id === courseId;
 
-  useEffect(() => {
-    const id = pathname.split("/").filter(Boolean).at(-1);
-    if (!id || id === "courses") return;
-
+  useLayoutEffect(() => {
     const restore = () => {
-      const cachedCourse = readResourceCache<CourseDetail>("course-detail", `public:${id}`);
+      const cachedCourse = readResourceCache<CourseDetail>(
+        "course-detail",
+        `public:${courseId}`,
+      );
+      const cachedAccess = readResourceCache<CachedCourseAccess>(
+        accessCacheKey,
+        accessCacheScope,
+      );
       if (cachedCourse) {
         setCourse({ ...cachedCourse, modules: cachedCourse.modules ?? [] });
-        const cachedModules = readResourceCache<Module[]>("course-modules", `public:${id}`);
-        if (cachedModules) setModules(cachedModules);
         setIsLoading(false);
+      } else {
+        setCourse(null);
+        setIsLoading(true);
       }
-      setCourseId(id);
+      if (cachedAccess && (sessionUserId || !cachedAccess.isEnrolled)) {
+        setModules(cachedAccess.modules);
+        setIsEnrolled(cachedAccess.isEnrolled);
+        setAccessResolvedCourseId(courseId);
+        setCompletedLessonIds(
+          new Set(cachedAccess.completedLessonIds ?? []),
+        );
+        setCertificateId(cachedAccess.certificateId ?? null);
+        const accessible = cachedAccess.modules
+          .flatMap((module) => module.lessons)
+          .filter((lesson) => cachedAccess.isEnrolled || lesson.isFree);
+        let savedLessonId: string | null = null;
+        try {
+          savedLessonId = window.sessionStorage.getItem(
+            `propycoder-course-lesson:${courseId}`,
+          );
+        } catch {
+          // Storage unavailable.
+        }
+        setSelectedLesson(
+          accessible.find((lesson) => lesson.id === savedLessonId) ??
+            accessible.find((lesson) => lesson.isFree && lesson.videoId) ??
+            accessible[0] ??
+            null,
+        );
+      } else if (cachedAccess && status === "loading" && authUserHint) {
+        setModules([]);
+        setIsEnrolled(cachedAccess.isEnrolled);
+        setAccessResolvedCourseId(courseId);
+        setSelectedLesson(null);
+        setCompletedLessonIds(new Set());
+        setCertificateId(null);
+      } else {
+        setModules([]);
+        setIsEnrolled(false);
+        setAccessResolvedCourseId("");
+        setSelectedLesson(null);
+        setCompletedLessonIds(new Set());
+        setCertificateId(null);
+      }
       try {
-        window.sessionStorage.setItem("propycoder-last-course", id);
+        window.sessionStorage.setItem("propycoder-last-course", courseId);
       } catch {
         // Storage unavailable.
       }
     };
 
-    // Restore cached content once, synchronously after hydration, without
-    // adding an extra effect that runs again on the very first mount.
     restore();
     window.addEventListener("pageshow", restore);
     return () => window.removeEventListener("pageshow", restore);
-  }, []);
-
-  useEffect(() => {
-    // Keep courseId in sync with the router params (covers trailing-slash /
-    // rewrite edge cases); the first paint already derived it from the URL.
-    params.then((p) => {
-      if (!p.id) return;
-      // params is the authoritative source: the synchronous URL read
-      // above returns "" during SSR/hydration (React reuses the server
-      // render), so without this call the courseId-keyed fetch effect
-      // never fires and the page spins forever on back navigation.
-      setCourseId(p.id);
-      try {
-        window.sessionStorage.setItem("propycoder-last-course", p.id);
-      } catch {
-        // Storage unavailable.
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params]);
+  }, [
+    accessCacheKey,
+    accessCacheScope,
+    authUserHint,
+    courseId,
+    sessionUserId,
+    status,
+  ]);
 
   // Use the authenticated endpoint for enrolled users/staff (which can expose
   // the join URL), and the public-safe listing for signed-out/non-enrolled
   // visitors (which never contains meeting credentials).
-  const sessionUserId = session?.user?.id ?? null;
   useEffect(() => {
     if (!courseId) {
       setLiveClasses([]);
@@ -337,15 +409,8 @@ export default function CourseDetailPage({ params }: Props) {
   }, [courseId, sessionUserId]);
 
   const loadCourse = useCallback(async () => {
+    setCourseLoadError(null);
     try {
-      // Pull cached curriculum into the current course state immediately,
-      // then continue with the network request below to revalidate it.
-      const cachedModules = readResourceCache<Module[]>(
-        "course-modules",
-        `public:${courseId}`,
-      );
-      if (cachedModules) setModules(cachedModules);
-
       // Fetch course details and access-controlled lessons in parallel.
       // Course first paint wins here: the spinner gates ONLY on the
       // course payload settled in the inner try block below.
@@ -376,6 +441,7 @@ export default function CourseDetailPage({ params }: Props) {
         }
 
         setCourse({ ...data, modules: data.modules ?? [] });
+        setCourseLoadError(null);
         // Cache for instant first paint on the next visit (paint-first from
         // localStorage, then this background fetch patches what changed).
         primeResourceCache<CourseDetail>(
@@ -394,6 +460,7 @@ export default function CourseDetailPage({ params }: Props) {
         // The gating request failed or timed out: fall through to the
         // finally below, which clears the spinner so the page renders its
         // not-found state instead of spinning forever.
+        setCourseLoadError("We couldn't load this course right now.");
       } finally {
         // THE spinner gate. `await courseRequest` above is the ONLY request
         // the page waits on — this always runs, so Back-from-checkout can
@@ -422,56 +489,20 @@ export default function CourseDetailPage({ params }: Props) {
 
       if (lessonsData) {
         const loadedModules: Module[] = lessonsData.modules ?? [];
+        const enrolled = lessonsData.isEnrolled ?? false;
         setModules(loadedModules);
-        setIsEnrolled(lessonsData.isEnrolled ?? false);
+        setIsEnrolled(enrolled);
         setAccessResolvedCourseId(courseId);
-        setCompletedLessonIds(new Set());
-        setCertificateId(null);
-        primeResourceCache<Module[]>(
-          "course-modules",
-          `public:${courseId}`,
-          loadedModules,
-        );
-
-        // Progress is only needed for enrolled users; skip that private API
-        // request for visitors who only have access to public previews.
-        if (lessonsData.isEnrolled) {
-          try {
-            const progressRes = await fetch(
-              `/api/progress?courseId=${encodeURIComponent(courseId)}`,
-              { signal },
-            );
-            if (progressRes.ok) {
-              const progressJson = (await progressRes.json()) as {
-                data?: unknown;
-                certificateNumber?: unknown;
-              };
-              if (typeof progressJson.certificateNumber === "string") {
-                setCertificateId(progressJson.certificateNumber);
-              }
-              if (Array.isArray(progressJson.data)) {
-                const completedIds = (
-                  progressJson.data as { lessonId?: unknown; status?: string }[]
-                )
-                  .filter((item) => item.status === "COMPLETED")
-                  .map((item) => item.lessonId)
-                  .filter(
-                    (lessonId): lessonId is string =>
-                      typeof lessonId === "string",
-                  );
-                setCompletedLessonIds(new Set(completedIds));
-              }
-            }
-          } catch {
-            // Progress is optional for rendering the course page.
-          }
+        if (!enrolled) {
+          setCompletedLessonIds(new Set());
+          setCertificateId(null);
         }
 
         // Restore the lesson the user was last watching. Falls back to the
         // first free preview, then the first accessible lesson.
         const accessible = loadedModules
           .flatMap((module) => module.lessons)
-          .filter((lesson) => lessonsData.isEnrolled || lesson.isFree);
+          .filter((lesson) => enrolled || lesson.isFree);
         setSelectedLesson((current) => {
           try {
             const savedId = window.sessionStorage.getItem(
@@ -507,19 +538,31 @@ export default function CourseDetailPage({ params }: Props) {
       // (e.g. the inner try never ran, or `setCourse` itself threw).
       // The inner finally normally clears the spinner; this is the last
       // safety net so the page can still render its not-found state.
+      setCourseLoadError("We couldn't load this course right now.");
       setIsLoading(false);
     }
   }, [courseId]);
 
   useEffect(() => {
     if (!courseId) return;
-    // If the first paint was primed from cache, course/modules already read
-    // from localStorage; run the network fetch without showing the blocker.
-    // Otherwise (true first visit) keep the spinner until data lands.
-    if (course) setIsLoading(false);
-    void loadCourse();
+    const initialLoadKey = `${courseId}:${cacheUserId ?? "unknown"}`;
+    if (lastInitialLoadKey.current !== initialLoadKey) {
+      lastInitialLoadKey.current = initialLoadKey;
+      // If the first paint was primed from cache, course/modules already read
+      // from localStorage; run the network fetch without showing the blocker.
+      // Otherwise (true first visit) keep the spinner until data lands.
+      if (course?.id === courseId) setIsLoading(false);
+      void loadCourse();
+    }
+    let lastRevalidationAt = Date.now();
     const revalidate = () => {
-      if (document.visibilityState === "visible") void loadCourse();
+      if (
+        document.visibilityState === "visible" &&
+        Date.now() - lastRevalidationAt >= 30_000
+      ) {
+        lastRevalidationAt = Date.now();
+        void loadCourse();
+      }
     };
     window.addEventListener("focus", revalidate);
     document.addEventListener("visibilitychange", revalidate);
@@ -528,7 +571,80 @@ export default function CourseDetailPage({ params }: Props) {
       document.removeEventListener("visibilitychange", revalidate);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId, loadCourse]);
+  }, [cacheUserId, courseId, loadCourse]);
+
+  useEffect(() => {
+    if (
+      accessResolvedCourseId !== courseId ||
+      (isEnrolled && !sessionUserId)
+    ) {
+      return;
+    }
+    primeResourceCache<CachedCourseAccess>(
+      accessCacheKey,
+      sessionUserId ? `user:${sessionUserId}` : "public",
+      {
+        modules,
+        isEnrolled,
+        completedLessonIds: Array.from(completedLessonIds),
+        certificateId,
+      },
+    );
+  }, [
+    accessCacheKey,
+    accessResolvedCourseId,
+    certificateId,
+    completedLessonIds,
+    courseId,
+    isEnrolled,
+    modules,
+    sessionUserId,
+  ]);
+
+  useEffect(() => {
+    if (
+      accessResolvedCourseId !== courseId ||
+      !sessionUserId ||
+      !isEnrolled
+    ) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch(
+          `/api/progress?courseId=${encodeURIComponent(courseId)}`,
+          { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) },
+        );
+        if (!response.ok || cancelled) return;
+        const progressJson = (await response.json()) as {
+          data?: unknown;
+          certificateNumber?: unknown;
+        };
+        if (!Array.isArray(progressJson.data) || cancelled) return;
+        const completedIds = (
+          progressJson.data as { lessonId?: unknown; status?: string }[]
+        )
+          .filter((item) => item.status === "COMPLETED")
+          .map((item) => item.lessonId)
+          .filter(
+            (lessonId): lessonId is string =>
+              typeof lessonId === "string",
+          );
+        setCompletedLessonIds(new Set(completedIds));
+        setCertificateId(
+          typeof progressJson.certificateNumber === "string"
+            ? progressJson.certificateNumber
+            : null,
+        );
+      } catch {
+        // Progress is optional for rendering the course page.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [accessResolvedCourseId, courseId, isEnrolled, sessionUserId]);
 
   // Remember the last-watched lesson so switching away (e.g. to the lab) and
   // coming back resumes on the same video instead of the first one.
@@ -608,7 +724,6 @@ export default function CourseDetailPage({ params }: Props) {
     if (!Number.isFinite(saved) || saved <= 0) return;
 
     let stopped = false;
-    let interval: number | undefined;
     let settleTimer: number | undefined;
     const startedAt = Date.now();
     isRestoringScroll.current = true;
@@ -658,7 +773,7 @@ export default function CourseDetailPage({ params }: Props) {
     const resizeObserver =
       typeof ResizeObserver !== "undefined" ? new ResizeObserver(attempt) : null;
     resizeObserver?.observe(document.body);
-    interval = window.setInterval(attempt, 100);
+    const interval = window.setInterval(attempt, 100);
     window.requestAnimationFrame(attempt);
 
     return stop;
@@ -756,13 +871,30 @@ export default function CourseDetailPage({ params }: Props) {
       const progressResult = (await response.json()) as {
         certificateNumber?: unknown;
       };
-      setCompletedLessonIds((current) =>
-        new Set(current).add(selectedLesson.id),
-      );
+      const nextCompletedLessonIds = new Set(completedLessonIds);
+      nextCompletedLessonIds.add(selectedLesson.id);
+      setCompletedLessonIds(nextCompletedLessonIds);
       toast.success("Lesson marked complete");
 
+      const nextCertificateId =
+        typeof progressResult.certificateNumber === "string"
+          ? progressResult.certificateNumber
+          : certificateId;
+      if (nextCertificateId !== certificateId) {
+        setCertificateId(nextCertificateId);
+      }
+      primeResourceCache<CachedCourseAccess>(
+        accessCacheKey,
+        accessCacheScope,
+        {
+          modules,
+          isEnrolled: true,
+          completedLessonIds: Array.from(nextCompletedLessonIds),
+          certificateId: nextCertificateId,
+        },
+      );
+
       if (typeof progressResult.certificateNumber === "string") {
-        setCertificateId(progressResult.certificateNumber);
         return;
       }
 
@@ -789,7 +921,19 @@ export default function CourseDetailPage({ params }: Props) {
                 : typeof match?.id === "string"
                   ? match.id
                   : null;
-            if (certLink) setCertificateId(certLink);
+            if (certLink) {
+              setCertificateId(certLink);
+              primeResourceCache<CachedCourseAccess>(
+                accessCacheKey,
+                accessCacheScope,
+                {
+                  modules,
+                  isEnrolled: true,
+                  completedLessonIds: Array.from(nextCompletedLessonIds),
+                  certificateId: certLink,
+                },
+              );
+            }
           }
         } catch {
           // Ignore - the card will appear on next load.
@@ -848,25 +992,57 @@ export default function CourseDetailPage({ params }: Props) {
       </div>
     ) : null;
 
-  if (isLoading) {
+  if (isLoading || (course !== null && course.id !== courseId)) {
     return (
       <div className="course-detail-page">
         <Navbar />
-        <div className="flex items-center justify-center h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#e95f32] border-t-transparent"></div>
-        </div>
+        <main
+          className="course-detail-shell"
+          aria-label="Loading course"
+          aria-busy="true"
+        >
+          <div className="skeleton-block skeleton-line" />
+          <div className="skeleton-detail-grid">
+            <div className="skeleton-block skeleton-detail-main" />
+            <div className="skeleton-block skeleton-detail-side" />
+          </div>
+        </main>
       </div>
     );
   }
 
   const isAccessLoading =
-    status === "loading" ||
-    (status === "authenticated" && accessResolvedCourseId !== courseId);
+    ((status === "loading" || status === "authenticated") &&
+      accessResolvedCourseId !== courseId);
 
-  if (!course || isAccessLoading) {
+  if (!course) {
     return (
       <div className="course-detail-page">
         <Navbar />
+        <main className="course-detail-shell">
+          <section className="course-load-error" role="alert">
+            <h1>Course unavailable</h1>
+            <p>
+              {courseLoadError ??
+                "This course could not be found or loaded right now."}
+            </p>
+            <div className="course-load-error-actions">
+              <button
+                type="button"
+                className="live-action is-primary"
+                onClick={() => {
+                  setIsLoading(true);
+                  void loadCourse();
+                }}
+              >
+                Try again
+              </button>
+              <Link href="/courses" className="live-action">
+                Back to courses
+              </Link>
+            </div>
+          </section>
+        </main>
       </div>
     );
   }
@@ -998,14 +1174,16 @@ export default function CourseDetailPage({ params }: Props) {
 
                 <button
                   onClick={handleEnroll}
-                  disabled={isEnrolling || isEnrolled}
+                  disabled={isAccessLoading || isEnrolling || isEnrolled}
                   className={`w-full py-3 rounded-lg font-semibold text-lg transition flex items-center justify-center gap-2 ${
                     isEnrolled
                       ? "bg-sky-600 text-white cursor-not-allowed"
                       : "bg-blue-600 text-white hover:bg-blue-700"
                   } ${isEnrolling ? "opacity-50" : ""}`}
                 >
-                  {isEnrolled ? (
+                  {isAccessLoading ? (
+                    "Checking access..."
+                  ) : isEnrolled ? (
                     <>
                       <CheckCircle className="h-5 w-5" />
                       Enrolled
@@ -1090,15 +1268,34 @@ export default function CourseDetailPage({ params }: Props) {
                     <Radio size={16} />
                     <h3>Live classes</h3>
                   </div>
-                  <div className="course-live-list">
+                  <div className="live-list">
                     {liveClasses.map((item) => {
                       const status = effectiveStatus({
                         status: item.storedStatus ?? item.status,
                         startsAt: item.startsAt,
                         endsAt: item.endsAt,
-                      });
+                      }, new Date(now));
                       const start = new Date(item.startsAt);
                       const end = new Date(item.endsAt);
+                      const timeSummary =
+                        status === "SCHEDULED"
+                          ? formatStartsIn(start.getTime(), now)
+                          : status === "LIVE"
+                            ? `Ends at ${end.toLocaleTimeString(undefined, {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}`
+                            : `${start.toLocaleDateString(undefined, {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })} · ${start.toLocaleTimeString(undefined, {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })} – ${end.toLocaleTimeString(undefined, {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}`;
                       const isStaff =
                         session?.user?.id === course?.instructor.id;
                       const canJoin =
@@ -1106,71 +1303,79 @@ export default function CourseDetailPage({ params }: Props) {
                         (isEnrolled || isStaff) &&
                         (status === "SCHEDULED" || status === "LIVE");
                       return (
-                        <div
+                        <article
                           key={item.id}
-                          className={`course-live-row items-center is-${status.toLowerCase()}`}
-                        >            
-                          <div className="">
-                            {canJoin ? (
-                            <a
-                              className="course-live-join"
-                              href={item.meetingUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              Join
-                            </a>
-                          ) : status === "SCHEDULED" || status === "LIVE" ? (
-                            <span className="course-live-join is-locked">
-                              Enroll to join
-                            </span>
-                          ) : null}
-                          </div>
-                          <div className="course-live-when mt-2">
-                            <strong>
+                          className={`live-row course-live-row is-${status.toLowerCase()}`}
+                        >
+                          <div className="live-row-date">
+                            <span>
                               {start.toLocaleDateString(undefined, {
                                 month: "short",
+                              })}
+                            </span>
+                            <strong>
+                              {start.toLocaleDateString(undefined, {
                                 day: "numeric",
                               })}
                             </strong>
-                            <span>
+                            <small>
                               {start.toLocaleTimeString(undefined, {
                                 hour: "2-digit",
                                 minute: "2-digit",
                               })}
-                              {" - "}
-                              {end.toLocaleTimeString(undefined, {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </span>
-                             <p className="text-xs">
-                              {PROVIDER_LABELS[item.provider] ?? item.provider}
+                            </small>
+                          </div>
+                          <div className="live-row-content">
+                            <div className="live-row-main">
+                              <div className="live-row-title">
+                                <h3>{item.title}</h3>
+                                <span
+                                  className={`live-pill is-${status.toLowerCase()}`}
+                                >
+                                  {status === "LIVE" && (
+                                    <span className="live-pill-dot" />
+                                  )}
+                                  {STATUS_LABELS[status]}
+                                </span>
+                              </div>
+                              <p className="live-row-meta">
+                                {PROVIDER_LABELS[item.provider] ?? item.provider}
+                                {" · "}{timeSummary}
                               </p>
-                          </div>
-                          <div className="course-live-copy mt-6">
-                            <span
-                                className={`live-pill is-${status.toLowerCase()}`}
-                              >
-                                {status === "LIVE" && (
-                                  <span className="live-pill-dot" />
-                                )}
-                                {STATUS_LABELS[status]}
-                              </span>
-                            <div>
-                              <h4>{item.title}</h4>
-                              
+                              {item.description && (
+                                <p className="live-row-desc">
+                                  {item.description}
+                                </p>
+                              )}
                             </div>
-                            <p className="">
-                              
-                              {item.description
-                                ? `${item.description}`
-                                : ""}
-                            </p>
-                            
+                            {(canJoin ||
+                              status === "SCHEDULED" ||
+                              status === "LIVE") && (
+                              <div className="live-row-actions">
+                                {canJoin ? (
+                                  <a
+                                    className="live-action is-primary"
+                                    href={item.meetingUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    <Video size={14} /> Join class
+                                  </a>
+                                ) : (
+                                  <span
+                                    className="live-action is-locked"
+                                    aria-disabled="true"
+                                  >
+                                    <Lock size={14} />
+                                    {isEnrolled || isStaff
+                                      ? "Join link unavailable"
+                                      : "Enroll to join"}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
-                          
-                        </div>
+                        </article>
                       );
                     })}
                   </div>
