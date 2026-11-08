@@ -6068,7 +6068,7 @@ html[data-theme="light"] .lab-frame {
   gap: 0;
 }
 
-.lvp-root.is-mobile-fullscreen.is-rotated .lvp-btn {
+.lvp-root.is-mobile-fullscreen .lvp-btn {
   min-width: 36px;
   height: 44px;
   padding: 0 3px;
