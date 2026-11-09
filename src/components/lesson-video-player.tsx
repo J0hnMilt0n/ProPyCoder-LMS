@@ -409,7 +409,7 @@ export function LessonVideoPlayer({
     setControlsVisible(true);
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     hideTimerRef.current = setTimeout(() => {
-      if (videoRef.current && !videoRef.current.paused) {
+      if (ytContainerRef.current || (videoRef.current && !videoRef.current.paused)) {
         setControlsVisible(false);
         setShowMobileCenterAction(false);
       }
@@ -1379,7 +1379,7 @@ export function LessonVideoPlayer({
         if (!isMobile) revealControls();
       }}
       onMouseLeave={() => {
-        if (ytContainerRef.current || videoRef.current && !videoRef.current.paused) {
+        if (ytContainerRef.current || (videoRef.current && !videoRef.current.paused)) {
           setControlsVisible(false);
         }
       }}
@@ -1543,7 +1543,7 @@ export function LessonVideoPlayer({
       )}
 
       {hasMedia &&
-        ((!hasStarted && !isMobile) ||
+        ((!hasStarted) ||
           (showMobileCenterAction && isMobile)) && (
         <button
           type="button"
