@@ -45,23 +45,35 @@ function resolveVideoSource(
     // console.log("Failed")
     return { src: videoUrl, type: "native", label: "Direct video URL" };
   }
-  
-  // If we have a YouTube videoId, use the stream proxy
-  if (videoId) {
-    const proxyUrl = `/api/youtube/stream?videoId=${videoId}&itag=137`;
-    return { src: proxyUrl, type: "proxy", label: "YouTube stream proxy" };
-  }
 
-  // If we have a YouTube URL, also use the stream proxy (instead of iframe embed)
+  if (videoId) {
+    return { src: videoId, type: "youtube", label: "YouTube embed (fallback)" };
+  }
   if (videoUrl && /^(?:https?:)?\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//.test(videoUrl)) {
     const videoId = extractYouTubeId(videoUrl);
     if (videoId) {
-      const proxyUrl = `/api/youtube/stream?videoId=${videoId}&itag=137`;
-      return { src: proxyUrl, type: "proxy", label: "YouTube stream proxy" };
+      return { src: videoId, type: "youtube", label: "YouTube embed (fallback)" };
     }
     // Fallback to iframe if we can't extract the ID
     return { src: videoUrl, type: "youtube", label: "YouTube embed (fallback)" };
   }
+  
+  // If we have a YouTube videoId, use the stream proxy
+  // if (videoId) {
+  //   const proxyUrl = `/api/youtube/stream?videoId=${videoId}&itag=137`;
+  //   return { src: proxyUrl, type: "proxy", label: "YouTube stream proxy" };
+  // }
+
+  // // If we have a YouTube URL, also use the stream proxy (instead of iframe embed)
+  // if (videoUrl && /^(?:https?:)?\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//.test(videoUrl)) {
+  //   const videoId = extractYouTubeId(videoUrl);
+  //   if (videoId) {
+  //     const proxyUrl = `/api/youtube/stream?videoId=${videoId}&itag=137`;
+  //     return { src: proxyUrl, type: "proxy", label: "YouTube stream proxy" };
+  //   }
+  //   // Fallback to iframe if we can't extract the ID
+  //   return { src: videoUrl, type: "youtube", label: "YouTube embed (fallback)" };
+  // }
 
   // Fall back to obfuscated sources
   return { src: null, type: "obfuscated", label: "Obfuscated sources" };
@@ -146,6 +158,7 @@ export function LessonVideoPlayer({
   const [ytReady, setYtReady] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const controlsHiddenRef = useRef(false);
   const gestureRef = useRef<TouchGesture | null>(null);
   const pendingTapRef = useRef<{
     zone: GestureZone;
@@ -392,6 +405,7 @@ export function LessonVideoPlayer({
   }, [isFullscreen, isMobile]);
 
   const revealControls = useCallback(() => {
+    controlsHiddenRef.current = false;
     setControlsVisible(true);
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     hideTimerRef.current = setTimeout(() => {
@@ -400,6 +414,14 @@ export function LessonVideoPlayer({
         setShowMobileCenterAction(false);
       }
     }, 1800);
+  }, []);
+
+  const hideControls = useCallback(() => {
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = null;
+    controlsHiddenRef.current = true;
+    setControlsVisible(false);
+    setShowMobileCenterAction(false);
   }, []);
 
   // YouTube IFrame API integration (custom controls over YouTube)
@@ -611,8 +633,14 @@ export function LessonVideoPlayer({
     if (isYouTube) {
       const p = ytPlayerRef.current;
       if (!p) return;
-      if (isPlaying) p.pauseVideo?.();
-      else {
+      const state = p.getPlayerState?.();
+      const playing =
+        typeof state === "number"
+          ? state === 1 || (state === 3 && isPlaying)
+          : isPlaying;
+      if (playing) {
+        p.pauseVideo?.();
+      } else {
         const time = p.getCurrentTime?.() ?? currentTime;
         if (requestedEndTime !== null && time >= clipEndTime - 0.25) {
           p.seekTo?.(clipStartTime, true);
@@ -648,15 +676,62 @@ export function LessonVideoPlayer({
     revealControls,
   ]);
 
-  const handleVideoClick = useCallback(() => {
-    if (isMobile) {
+  const isPlayerPlaying = useCallback(() => {
+    if (isYouTube) {
+      const state = ytPlayerRef.current?.getPlayerState?.();
+      if (typeof state === "number") {
+        return state === 1 || (state === 3 && isPlaying);
+      }
+    }
+
+    return videoRef.current ? !videoRef.current.paused : isPlaying;
+  }, [isYouTube, isPlaying]);
+
+  const handleMobileSurfaceTap = useCallback(() => {
+    const controlsShown =
+      showMobileCenterAction ||
+      (hasStarted && controlsVisible) ||
+      (isFullscreen && controlsVisible);
+    if (!controlsShown) {
       revealControls();
       setShowMobileCenterAction(true);
       return;
     }
 
-    togglePlay();
-  }, [isFullscreen, isMobile, revealControls, togglePlay]);
+    if (!isPlayerPlaying()) togglePlay();
+    hideControls();
+  }, [
+    controlsVisible,
+    hasStarted,
+    hideControls,
+    isFullscreen,
+    isPlayerPlaying,
+    revealControls,
+    showMobileCenterAction,
+    togglePlay,
+  ]);
+
+  const handleVideoClick = useCallback(() => {
+    if (isMobile) {
+      handleMobileSurfaceTap();
+      return;
+    }
+
+    if (isPlayerPlaying()) {
+      togglePlay();
+      revealControls();
+    } else {
+      togglePlay();
+      hideControls();
+    }
+  }, [
+    handleMobileSurfaceTap,
+    hideControls,
+    isMobile,
+    isPlayerPlaying,
+    revealControls,
+    togglePlay,
+  ]);
 
   const skip = useCallback(
     (delta: number) => {
@@ -1182,9 +1257,7 @@ export function LessonVideoPlayer({
     if (gesture.mode !== "pending") return;
 
     if (gesture.mobileTap) {
-      revealControls();
-      setShowMobileCenterAction(true);
-
+      handleMobileSurfaceTap();
       if (gesture.zone === "center") {
         if (pendingTapRef.current) {
           clearTimeout(pendingTapRef.current.timer);
@@ -1200,15 +1273,17 @@ export function LessonVideoPlayer({
         const delta = gesture.zone === "left" ? -10 : 10;
         skip(delta);
         showGestureFeedback(`${delta > 0 ? "+" : ""}${delta}s`, 700);
+        hideControls()
         return;
       }
-
+      hideControls()
       if (pendingTap) clearTimeout(pendingTap.timer);
       const timer = setTimeout(() => {
         if (pendingTapRef.current?.timer === timer) {
           pendingTapRef.current = null;
+          handleVideoClick()
         }
-      }, 260);
+      }, 250);
       pendingTapRef.current = { zone: gesture.zone, timer };
       return;
     }
@@ -1300,7 +1375,9 @@ export function LessonVideoPlayer({
       className={`lvp-root ${controlsVisible ? "is-active" : ""} ${isFullscreen && isMobile ? "is-mobile-fullscreen" : ""} ${isNativeFullscreen ? "is-native-fullscreen" : ""} ${isRotated ? "is-rotated" : ""}`}
       tabIndex={0}
       aria-label={`Video player: ${title}`}
-      onMouseMove={revealControls}
+      onMouseMove={() => {
+        if (!isMobile) revealControls();
+      }}
       onMouseLeave={() => {
         if (ytContainerRef.current || videoRef.current && !videoRef.current.paused) {
           setControlsVisible(false);
@@ -1327,11 +1404,12 @@ export function LessonVideoPlayer({
           }}
           onPause={() => {
             setIsPlaying(false);
-            setControlsVisible(true);
+            if (!controlsHiddenRef.current) setControlsVisible(true);
             saveProgress();
           }}
           onEnded={() => {
             setIsPlaying(false);
+            controlsHiddenRef.current = false;
             setControlsVisible(true);
             try {
               if (lessonId) {
@@ -1424,6 +1502,9 @@ export function LessonVideoPlayer({
           onPointerMove={handleGesturePointerMove}
           onPointerUp={finishGesture}
           onPointerCancel={handleGesturePointerCancel}
+          onClick={() => {
+            if (!isMobile) handleVideoClick();
+          }}
         />
       )}
 
@@ -1462,15 +1543,18 @@ export function LessonVideoPlayer({
       )}
 
       {hasMedia &&
-        (!hasStarted ||
+        ((!hasStarted && !isMobile) ||
           (showMobileCenterAction && isMobile)) && (
         <button
           type="button"
           className={`lvp-big-play ${hasStarted ? "is-mobile-action" : ""}`}
           aria-label={isPlaying ? `Pause ${title}` : `Play ${title}`}
           onClick={() => {
+            const wasPlaying = isPlayerPlaying();
             setShowMobileCenterAction(false);
             togglePlay();
+            if (isMobile || !wasPlaying) hideControls();
+            else revealControls();
           }}
         >
           {isPlaying ? (
@@ -1483,7 +1567,8 @@ export function LessonVideoPlayer({
 
       <div
         className={`lvp-controls ${
-          (hasStarted && (controlsVisible || !isPlaying)) ||
+          (hasStarted &&
+            (isMobile ? controlsVisible : controlsVisible || !isPlaying)) ||
           (isMobile && isFullscreen && controlsVisible) ||
           (isMobile && showMobileCenterAction)
             ? "is-visible"

@@ -5913,7 +5913,7 @@ html[data-theme="light"] .lab-frame {
   position: absolute;
   inset: 0;
   z-index: 1;
-  display: none;
+  display: block;
   touch-action: none;
 }
 .lvp-gesture-feedback {
