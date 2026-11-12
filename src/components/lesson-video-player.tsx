@@ -178,15 +178,15 @@ export function LessonVideoPlayer({
   const sourceType = sourceInfo.type;
   
   // Debug logging for source resolution
-  if (process.env.NODE_ENV === "development") {
-    console.log(`[LessonVideoPlayer] Source resolution:`);
-    console.log(`  - youtubeId: ${youtubeId}`);
-    console.log(`  - videoUrl: ${videoUrl}`);
-    console.log(`  - sourceType: ${sourceType}`);
-    console.log(`  - src: ${src}`);
-    console.log(`  - isYouTube: ${isYouTube}`);
-    console.log(`  - hasMedia: ${hasMedia}`);
-  }
+  // if (process.env.NODE_ENV === "development") {
+  //   console.log(`[LessonVideoPlayer] Source resolution:`);
+  //   console.log(`  - youtubeId: ${youtubeId}`);
+  //   console.log(`  - videoUrl: ${videoUrl}`);
+  //   console.log(`  - sourceType: ${sourceType}`);
+  //   console.log(`  - src: ${src}`);
+  //   console.log(`  - isYouTube: ${isYouTube}`);
+  //   console.log(`  - hasMedia: ${hasMedia}`);
+  // }
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -239,6 +239,7 @@ export function LessonVideoPlayer({
   const [gestureFeedback, setGestureFeedback] = useState("");
   const [isRotated, setIsRotated] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isAdaptive, setIsAdaptive] = useState(false);
   const [isPortrait, setIsPortrait] = useState(false);
   const [isOrientationLocked, setIsOrientationLocked] = useState(false);
 
@@ -254,8 +255,12 @@ export function LessonVideoPlayer({
   }, []);
 
   useEffect(() => {
-  const media = window.matchMedia("(max-width: 1024px)");
-  const update = () => setIsMobile(media.matches);
+  // const media = window.matchMedia("(max-width: 1024px)");
+  const media = window.matchMedia("(max-width: 1024px) and (pointer: coarse)");
+  const adaptive_media = window.matchMedia("(max-width: 740px)");
+  const update = () => {setIsMobile(media.matches)
+setIsAdaptive(adaptive_media.matches)
+  };
   update();
   media.addEventListener("change", update);
   return () => media.removeEventListener("change", update);
@@ -361,8 +366,7 @@ export function LessonVideoPlayer({
   useEffect(() => {
     const syncFullscreen = () => {
       const fullscreen = document.fullscreenElement === rootRef.current;
-
-      if (isMobile) {
+      if (isMobile || isAdaptive) {
         setIsNativeFullscreen(fullscreen);
         if (!fullscreen) {
           setIsFullscreen(false);
@@ -853,7 +857,7 @@ export function LessonVideoPlayer({
   }, []);
 
   const toggleFullscreen = useCallback(async () => {
-    if (isMobile) {
+    if (isMobile || isAdaptive) {
       if (isFullscreen) {
         if (isNativeFullscreen && document.fullscreenElement) {
           await document.exitFullscreen().catch(() => undefined);
@@ -880,7 +884,8 @@ export function LessonVideoPlayer({
 
       // Portrait keeps the proven CSS fullscreen overlay so its rotate
       // control can rotate the player. Landscape requests native fullscreen.
-      if (isPortrait) {
+      if (isPortrait || isAdaptive) {
+        console.log("Here")
         setIsNativeFullscreen(false);
         setIsFullscreen(true);
         revealControls();
@@ -1372,12 +1377,10 @@ export function LessonVideoPlayer({
   return (
     <div
       ref={rootRef}
-      className={`lvp-root ${controlsVisible ? "is-active" : ""} ${isFullscreen && isMobile ? "is-mobile-fullscreen" : ""} ${isNativeFullscreen ? "is-native-fullscreen" : ""} ${isRotated ? "is-rotated" : ""}`}
+      className={`lvp-root ${controlsVisible ? "is-active" : ""} ${isFullscreen && (isMobile || isAdaptive) ? "is-mobile-fullscreen" : ""} ${isNativeFullscreen ? "is-native-fullscreen" : ""} ${isRotated ? "is-rotated" : ""}`}
       tabIndex={0}
       aria-label={`Video player: ${title}`}
-      onMouseMove={() => {
-        if (!isMobile) revealControls();
-      }}
+      onMouseMove={revealControls}
       onMouseLeave={() => {
         if (ytContainerRef.current || (videoRef.current && !videoRef.current.paused)) {
           setControlsVisible(false);
@@ -1676,7 +1679,7 @@ export function LessonVideoPlayer({
     </div>
   )}
 </div>
-          {isMobile && isFullscreen && isPortrait && (
+          {(isMobile || isAdaptive)  && isFullscreen && isPortrait && (
   <button
     type="button"
     className={`lvp-btn ${isRotated ? "is-active" : ""}`}
@@ -1687,7 +1690,7 @@ export function LessonVideoPlayer({
     ↻
   </button>
 )}
-          {isMobile && isFullscreen && !isPortrait && isNativeFullscreen && (
+          {(isMobile || isAdaptive) && isFullscreen && !isPortrait && isNativeFullscreen && (
             <button
               type="button"
               className={`lvp-btn ${isOrientationLocked ? "is-active" : ""}`}

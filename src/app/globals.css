@@ -1263,12 +1263,12 @@ html[data-auth-hint="authenticated"] .site-account-guest {
   background-position: center;
   background-size: cover;
 }
-.home-course-art-2 {
+/* .home-course-art-2 {
   background-color: #f2d8c9;
 }
 .home-course-art-3 {
   background-color: #d8e4e8;
-}
+} */
 .home-course-art > span:first-child {
   position: relative;
   z-index: 1;
@@ -1292,12 +1292,12 @@ html[data-auth-hint="authenticated"] .site-account-guest {
   height: 62px;
   stroke-width: 1.15;
 }
-.home-course-art-2 .home-course-art-mark {
+/* .home-course-art-2 .home-course-art-mark {
   color: #a95234;
 }
 .home-course-art-3 .home-course-art-mark {
   color: #3f6873;
-}
+} */
 .home-course-level {
   position: absolute;
   right: 14px;
@@ -1707,7 +1707,7 @@ html[data-auth-hint="authenticated"] .site-account-guest {
   background-position: center;
   background-size: cover;
 }
-.catalog-art-1 {
+/* .catalog-art-1 {
   background-image:
     radial-gradient(ellipse at 65% 40%, #f8cc95 0 8%, transparent 8.5%),
     linear-gradient(137deg, #dadada, #b8b8b8 62%, #878787);
@@ -1721,7 +1721,7 @@ html[data-auth-hint="authenticated"] .site-account-guest {
   background-image:
     radial-gradient(ellipse at 62% 54%, #b6b6b6 0 9%, transparent 9.5%),
     linear-gradient(137deg, #d8e4e9, #9cb9c1 62%, #67818a);
-}
+} */
 .catalog-art-category,
 .catalog-art-index {
   position: absolute;
@@ -1847,6 +1847,22 @@ html[data-auth-hint="authenticated"] .site-account-guest {
   color: #b04f2d;
   font-size: 12px;
   font-weight: 700;
+}
+
+.course-common-description-toggle {
+  display: inline-flex;
+  margin-top: 5px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--orange);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.course-common-description-toggle:hover {
+  text-decoration: underline;
 }
 .catalog-skeleton {
   height: 342px;
@@ -3417,9 +3433,9 @@ html[data-theme="dark"] .auth-dialog-success {
 .course-purchase-card .mt-6 {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding-top: 15px;
-  border-top: 1px solid #efefef;
+  /* gap: 12px; */
+  /* padding-top: 15px; */
+  /* border-top: 1px solid #efefef; */
 }
 .course-purchase-card .mt-6 > div {
   display: flex;
@@ -5710,6 +5726,14 @@ html[data-theme="dark"] .course-back-button {
   background: #0c0c0e;
   color: var(--foreground);
 }
+html[data-theme="dark"] .catalog-art,
+html[data-theme="dark"] .home-course-art
+{
+    background: #262626;
+    background-position: center;
+  background-size: cover;
+
+}
 html[data-theme="dark"] .home-course-art > span:first-child,
 html[data-theme="dark"] .catalog-art-category,
 html[data-theme="dark"] .catalog-art-index {
@@ -7341,12 +7365,15 @@ html[data-theme="dark"] .text-emerald-600 {
 }
 
 .bundle-store-cover {
-  background: linear-gradient(120deg, #fff7f1, #f6e8da);
+  /* background: linear-gradient(120deg, #fff7f1, #f6e8da); */
   border-bottom: 1px solid #f0e4d6;
+    background-color: #e5e5e5;
+
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #b07a4f;
+  height: 126px;
+  /* color: #b07a4f; */
 }
 
 .bundle-store-cover img {

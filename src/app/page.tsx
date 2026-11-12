@@ -178,7 +178,7 @@ export default async function Home() {
                   style={
                     course.image
                       ? {
-                          backgroundImage: `linear-gradient(0deg, rgba(15, 23, 32, .2), rgba(15, 23, 32, .04)), url("${course.image}")`,
+                          backgroundImage: `url("${course.image}")`,
                         }
                       : undefined
                   }

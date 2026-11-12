@@ -729,7 +729,7 @@ export default function CoursesPage() {
                   }
                 />
 
-                {searchInput && (
+                {/* {searchInput && (
                   <button
                     type="button"
                     className="catalog-search-clear"
@@ -740,7 +740,7 @@ export default function CoursesPage() {
                   >
                     ×
                   </button>
-                )}
+                )} */}
 
                 <button
                   type="submit"
@@ -900,7 +900,7 @@ export default function CoursesPage() {
                     style={
                       course.image
                         ? {
-                            backgroundImage: `linear-gradient(0deg, rgba(24, 24, 27, .25), rgba(24, 24, 27, .04)), url("${course.image}")`,
+                            backgroundImage: `url("${course.image}")`,
                           }
                         : undefined
                     }

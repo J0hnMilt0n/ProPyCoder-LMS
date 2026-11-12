@@ -16,6 +16,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { PriceTag } from "@/components/price-tag";
 import { formatINR } from "@/lib/currency";
+import { businessInfo } from "@/lib/business-info";
 import {
   Clock,
   ArrowLeft,
@@ -244,6 +245,7 @@ export default function CourseDetailPage({ params }: Props) {
   const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(
     new Set(),
   );
+  const [showProductDescription, setShowProductDescription] = useState(false);
   const [isMarkingComplete, setIsMarkingComplete] = useState(false);
   const isRestoringScroll = useRef(false);
   const lastInitialLoadKey = useRef("");
@@ -1156,10 +1158,8 @@ export default function CourseDetailPage({ params }: Props) {
                     {course.level}
                   </p>
                 </div>
-              </div>
-
-              
-            </div>
+              </div>            
+          </div>
           </div>
 
           {/* Pricing & enrollment - beside the cover/overview/instructor,
@@ -1243,6 +1243,12 @@ export default function CourseDetailPage({ params }: Props) {
                     <Users className="h-4 w-4" />
                     <span>Lifetime access</span>
                   </div>
+                  <div
+    className="course-common-description-toggle"
+    onClick={() => setShowProductDescription(true)}
+  >
+    Read more →
+  </div>
                 </div>
                 
                 {/* Instructor */}
@@ -1529,6 +1535,104 @@ export default function CourseDetailPage({ params }: Props) {
           </div>
         </div>
       </main>
+      
+
+{showProductDescription && (
+  <div
+    className="fixed inset-0 z-99999 flex items-center justify-center
+               bg-black/60 backdrop-blur-sm p-3 sm:p-5"
+    onClick={() => setShowProductDescription(false)}
+  >
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="product-description-title"
+      className="flex flex-col w-full max-w-170 max-h-[85vh]
+                 overflow-hidden rounded-md border border-gray-200
+                 bg-white shadow-2xl dark:border-[#383838]
+                 dark:bg-[#1e1e1e]"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4
+                      border-b border-[#f55a26] px-5 py-2
+                      shrink-0">
+
+        <div>
+          <span className="block text-[9px] font-bold
+                           tracking-[1px] text-[#f55a26]">
+            PROPYCODER / PRODUCT INFORMATION
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowProductDescription(false)}
+          aria-label="Close product description"
+          className="flex shrink-0 items-center
+                     justify-center rounded border border-gray-200
+                     text-xl hover:text-gray-500 transition
+                      text-[#f55a26]
+                      hover:dark:text-gray-400"
+        >
+          &times;
+        </button>
+      </div>
+
+      {/* Body */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-5
+                      [scrollbar-width:thin]
+                      [scrollbar-color:#f55a26_transparent]">
+
+        <div className="text-xs font-normal leading-[1.65]
+                        text-[#707070] dark:text-gray-300">
+          {businessInfo.productsDescription
+            ?.trim()
+            .split(/\n\s*\n/)
+            .filter((paragraph) => paragraph.trim())
+            .map((paragraph, index) => {
+              const content = paragraph.trim();
+
+              const isHeading =
+                content.endsWith(":") ||
+                /^\d+\.\s/.test(content);
+
+              return (
+                <p
+                  key={index}
+                  className={`mb-2 text-xs ${
+                    isHeading
+                      ? "mt-3 mb-1 font-bold text-[#1f1f1f] dark:text-white"
+                      : "font-normal"
+                  }`}
+                >
+                  {content}
+                </p>
+              );
+            })}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="flex shrink-0 justify-end border-t
+                      border-gray-200 px-5 py-3
+                      dark:border-gray-700">
+        <button
+          type="button"
+          onClick={() => setShowProductDescription(false)}
+          className="rounded border border-[#f55a26]
+                     bg-[#f55a26] px-5 py-2 text-xs
+                     font-semibold text-white transition
+                     hover:border-[#df491b] hover:bg-[#df491b]"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
     </div>
   );
 }
