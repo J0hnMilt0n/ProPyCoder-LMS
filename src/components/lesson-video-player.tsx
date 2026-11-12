@@ -1380,7 +1380,9 @@ setIsAdaptive(adaptive_media.matches)
       className={`lvp-root ${controlsVisible ? "is-active" : ""} ${isFullscreen && (isMobile || isAdaptive) ? "is-mobile-fullscreen" : ""} ${isNativeFullscreen ? "is-native-fullscreen" : ""} ${isRotated ? "is-rotated" : ""}`}
       tabIndex={0}
       aria-label={`Video player: ${title}`}
-      onMouseMove={revealControls}
+      onMouseMove={() => {
+        if (!isMobile) revealControls();
+      }}
       onMouseLeave={() => {
         if (ytContainerRef.current || (videoRef.current && !videoRef.current.paused)) {
           setControlsVisible(false);
