@@ -1573,7 +1573,7 @@ export default function CourseDetailPage({ params }: Props) {
         <div>
           <span className="block text-[9px] font-bold
                            tracking-[1px] text-[#f55a26]">
-            PROPYCODER / PRODUCT INFORMATION
+            COURSE OVERVIEW
           </span>
         </div>
 
@@ -1582,7 +1582,7 @@ export default function CourseDetailPage({ params }: Props) {
           onClick={() => setShowProductDescription(false)}
           aria-label="Close product description"
           className="flex shrink-0 items-center
-                     justify-center rounded border border-gray-200
+                     justify-center rounded
                      text-xl hover:text-gray-500 transition
                       text-[#f55a26]
                       hover:dark:text-gray-400"
