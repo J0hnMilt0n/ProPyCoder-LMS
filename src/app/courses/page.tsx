@@ -67,6 +67,8 @@ const levels = ["BEGINNER", "INTERMEDIATE", "ADVANCED"];
 const CATALOG_CACHE_KEY = "courses-list:all";
 const LEGACY_CACHE_KEY = "courses-list:1:::";
 const PURCHASED_COURSES_CACHE_KEY = "courses-purchased";
+const FORCE_PURCHASE_REFRESH_KEY = (userId: string) =>
+  `propycoder:force-purchase-refresh:${userId}`;
 
 const PAGE_SIZE = 9;
 const CATALOG_FETCH_PAGE_SIZE = 50;
@@ -520,6 +522,8 @@ export default function CoursesPage() {
     let lastRefreshAt = 0;
 
     const controller = new AbortController();
+    const forceRefreshKey = FORCE_PURCHASE_REFRESH_KEY(userId);
+
 
     // Restore this user's cached purchases immediately.
     const cachedPurchases = readResourceCache<string[]>(
@@ -534,6 +538,11 @@ export default function CoursesPage() {
     const refreshPurchasedCourses = async (
       force = false,
     ) => {
+      const forcePending =
+      localStorage.getItem(forceRefreshKey) === "1";
+
+      const shouldForce = force || forcePending;
+
       const now = Date.now();
 
       if (!active || refreshInFlight) {
@@ -541,7 +550,7 @@ export default function CoursesPage() {
       }
 
       if (
-        !force &&
+        !shouldForce &&
         now - lastRefreshAt <
           PURCHASED_REFRESH_INTERVAL
       ) {
@@ -593,6 +602,10 @@ export default function CoursesPage() {
 
           return unchanged ? previous : next;
         });
+        // Clear the flag only after a successful update.
+      if (forcePending) {
+        localStorage.removeItem(forceRefreshKey);
+      }
       } catch {
         // Keep cached purchases if the API request fails.
       } finally {
@@ -600,8 +613,8 @@ export default function CoursesPage() {
       }
     };
 
-    // Always fetch fresh ownership information on initial load.
-    void refreshPurchasedCourses(true);
+    // Initial check: consumes the force flag if one exists.
+    void refreshPurchasedCourses();
 
     const handleFocus = () => {
       void refreshPurchasedCourses();

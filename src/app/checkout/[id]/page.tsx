@@ -31,11 +31,18 @@ interface Props {
 export default function CheckoutPage({ params }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { status } = useSession();
+  const { data: session, status } = useSession();
+  const FORCE_PURCHASE_REFRESH_KEY = (userId: string) =>
+  `propycoder:force-purchase-refresh:${userId}`;
   const [paymentId, setPaymentId] = useState("");
   const [payment, setPayment] = useState<Payment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPaying, setIsPaying] = useState(false);
+  const isVerifying =
+  isLoading ||
+  isPaying ||
+  (searchParams.get("phonepe") === "return" &&
+    payment?.status === "PENDING");
 
   useEffect(() => {
     params.then(({ id }) => setPaymentId(id));
@@ -50,10 +57,26 @@ export default function CheckoutPage({ params }: Props) {
       if (!response.ok) throw new Error("Payment not found");
       const data = (await response.json()) as Payment;
       setPayment(data);
-      if (data.status === "COMPLETED") {
-        toast.success("Payment already completed");
-        router.push(data.course ? `/courses/${data.course.id}` : "/dashboard");
-      }
+      if (response.ok && data.status === "COMPLETED") {
+  toast.success("Payment successful! Your access is ready.");
+
+  if (data.bundle) {
+    if (session?.user?.id) {
+      localStorage.setItem(
+        FORCE_PURCHASE_REFRESH_KEY(session.user.id),
+        "1",
+      );
+    }
+
+    router.replace(`/bundles/${data.bundle.id}`);
+  } else if (data.course) {
+    router.replace(`/courses/${data.course.id}`);
+  } else {
+    router.replace("/dashboard");
+  }
+
+  return;
+}
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to load checkout");
       router.push("/courses");
@@ -68,7 +91,7 @@ export default function CheckoutPage({ params }: Props) {
   }, [status, loadPayment, router]);
 
   useEffect(() => {
-    if (searchParams.get("paytm") !== "return" || status !== "authenticated" || payment?.status !== "PENDING") return;
+    if (searchParams.get("phonepe") !== "return" || status !== "authenticated" || payment?.status !== "PENDING") return;
     let cancelled = false;
     const verify = async () => {
       setIsPaying(true);
@@ -96,21 +119,60 @@ export default function CheckoutPage({ params }: Props) {
     return () => { cancelled = true; };
   }, [searchParams, status, payment, router, loadPayment]);
 
-  const continueToPaytm = () => {
+  const continueToPhonePe = () => {
+    
     if (!payment || payment.status !== "PENDING" || isPaying) return;
-    toast.error("Start a new payment from the course or bundle page to open Paytm checkout.");
+    toast.error("Start a new payment from the course or bundle page to open PhonePe checkout.");
   };
+if (isVerifying) {
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-[#08080a]">
+      <Navbar />
 
-  if (isLoading || status !== "authenticated") {
+      <main className="flex min-h-[75vh] items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm dark:border-[#232329] dark:bg-[#0c0c0e]">
+
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-orange-50 dark:bg-orange-500/10">
+            <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#e95f32]/20 border-t-[#e95f32]" />
+          </div>
+
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Verifying your payment
+          </h1>
+
+          <p className="mt-3 text-sm leading-6 text-gray-600 dark:text-[#a7a5ae]">
+            We're securely confirming your transaction with PhonePe.
+            Please wait while we complete your enrollment.
+          </p>
+
+          <div className="mt-7 rounded-xl bg-orange-50 p-4 dark:bg-orange-500/10">
+            <p className="text-sm font-semibold text-[#e95f32]">
+              Please don't close or refresh this page.
+            </p>
+            <p className="mt-1 text-xs text-gray-600 dark:text-[#a7a5ae]">
+              Avoid pressing the browser Back button until verification is complete.
+            </p>
+          </div>
+
+          <div className="mt-6 flex items-center justify-center gap-2 text-xs text-gray-400">
+            <ShieldCheck className="h-4 w-4" />
+            Secure payment verification
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+  else if (isLoading || status !== "authenticated") {
     return <div className="min-h-screen bg-gray-50 check-out-page"><Navbar /><div className="flex h-96 items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-4 border-[#e95f32] border-t-transparent" /></div></div>;
   }
 
-  if (!payment) {
+ else if (!payment) {
     return <div className="min-h-screen bg-gray-50 check-out-page"><Navbar /><div className="max-w-xl mx-auto py-20 px-4 text-center"><p className="text-gray-600 dark:text-[#a7a5ae]">Checkout not found.</p><button onClick={() => router.push("/courses")} className="mt-4 text-[#e95f32] font-semibold">Back to courses</button></div></div>;
   }
-
+else{
   const title = payment.bundle?.title ?? payment.course?.title ?? "Order";
-  return (
+   return (
     <div className="min-h-screen bg-gray-50 check-out-page">
       <Navbar />
       <main className="max-w-5xl mx-auto px-4 py-10">
@@ -120,13 +182,13 @@ export default function CheckoutPage({ params }: Props) {
           <section className="rounded-xl border border-gray-200 bg-white p-6 dark:border-[#232329] dark:bg-[#0c0c0e]">
             <div className="flex items-center gap-3">
               <Smartphone className="h-6 w-6 text-[#e95f32]" />
-              <div><h2 className="font-semibold text-gray-900 dark:text-[#f1f0f2]">Secure Paytm checkout</h2><p className="text-sm text-gray-600 dark:text-[#a7a5ae]">UPI, cards and net banking are handled securely by Paytm.</p></div>
+              <div><h2 className="font-semibold text-gray-900 dark:text-[#f1f0f2]">Secure PhonePe checkout</h2><p className="text-sm text-gray-600 dark:text-[#a7a5ae]">UPI, cards and net banking are handled securely by PhonePe.</p></div>
             </div>
-            {searchParams.get("paytm") === "return" && payment.status === "PENDING" && <p className="mt-4 text-sm text-amber-700">We’re checking your payment with Paytm. If it remains pending, use the button below to return to checkout.</p>}
-            <button type="button" onClick={continueToPaytm} disabled={isPaying || payment.status !== "PENDING"} className="mt-6 w-full rounded-lg bg-[#e95f32] px-4 py-3 font-semibold text-white hover:bg-[#d9532a] disabled:opacity-60">
-              {isPaying ? "Verifying payment…" : payment.status === "PENDING" ? "Continue to Paytm" : `Payment ${payment.status.toLowerCase()}`}
+            {searchParams.get("phonepe") === "return" && payment.status === "PENDING" && <p className="mt-4 text-sm text-amber-700">We’re checking your payment with PhonePe. If it remains pending, use the button below to return to checkout.</p>}
+            <button type="button" onClick={continueToPhonePe} disabled={isPaying || payment.status !== "PENDING"} className="mt-6 w-full rounded-lg bg-[#e95f32] px-4 py-3 font-semibold text-white hover:bg-[#d9532a] disabled:opacity-60">
+              {isPaying ? "Verifying payment…" : payment.status === "PENDING" ? "Continue to PhonePe" : `Payment ${payment.status.toLowerCase()}`}
             </button>
-            <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-gray-400"><ShieldCheck className="h-4 w-4" />Payment verified securely with Paytm.</p>
+            <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-gray-400"><ShieldCheck className="h-4 w-4" />Payment verified securely with PhonePe.</p>
           </section>
           <aside className="h-fit rounded-xl border border-gray-200 bg-white p-6 dark:border-[#232329] dark:bg-[#0c0c0e]">
             <div className="mb-5 flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-[#e95f32]" /><h2 className="text-lg font-semibold text-gray-900 dark:text-[#f1f0f2]">Order summary</h2></div>
@@ -135,11 +197,13 @@ export default function CheckoutPage({ params }: Props) {
             {payment.bundle && <div className="my-3 space-y-1">{payment.bundle.courses.map(({ course }) => <p key={course.id} className="text-sm text-gray-600 dark:text-[#a7a5ae]">· {course.title}</p>)}</div>}
             {payment.course?.category && <p className="mb-4 text-sm text-gray-500">{payment.course.category}</p>}
             <dl className="border-t border-gray-100 pt-4 dark:border-[#232329]"><div className="flex justify-between font-semibold text-gray-900 dark:text-[#f1f0f2]"><dt>Total due today</dt><dd>{formatINR(payment.amount, 2)}</dd></div></dl>
-            <p className="mt-5 text-xs leading-relaxed text-gray-400">You’ll complete your secure payment on Paytm. Access is unlocked only after Paytm confirms the payment.</p>
+            <p className="mt-5 text-xs leading-relaxed text-gray-400">You’ll complete your secure payment on PhonePe. Access is unlocked only after PhonePe confirms the payment.</p>
             <span className="sr-only"><Lock /></span>
           </aside>
         </div>
       </main>
     </div>
+    
   );
+  }
 }

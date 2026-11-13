@@ -1,3 +1,4 @@
+
 import { prisma } from "@/lib/prisma";
 import { invalidateCatalog, invalidateCourse } from "@/lib/course-cache";
 import {
@@ -6,67 +7,160 @@ import {
   invalidateHome,
   invalidateUser,
 } from "@/lib/page-cache";
-import type { PaytmOrderStatus } from "@/lib/paytm-types";
+import type { PhonePeOrderStatus } from "@/lib/phonepe";
 
-export async function completePaytmPayment(
+export async function completePhonePePayment(
   id: string,
   userId: string,
-  provider: PaytmOrderStatus,
+  provider: PhonePeOrderStatus,
 ) {
   const payment = await prisma.payment.findUnique({
     where: { id },
-    include: { course: true, bundle: { include: { courses: true } } },
+    include: {
+      course: true,
+      bundle: { include: { courses: true } },
+    },
   });
-  if (!payment || payment.userId !== userId) throw new Error("Payment not found");
-  if (payment.status === "COMPLETED") return { success: true, alreadyCompleted: true };
-  if (payment.status !== "PENDING" || payment.paymentMethod !== "PAYTM") {
+
+  if (!payment || payment.userId !== userId) {
+    throw new Error("Payment not found");
+  }
+
+  if (payment.status === "COMPLETED") {
+    return { success: true, alreadyCompleted: true };
+  }
+
+  if (
+    payment.status !== "PENDING" ||
+    payment.paymentMethod !== "PHONEPE"
+  ) {
     throw new Error("Payment is not eligible for completion");
   }
 
+  const detail = provider.paymentDetails?.find(
+    (attempt) =>
+      attempt.state === "COMPLETED" && attempt.transactionId,
+  );
+
   const result = await prisma.$transaction(async (tx) => {
+    // Claim the payment exactly once.
     const claimed = await tx.payment.updateMany({
-      where: { id, userId, status: "PENDING", paymentMethod: "PAYTM" },
+      where: {
+        id,
+        userId,
+        status: "PENDING",
+        paymentMethod: "PHONEPE",
+      },
       data: {
         status: "COMPLETED",
-        transactionId: provider.txnId ?? id,
-        paymentMethod: provider.paymentMode ?? "PAYTM",
+        transactionId: detail?.transactionId ?? id,
+        paymentMethod: detail?.paymentMode ?? "PHONEPE",
       },
     });
-    if (claimed.count !== 1) throw new Error("Payment was already processed");
+
+    if (claimed.count !== 1) {
+      throw new Error("Payment was already processed");
+    }
 
     let enrollments: { id: string; courseId: string }[];
+
     if (payment.bundleId && payment.bundle) {
-      const courseIds = payment.bundle.courses.map(({ courseId }) => courseId);
+      // Bundle: create all missing enrollments.
+      const courseIds = payment.bundle.courses.map(
+        ({ courseId }) => courseId,
+      );
+
       await tx.enrollment.createMany({
-        data: courseIds.map((courseId) => ({ studentId: userId, courseId, status: "ACTIVE" })),
+        data: courseIds.map((courseId) => ({
+          studentId: userId,
+          courseId,
+          status: "ACTIVE",
+        })),
         skipDuplicates: true,
       });
+
       enrollments = await tx.enrollment.findMany({
-        where: { studentId: userId, courseId: { in: courseIds } },
-        select: { id: true, courseId: true },
+        where: {
+          studentId: userId,
+          courseId: { in: courseIds },
+        },
+        select: {
+          id: true,
+          courseId: true,
+        },
       });
     } else if (payment.courseId) {
+      // Individual course: create or activate its enrollment.
       const enrollment = await tx.enrollment.upsert({
-        where: { studentId_courseId: { studentId: userId, courseId: payment.courseId } },
-        create: { studentId: userId, courseId: payment.courseId, status: "ACTIVE" },
-        update: { status: "ACTIVE" },
-        select: { id: true, courseId: true },
+        where: {
+          studentId_courseId: {
+            studentId: userId,
+            courseId: payment.courseId,
+          },
+        },
+        create: {
+          studentId: userId,
+          courseId: payment.courseId,
+          status: "ACTIVE",
+        },
+        update: {
+          status: "ACTIVE",
+        },
+        select: {
+          id: true,
+          courseId: true,
+        },
       });
+
       enrollments = [enrollment];
     } else {
       throw new Error("Payment has neither course nor bundle");
     }
 
-    const updatedPayment = await tx.payment.update({
+    // A bundle has multiple enrollments, so do not assign
+    // any one enrollment to Payment.enrollmentId.
+    let updatedPayment = await tx.payment.findUniqueOrThrow({
       where: { id },
-      data: { enrollmentId: enrollments[0]?.id ?? null },
     });
-    return { payment: updatedPayment, enrollments };
+
+    // For individual purchases, only link the enrollment if
+    // another payment does not already reference it.
+    if (
+      !payment.bundleId &&
+      payment.courseId &&
+      enrollments[0]
+    ) {
+      const existingLink = await tx.payment.findFirst({
+        where: {
+          enrollmentId: enrollments[0].id,
+          id: { not: id },
+        },
+        select: { id: true },
+      });
+
+      if (!existingLink) {
+        updatedPayment = await tx.payment.update({
+          where: { id },
+          data: {
+            enrollmentId: enrollments[0].id,
+          },
+        });
+      }
+    }
+
+    return {
+      payment: updatedPayment,
+      enrollments,
+    };
   });
 
-  for (const courseId of new Set(result.enrollments.map(({ courseId }) => courseId))) {
+  // Invalidate affected course and user caches after commit.
+  for (const courseId of new Set(
+    result.enrollments.map(({ courseId }) => courseId),
+  )) {
     invalidateCourse(courseId);
   }
+
   invalidateCatalog();
   invalidateUser(NS.enrollments, userId);
   invalidateUser(NS.purchasedCourses, userId);
@@ -84,10 +178,10 @@ export async function completePaytmPayment(
   };
 }
 
-export async function completePaytmPaymentFromWebhook(
+export async function completePhonePePaymentFromWebhook(
   id: string,
   userId: string,
-  provider: PaytmOrderStatus,
+  provider: PhonePeOrderStatus,
 ) {
-  return completePaytmPayment(id, userId, provider);
+  return completePhonePePayment(id, userId, provider);
 }

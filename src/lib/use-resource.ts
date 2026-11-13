@@ -147,7 +147,13 @@ function fetchResource<T>(url: string, scope: string): Promise<T> {
   if (existing) return existing as Promise<T>;
 
   const request = (async () => {
-    const response = await fetch(url, { credentials: "same-origin" });
+    const response = await fetch(url, {
+  credentials: "same-origin",
+  cache: "no-store",
+  headers: {
+    "Cache-Control": "no-cache",
+  },
+});
     if (!response.ok) throw new Error("Request failed");
     return (await response.json()) as T;
   })();

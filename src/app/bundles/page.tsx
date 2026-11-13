@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -57,6 +58,9 @@ interface BundlePricing {
 
 const PURCHASE_REFRESH_INTERVAL = 30_000;
 
+const FORCE_PURCHASE_REFRESH_KEY = (userId: string) =>
+  `propycoder:force-purchase-refresh:${userId}`;
+
 export default function BundlesPage() {
   const router = useRouter();
   const { status, data: session } = useSession();
@@ -64,13 +68,10 @@ export default function BundlesPage() {
   const [buyingId, setBuyingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // User-specific purchased course IDs grouped by bundle ID.
+  // Purchased course IDs grouped by bundle ID.
   const [purchasedByBundle, setPurchasedByBundle] = useState<
     Record<string, string[]>
   >({});
-
-  const purchasedRefreshInFlightRef = useRef(false);
-  const lastPurchasedRefreshRef = useRef(0);
 
   // Existing public bundle cache.
   const bundlesRes = useResource<StoreBundle[]>({
@@ -81,18 +82,20 @@ export default function BundlesPage() {
       (json as { bundles: StoreBundle[] }).bundles ?? [],
   });
 
-  const bundles = useMemo(() => bundlesRes.data ?? [], [bundlesRes.data]);
+  const bundles = useMemo(
+    () => bundlesRes.data ?? [],
+    [bundlesRes.data],
+  );
+
   const isLoading = bundlesRes.isLoading;
 
-  
-
   /**
-   * LOAD PURCHASED COURSES FOR EACH BUNDLE
+   * LOAD PURCHASED COURSES
    *
-   * Uses the same API endpoint and cache-key convention
-   * as the individual bundle detail page.
-   *
-   * Cache scope is user-specific.
+   * - Restores user-specific cached purchases immediately.
+   * - Checks the server for the latest purchases.
+   * - Consumes the force-refresh flag only after a successful response.
+   * - Refreshes on focus, visibility change and BFCache restoration.
    */
   useEffect(() => {
     const userId = session?.user?.id;
@@ -107,9 +110,15 @@ export default function BundlesPage() {
     if (bundles.length === 0) return;
 
     let active = true;
-    const scope = userId;
+    let refreshInFlight = false;
+    let lastRefreshAt = 0;
 
-    // Restore cached purchase information immediately.
+    let abortController: AbortController | null = null;
+
+    const scope = userId;
+    const forceRefreshKey = FORCE_PURCHASE_REFRESH_KEY(userId);
+
+    // Restore cached purchases first.
     const cachedPurchases: Record<string, string[]> = {};
 
     for (const bundle of bundles) {
@@ -128,60 +137,110 @@ export default function BundlesPage() {
       ...cachedPurchases,
     }));
 
+    /**
+     * Fetch the latest purchase information.
+     */
     const refreshPurchasedCourses = async (force = false) => {
+      const forcePending =
+        localStorage.getItem(forceRefreshKey) === "1";
+
+      const shouldForce = force || forcePending;
       const now = Date.now();
 
-      if (purchasedRefreshInFlightRef.current) return;
+      // Avoid duplicate requests.
+      if (refreshInFlight) return;
 
+      // Avoid unnecessary requests within the refresh interval.
       if (
-        !force &&
-        now - lastPurchasedRefreshRef.current <
-          PURCHASE_REFRESH_INTERVAL
+        !shouldForce &&
+        now - lastRefreshAt < PURCHASE_REFRESH_INTERVAL
       ) {
         return;
       }
 
-      purchasedRefreshInFlightRef.current = true;
-      lastPurchasedRefreshRef.current = now;
+      refreshInFlight = true;
+      lastRefreshAt = now;
+
+      abortController = new AbortController();
 
       try {
         const response = await fetch("/api/bundles/purchases", {
+          method: "GET",
           credentials: "same-origin",
           cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache",
+          },
+          signal: abortController.signal,
         });
-        if (!response.ok) return;
+
+        if (!response.ok) {
+          throw new Error("Failed to refresh bundle purchases");
+        }
+
         const result =
           (await response.json()) as BundlePurchasesResponse;
+
         const purchases = result.purchases ?? {};
 
         if (!active) return;
 
+        const updatedPurchases: Record<string, string[]> = {};
+
         for (const bundle of bundles) {
+          const courseIds = purchases[bundle.id] ?? [];
+
+          updatedPurchases[bundle.id] = courseIds;
+
+          // Update the user-specific resource cache.
           primeResourceCache(
             `bundle-purchases:${bundle.id}`,
             scope,
-            purchases[bundle.id] ?? [],
+            courseIds,
           );
         }
 
-        setPurchasedByBundle((previous) => {
-          return { ...previous, ...purchases };
-        });
-      } catch {
-        // Keep any previously cached purchase badges when refresh fails.
+        // Replace the UI state with the latest server response.
+        setPurchasedByBundle(updatedPurchases);
+
+        // Clear the flag only after a successful server response.
+        if (forcePending) {
+          localStorage.removeItem(forceRefreshKey);
+        }
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.name === "AbortError"
+        ) {
+          return;
+        }
+
+        // Keep cached purchases and retain the force flag for retry.
       } finally {
-        purchasedRefreshInFlightRef.current = false;
+        refreshInFlight = false;
+        abortController = null;
       }
     };
 
-    void refreshPurchasedCourses(true);
+    // Initial server check.
+    // The force flag automatically bypasses the refresh interval.
+    void refreshPurchasedCourses();
 
+    // Refresh when the user returns to the tab.
     const handleFocus = () => {
       void refreshPurchasedCourses();
     };
 
+    // Refresh when restoring a page from the browser back-forward cache.
     const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
+        void refreshPurchasedCourses();
+      }
+    };
+
+    // Refresh when the document becomes visible again.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
         void refreshPurchasedCourses();
       }
     };
@@ -189,11 +248,23 @@ export default function BundlesPage() {
     window.addEventListener("focus", handleFocus);
     window.addEventListener("pageshow", handlePageShow);
 
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibilityChange,
+    );
+
     return () => {
       active = false;
 
+      abortController?.abort();
+
       window.removeEventListener("focus", handleFocus);
       window.removeEventListener("pageshow", handlePageShow);
+
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityChange,
+      );
     };
   }, [bundles, session?.user?.id, status]);
 
@@ -238,8 +309,6 @@ export default function BundlesPage() {
 
   /**
    * CALCULATE BUNDLE PRICE
-   *
-   * Matches the calculation used in BundleDetailPage.
    */
   function calculateBundlePricing(
     bundle: StoreBundle,
@@ -285,7 +354,8 @@ export default function BundlesPage() {
       remainingCount: remainingCourses.length,
     };
   }
-/**
+
+  /**
    * HANDLE BUNDLE BUTTON
    *
    * All courses purchased -> View bundle.
@@ -301,6 +371,7 @@ export default function BundlesPage() {
 
     void buyBundle(bundle);
   }
+
   /**
    * CHECKOUT
    */
@@ -317,7 +388,9 @@ export default function BundlesPage() {
     const pricing = calculateBundlePricing(bundle);
 
     if (pricing.remainingCount === 0) {
-      toast.success("You already own every course in this bundle.");
+      toast.success(
+        "You already own every course in this bundle.",
+      );
       return;
     }
 
@@ -407,6 +480,7 @@ export default function BundlesPage() {
                   placeholder="Search bundles or their courses…"
                   aria-label="Search bundles"
                 />
+
                 <button
                   type="submit"
                   className="catalog-search-go"
@@ -550,8 +624,19 @@ export default function BundlesPage() {
                               );
 
                             return (
-                              <li key={course.id} className="flex">
-                                <span className={purchased ? "text-green-700": ""}>· {course.title}</span>
+                              <li
+                                key={course.id}
+                                className="flex"
+                              >
+                                <span
+                                  className={
+                                    purchased
+                                      ? "text-green-700"
+                                      : ""
+                                  }
+                                >
+                                  · {course.title}
+                                </span>
 
                                 {purchased && (
                                   <span className="purchased-pill ml-auto">
@@ -589,7 +674,7 @@ export default function BundlesPage() {
                             }
                             disabled={
                               buyingId !== null ||
-                              status === "loading"                    
+                              status === "loading"
                             }
                           >
                             {buyingId === bundle.id ? (

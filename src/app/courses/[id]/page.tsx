@@ -548,32 +548,44 @@ export default function CourseDetailPage({ params }: Props) {
   }, [courseId]);
 
   useEffect(() => {
-    if (!courseId) return;
-    const initialLoadKey = `${courseId}:${cacheUserId ?? "unknown"}`;
-    if (lastInitialLoadKey.current !== initialLoadKey) {
-      lastInitialLoadKey.current = initialLoadKey;
-      // If the first paint was primed from cache, course/modules already read
-      // from localStorage; run the network fetch without showing the blocker.
-      // Otherwise (true first visit) keep the spinner until data lands.
-      if (course?.id === courseId) setIsLoading(false);
-      void loadCourse();
+  if (!courseId) return;
+
+  const initialLoadKey = `${courseId}:${cacheUserId ?? "unknown"}`;
+
+  if (lastInitialLoadKey.current !== initialLoadKey) {
+    lastInitialLoadKey.current = initialLoadKey;
+
+    if (course?.id === courseId) {
+      setIsLoading(false);
     }
-    let lastRevalidationAt = Date.now();
-    const revalidate = () => {
-      if (
-        document.visibilityState === "visible" &&
-        Date.now() - lastRevalidationAt >= 30_000
-      ) {
-        lastRevalidationAt = Date.now();
-        void loadCourse();
-      }
-    };
-    window.addEventListener("focus", revalidate);
-    document.addEventListener("visibilitychange", revalidate);
-    return () => {
-      window.removeEventListener("focus", revalidate);
-      document.removeEventListener("visibilitychange", revalidate);
-    };
+
+    void loadCourse();
+  }
+
+  // Prevent duplicate requests when focus and visibility events
+  // fire almost simultaneously.
+     let lastRevalidationAt = 0;
+
+  const revalidate = () => {
+    if (document.visibilityState !== "visible") return;
+
+    const now = Date.now();
+
+    if (now - lastRevalidationAt < 30_000) return;
+
+    lastRevalidationAt = now;
+    void loadCourse();
+  };
+
+  window.addEventListener("focus", revalidate);
+  window.addEventListener("pageshow", revalidate);
+  document.addEventListener("visibilitychange", revalidate);
+
+  return () => {
+    window.removeEventListener("focus", revalidate);
+    window.removeEventListener("pageshow", revalidate);
+    document.removeEventListener("visibilitychange", revalidate);
+  };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cacheUserId, courseId, loadCourse]);
 

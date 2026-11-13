@@ -52,6 +52,8 @@ export default function BundleDetailPage() {
     url: `/api/bundles/${id}/purchases`,
     scope: session?.user?.id ?? "",
     enabled: Boolean(id) && status === "authenticated",
+    freshForMs: 30_000, // Always fetch fresh purchase status
+    revalidateOnFocus: true,
     select: (json) => (json as { courseIds?: string[] }).courseIds ?? [],
   });
   const purchasedCourseIds = new Set(purchaseRes.data ?? []);

@@ -241,7 +241,7 @@ export function PolicyPage({ kind }: { kind: PolicyKind }) {
                 </p>
 
                 <p>
-                  Payments are processed through Paytm or
+                  Payments are processed through PhonePe or
                   another payment provider made available
                   during checkout.
                 </p>
@@ -272,7 +272,7 @@ export function PolicyPage({ kind }: { kind: PolicyKind }) {
                 <h2>7. Third-Party Payment Providers</h2>
 
                 <p>
-                  When you make a payment through Paytm or
+                  When you make a payment through PhonePe or
                   another payment provider, certain information
                   necessary to process the transaction may be
                   shared with that provider.
@@ -781,7 +781,7 @@ export function PolicyPage({ kind }: { kind: PolicyKind }) {
 
                 <p>
                   Payments are processed through
-                  Paytm or another payment provider
+                  PhonePe or another payment provider
                   presented during checkout.
                 </p>
 
