@@ -40,11 +40,11 @@ export const businessInfo = {
   "Curated collections of related programming courses offered together at discounted prices. These bundles provide structured learning paths and opportunities to develop multiple technical skills.\n\n" +
   "Our Learning Experience:\n\n" +
   "ProPyCoder focuses on practical, project-based education that helps learners understand programming concepts and apply their knowledge to real-world development tasks.\n\n" +
-  "Students can explore available courses, review detailed descriptions and pricing, purchase individual courses or bundles, and access their learning materials through our online platform.\n\n" +
   "Start Learning with ProPyCoder:\n\n" +
   "Explore our courses, choose your preferred learning program, and start building practical technology skills with ProPyCoder.\n\n"+
   "Digital Product Delivery:\n\n" +
-  "All ProPyCoder courses, course bundles, and educational materials are digital products and services. No physical products are sold or shipped. Following successful payment confirmation, customers receive access to their purchased courses through their registered ProPyCoder accounts.",
+  "All ProPyCoder courses, course bundles, and educational materials are digital products and services. No physical products are sold or shipped. Following successful payment confirmation, customers receive access to their purchased courses through their registered ProPyCoder accounts.\n\n"+
+  "Learners can explore available courses, review detailed descriptions and pricing, purchase individual courses or bundles, and access their learning materials through our online platform.",
   // "Our platform allows students to access their purchased learning content online from compatible devices and learn at their own pace.\n\n",
 
   
