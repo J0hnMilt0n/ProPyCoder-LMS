@@ -8187,7 +8187,7 @@ html[data-theme="dark"] .course-certificate-card.is-unlocked {
 /* --- Certificate branding (ProPyCoder) --- */
 
 .certificate-view {
-  min-height: 100vh;
+  /* min-height: 100vh; */
   display: flex;
   flex-direction: column;
 }
@@ -8197,7 +8197,8 @@ html[data-theme="dark"] .course-certificate-card.is-unlocked {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 24px 16px 48px;
+  /* padding: 24px 16px 48px; */
+  padding: 0px 16px;
 }
 
 

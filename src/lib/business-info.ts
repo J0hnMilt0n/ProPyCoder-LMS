@@ -11,7 +11,7 @@ export const businessInfo = {
 
   productsDescription:
   process.env.BUSINESS_PRODUCTS_DESCRIPTION?.trim() ||
-  "Prerequsites:\n\n" +
+  "Prerequisites:\n\n" +
   "This course is designed for beginners, with no prior knowledge or experience required. It starts with the fundamentals and guides you step by step through the learning process.\n\n"+
 "Technical Requirements:\n\n" + "A computer or laptop with internet access may be required for practical exercises and coding activities.\n\n"+
   "This Course Includes:\n\n" +
