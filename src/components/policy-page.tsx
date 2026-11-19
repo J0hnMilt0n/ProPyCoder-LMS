@@ -37,7 +37,7 @@ export function PolicyPage({ kind }: { kind: PolicyKind }) {
       <header className="about-hero policy-hero">
         <div className="about-hero-inner">
           <div className="home-section-eyebrow">
-            PRO PYCODER · WEBSITE INFORMATION
+            PROPYCODER · WEBSITE INFORMATION
           </div>
 
           <h1>{titles[kind]}</h1>

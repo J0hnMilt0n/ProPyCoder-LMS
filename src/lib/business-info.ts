@@ -28,7 +28,7 @@ export const businessInfo = {
   "5. Learning Resources\n\n" +
   "Online video lessons, coding examples, practical exercises, project resources, quizzes, and other educational materials included with course.\n\n" +
   "6. Certificate of Completion\n\n" +
-  "Certificates of completion are provided for eligible courses after students successfully meet the applicable course completion requirements.\n\n" +
+  "Certificates of completion are provided for this course after students successfully meet the applicable course completion requirements.\n\n" +
   "Who Can Learn with Us:\n\n" +
   "If you are looking to build practical programming skills, improve your technical knowledge, or advance your career in the technology, Welcome to ProPyCoder! an online learning platform designed to help students, developers, and technology enthusiasts learn programming through structured courses, practical exercises, and real-world projects.\n\n" +
   "ProPyCoder offers a wide range of professional programming courses, digital learning resources, curated course bundles, and live online classes covering various technology domains.\n\n" +

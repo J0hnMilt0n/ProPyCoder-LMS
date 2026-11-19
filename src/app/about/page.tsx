@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, BookOpen, Code2, GraduationCap } from "lucide-react";
+import { ArrowRight, BookOpen, Code2, GraduationCap, Radio, Award, Laptop } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import { BrandLogo } from "@/components/brand-logo";
 import { businessInfo } from "@/lib/business-info";
@@ -28,6 +28,24 @@ const focusAreas = [
     title: "Track your learning",
     description:
       "A learner account brings course access and learning progress together in one place.",
+  }, 
+  {
+    icon: Radio,
+    title: "Live classes",
+    description:
+      "Interactive programming and technology training sessions designed to understand technical concepts, practice coding, and improve their development skills.",
+  },
+   {
+    icon: Laptop,
+    title: "Project based learning",
+    description:
+      "Practical demonstrations and project activities, where applicable, to help learners gain experience with real-world applications.",
+  },
+   {
+    icon: Award,
+    title: "Certificate of completion",
+    description:
+      "Certificates of completion are provided for eligible courses after students successfully meet the applicable course completion requirements.",
   },
 ];
 
@@ -37,7 +55,7 @@ export default function AboutPage() {
       <Navbar />
       <section className="about-hero">
         <div className="about-hero-inner">
-          <div className="home-section-eyebrow">ABOUT PRO PYCODER</div>
+          <div className="home-section-eyebrow">ABOUT PROPYCODER</div>
           <h1>Learn by <em>building.</em></h1>
           <p>
             Practical, project-led learning for people ready to build what&apos;s
