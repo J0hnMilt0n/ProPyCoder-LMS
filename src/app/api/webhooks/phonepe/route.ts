@@ -159,7 +159,7 @@ export async function POST(request: Request) {
     }
 
     // 7. Mark failed only when PhonePe confirms failure.
-    if (provider.state === "FAILED") {
+    if (provider.state === "FAILED" || provider.state === "EXPIRED") {
       await prisma.payment.updateMany({
         where: {
           id: payment.id,
