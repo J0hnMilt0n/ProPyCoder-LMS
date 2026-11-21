@@ -23,6 +23,7 @@ export type PhonePeOrderStatus = {
   orderId?: string;
   state?: string;
   amount?: number;
+  expireAt?: number;
   paymentDetails?: Array<{
     transactionId?: string;
     paymentMode?: string;

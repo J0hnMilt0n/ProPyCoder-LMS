@@ -5,8 +5,95 @@ import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { effectiveCoursePrice } from "@/lib/pricing";
 import {
   createPhonePeOrder,
+  getPhonePeOrderStatus,
   PhonePeApiError,
 } from "@/lib/phonepe";
+
+type ExistingPayment = {
+  id: string;
+  courseId: string | null;
+  bundleId: string | null;
+  amount: number;
+  status: string;
+  checkoutUrl: string | null;
+};
+
+function getExpiryTimestamp(expireAt: number): number {
+  // Support Unix timestamps in either seconds or milliseconds.
+  return expireAt < 1_000_000_000_000
+    ? expireAt * 1000
+    : expireAt;
+}
+
+async function verifyExistingCheckout(
+  payment: ExistingPayment
+) {
+  if (!payment.checkoutUrl) {
+    return {
+      action: "BLOCK" as const,
+      message: "Your payment is being initialized. Please retry shortly.",
+      status: 409,
+    };
+  }
+
+  const provider = await getPhonePeOrderStatus(payment.id);
+  const state = provider.state?.toUpperCase();
+
+  if (state === "COMPLETED") {
+    return {
+      action: "BLOCK" as const,
+      message: "Payment is already completed. Please refresh your purchases.",
+      status: 409,
+    };
+  }
+
+  if (state === "FAILED" || state === "EXPIRED") {
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: { status: "FAILED" },
+    });
+
+    console.log("here");
+
+    return { action: "CREATE" as const };
+  }
+
+  if (state === "PENDING") {
+    if (
+      typeof provider.expireAt !== "number" ||
+      !Number.isFinite(provider.expireAt)
+    ) {
+      return {
+        action: "BLOCK" as const,
+        message: "PhonePe did not return the order expiry. Please retry later.",
+        status: 503,
+      };
+    }
+
+    const expiryTime = getExpiryTimestamp(provider.expireAt);
+
+    if (expiryTime > Date.now()) {
+      return {
+        action: "REUSE" as const,
+        checkoutUrl: payment.checkoutUrl,
+      };
+    }
+
+    // Do not create another order until PhonePe confirms
+    // the old order has reached a terminal state.
+    return {
+      action: "BLOCK" as const,
+      message: "Your previous checkout has expired locally but PhonePe has not confirmed its final status. Please retry shortly.",
+      status: 409,
+    };
+  }
+
+  return {
+    action: "BLOCK" as const,
+    message: `Unable to verify your previous payment (status: ${state ?? "UNKNOWN"}). Please retry later.`,
+    status: 409,
+  };
+}
 
 // --------------------------------------------------
 // GET USER PAYMENT HISTORY
@@ -205,21 +292,39 @@ export async function POST(request: NextRequest) {
     paymentMethod: "PHONEPE",
     status: "PENDING",
     amount: effectiveAmount,
-    checkoutUrl: { not: null },
   },
   orderBy: { createdAt: "desc" },
+  select: {
+    id: true,
+    courseId: true,
+    bundleId: true,
+    amount: true,
+    status: true,
+    checkoutUrl: true,
+  },
 });
 
-if (existingPayment?.checkoutUrl) {
-  return NextResponse.json({
-    id: existingPayment.id,
-    courseId: existingPayment.courseId,
-    bundleId: null,
-    amount: existingPayment.amount,
-    status: existingPayment.status,
-    isBundle: false,
-    checkoutUrl: existingPayment.checkoutUrl,
-  });
+if (existingPayment) {
+  const decision = await verifyExistingCheckout(existingPayment);
+
+  if (decision.action === "REUSE") {
+    return NextResponse.json({
+      id: existingPayment.id,
+      courseId: existingPayment.courseId,
+      bundleId: null,
+      amount: existingPayment.amount,
+      status: existingPayment.status,
+      isBundle: false,
+      checkoutUrl: decision.checkoutUrl,
+    });
+  }
+
+  if (decision.action === "BLOCK") {
+    return NextResponse.json(
+      { error: decision.message },
+      { status: decision.status }
+    );
+  }
 }
 
       // Create payment record.
@@ -422,21 +527,39 @@ if (existingPayment?.checkoutUrl) {
     paymentMethod: "PHONEPE",
     status: "PENDING",
     amount,
-    checkoutUrl: { not: null },
   },
   orderBy: { createdAt: "desc" },
+  select: {
+    id: true,
+    courseId: true,
+    bundleId: true,
+    amount: true,
+    status: true,
+    checkoutUrl: true,
+  },
 });
 
-if (existingPayment?.checkoutUrl) {
-  return NextResponse.json({
-    id: existingPayment.id,
-    courseId: null,
-    bundleId: existingPayment.bundleId,
-    amount: existingPayment.amount,
-    status: existingPayment.status,
-    isBundle: true,
-    checkoutUrl: existingPayment.checkoutUrl,
-  });
+if (existingPayment) {
+  const decision = await verifyExistingCheckout(existingPayment);
+
+  if (decision.action === "REUSE") {
+    return NextResponse.json({
+      id: existingPayment.id,
+      courseId: null,
+      bundleId: existingPayment.bundleId,
+      amount: existingPayment.amount,
+      status: existingPayment.status,
+      isBundle: true,
+      checkoutUrl: decision.checkoutUrl,
+    });
+  }
+
+  if (decision.action === "BLOCK") {
+    return NextResponse.json(
+      { error: decision.message },
+      { status: decision.status }
+    );
+  }
 }
 
     // Create payment record.
