@@ -57,7 +57,7 @@ export function Navbar() {
     persistAuthHint(false);
     // Wipe per-user resource caches so the next account on this
     // browser never sees the previous user's cached data.
-    clearResourceCaches();
+    // clearResourceCaches();
     setIsOpen(false);
     await signOut({ callbackUrl: "/" });
   };

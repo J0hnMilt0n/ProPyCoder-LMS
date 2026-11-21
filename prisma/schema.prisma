@@ -171,6 +171,7 @@ model Payment {
   status        String      @default("PENDING") // PENDING, COMPLETED, FAILED, REFUNDED
   paymentMethod String? // STRIPE, PAYPAL, etc.
   transactionId String? // External transaction ID
+  checkoutUrl   String?
   enrollmentId  String?     @unique // Link to enrollment created after payment (course-only)
   enrollment    Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
   createdAt     DateTime    @default(now())

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { Mail, Loader, ArrowRight, CheckCircle2, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { useSession } from "next-auth/react";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -16,7 +17,14 @@ export default function ForgotPasswordPage() {
   const [dialogPortalRoot, setDialogPortalRoot] = useState<HTMLElement | null>(null);
   const cooldownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const hydratedFromStorage = useRef(false);
+  const { data: session, status } = useSession();
+  const isAuthenticated = status === "authenticated";
 
+useEffect(() => {
+  if (isAuthenticated && session?.user?.email) {
+    setEmail(session.user.email);
+  }
+}, [isAuthenticated, session?.user?.email]);
   useEffect(() => {
     setDialogPortalRoot(document.documentElement);
   }, []);
@@ -119,13 +127,40 @@ export default function ForgotPasswordPage() {
     <div className="auth-page">
       <Navbar />
       <main className="auth-layout">
-        <section className="auth-content">
+        <aside className="auth-story">
+          <span className="auth-story-eyebrow">BUILD BEYOND EXPECTATIONS.</span>
+          <h2>
+            Make your skill
+
+            <br />
+            <em> Your super power</em>
+          </h2>
+          <p>
+            Learn with curiosity and ready to build something real. Turn “someday” into
+something you built.
+          </p>
+          <div className="auth-story-code">
+            <span>01</span>
+            <code>learn()</code>
+            <i />
+            <code>build()</code>
+            <i />
+            <code>repeat()</code>
+          </div>
+          <span className="auth-story-caption">
+            A little progress, every day.
+          </span>
+        </aside>
+        <section className="auth-content items-center">
           <div className="auth-card">
             <div className="auth-card-eyebrow">PASSWORD RESET</div>
-            <h1>Forgot Password</h1>
-            <p className="auth-card-description">
-              Enter your email address and we'll send you a link to reset your password.
-            </p>
+<h1>{isAuthenticated ? "Reset Password" : "Forgot Password"}</h1>
+
+<p className="auth-card-description">
+  {isAuthenticated
+    ? "We'll send a password reset link to your registered email address."
+    : "Enter your email address and we'll send you a link to reset your password."}
+</p>
 
             {showDialog && dialogPortalRoot && createPortal(
               <div
@@ -197,8 +232,14 @@ export default function ForgotPasswordPage() {
             )}
 
             <div className="auth-switch">
-              Remember your password? <Link href="/auth/login">Sign in</Link>
-            </div>
+  {isAuthenticated ? (
+    <Link href="/profile">Back to profile</Link>
+  ) : (
+    <>
+      Remember your password? <Link href="/auth/login">Sign in</Link>
+    </>
+  )}
+</div>
           </div>
         </section>
       </main>

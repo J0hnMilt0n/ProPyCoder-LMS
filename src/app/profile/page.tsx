@@ -34,10 +34,11 @@ const MAX_AVATAR_BYTES = 1_600_000; // keep well under the API's 2MB limit
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { status, update } = useSession();
+  const { data: session, status: authStatus, update } = useSession();
   const fileRef = useRef<HTMLInputElement>(null);
+  const [loadedAvatarUrl, setLoadedAvatarUrl] = useState<string | null>(null);
 
-  const { status: authStatus } = useSession();
+  // const { status: authStatus } = useSession();
   const authenticated = authStatus === "authenticated";
 
   // Stale-while-revalidate: paint the cached profile instantly, refresh in the
@@ -45,14 +46,18 @@ export default function ProfilePage() {
   const profileRes = useResource<Profile>({
     key: "profile-v2",
     url: "/api/profile",
-    scope: "me",
+    scope: session?.user?.id ?? "me",
     enabled: authenticated,
   });
   const profile = profileRes.data;
   const isLoading = profileRes.isLoading;
 
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [firstName, setFirstName] = useState(
+  session?.user?.name?.split(" ")[0] ?? ""
+);
+const [lastName, setLastName] = useState(
+  session?.user?.name?.split(" ").slice(1).join(" ") ?? ""
+);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [avatarCropSrc, setAvatarCropSrc] = useState<string | null>(null);
   const [isSavingDetails, setIsSavingDetails] = useState(false);
@@ -172,33 +177,33 @@ export default function ProfilePage() {
   };
 
   const initials =
-    `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase() || "P";
+    `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase() || "";
 
-  if (authStatus === "loading" || (isLoading && !profile)) {
-    return (
-      <div className="auth-page">
-        <Navbar />
-        <main className="auth-layout">
-          <div className="auth-content">
-            <div className="auth-card" style={{ textAlign: "center" }}>
-              <LoaderCircle
-                className="animate-spin"
-                size={28}
-                style={{ margin: "0 auto", color: "#e95f32" }}
-              />
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
+  // if (authStatus === "loading" || (isLoading && !profile)) {
+  //   return (
+  //     <div className="auth-page-">
+  //       <Navbar />
+  //       <main className="auth-layout-">
+  //         <div className="auth-content">
+  //           <div className="auth-card" style={{ textAlign: "center" }}>
+  //             <LoaderCircle
+  //               className="animate-spin"
+  //               size={28}
+  //               style={{ margin: "0 auto", color: "#e95f32" }}
+  //             />
+  //           </div>
+  //         </div>
+  //       </main>
+  //     </div>
+  //   );
+  // }
 
-  if (!profile) return null;
+  // if (!profile) return null;
 
   return (
-    <div className="auth-page">
+    <div className="auth-page-">
       <Navbar />
-      <main className="auth-layout">
+      <main className="auth-layout-">
         <div className="auth-content">
           <div className="auth-card profile-card">
             <div className="auth-card-eyebrow">YOUR ACCOUNT</div>
@@ -208,10 +213,12 @@ export default function ProfilePage() {
             </p>
 
             <div className="profile-meta">
-              <span className="profile-role">
-                <Shield size={13} />
-                {profile.role}
-              </span>
+              {profile?.role && (
+  <span className="profile-role">
+    <Shield size={13} />
+    {profile.role}
+  </span>
+)}
               <Link href="/certificates" className="profile-cert-link">
                 <Award size={13} />
                 My certificates
@@ -224,13 +231,32 @@ export default function ProfilePage() {
 
               <div className="profile-avatar-row">
                 <div className="profile-avatar" aria-hidden="true">
-                  {avatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={avatar} alt="" />
-                  ) : (
-                    <span>{initials}</span>
-                  )}
-                </div>
+  {avatar ? (
+    <>
+      {loadedAvatarUrl !== avatar && (
+        <span
+          className="profile-avatar-skeleton"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={avatar}
+        alt=""
+        className={`profile-avatar-image${
+          loadedAvatarUrl === avatar ? " is-loaded" : ""
+        }`}
+        width={80}
+        height={80}
+        onLoad={() => setLoadedAvatarUrl(avatar)}
+        onError={() => setLoadedAvatarUrl(avatar)}
+      />
+    </>
+  ) : (
+    <span>{initials}</span>
+  )}
+</div>
                 <div className="profile-avatar-actions">
                   <button
                     type="button"
@@ -239,7 +265,7 @@ export default function ProfilePage() {
                   >
                     <Camera size={16} />
                     <span>Change photo</span>
-                  </button>
+                  </button>            
                   {avatar && (
                     <button
                       type="button"
@@ -298,7 +324,7 @@ export default function ProfilePage() {
                 <label>Email</label>
                 <div className="auth-field-control">
                   <Mail size={17} />
-                  <input className="auth-input" value={profile.email} disabled />
+                  <input className="auth-input" value={profile?.email ?? session?.user?.email ?? ""} disabled />
                 </div>
               </div>
 
@@ -317,7 +343,7 @@ export default function ProfilePage() {
             </form>
 
             {/* Password */}
-            <form className="auth-form profile-password-form" onSubmit={handleSavePassword}>
+            {/* <form className="auth-form profile-password-form" onSubmit={handleSavePassword}>
               <h2 className="profile-section-title">
                 <Lock size={16} /> Change password
               </h2>
@@ -377,7 +403,26 @@ export default function ProfilePage() {
                 )}
                 {isSavingPassword ? "Saving..." : "Update password"}
               </button>
-            </form>
+            </form> */}
+            {/* Password */}
+<div className="auth-form profile-password-form">
+  <h2 className="profile-section-title">
+    <Lock size={16} /> Password & Security
+  </h2>
+
+  <p className="profile-hint">
+    Need to change your password? Reset it securely using your registered
+    email address.
+  </p>
+
+  <Link
+    href="/auth/forgot-password"
+    className="auth-submit"
+  >
+    <Lock size={16} />
+    Reset password
+  </Link>
+</div>
           </div>
         </div>
       </main>

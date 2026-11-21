@@ -198,6 +198,30 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const existingPayment = await prisma.payment.findFirst({
+  where: {
+    userId,
+    courseId,
+    paymentMethod: "PHONEPE",
+    status: "PENDING",
+    amount: effectiveAmount,
+    checkoutUrl: { not: null },
+  },
+  orderBy: { createdAt: "desc" },
+});
+
+if (existingPayment?.checkoutUrl) {
+  return NextResponse.json({
+    id: existingPayment.id,
+    courseId: existingPayment.courseId,
+    bundleId: null,
+    amount: existingPayment.amount,
+    status: existingPayment.status,
+    isBundle: false,
+    checkoutUrl: existingPayment.checkoutUrl,
+  });
+}
+
       // Create payment record.
       const createStart = performance.now();
 
@@ -237,7 +261,12 @@ export async function POST(request: NextRequest) {
           request.url
         ).toString(),
       });
-
+      await prisma.payment.update({
+  where: { id: payment.id },
+  data: {
+    checkoutUrl: checkout.redirectUrl,
+  },
+});
       console.info(
         `[Payments] PhonePe checkout: ${
           Math.round(performance.now() - phonePeStart)
@@ -386,6 +415,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const existingPayment = await prisma.payment.findFirst({
+  where: {
+    userId,
+    bundleId: bundle.id,
+    paymentMethod: "PHONEPE",
+    status: "PENDING",
+    amount,
+    checkoutUrl: { not: null },
+  },
+  orderBy: { createdAt: "desc" },
+});
+
+if (existingPayment?.checkoutUrl) {
+  return NextResponse.json({
+    id: existingPayment.id,
+    courseId: null,
+    bundleId: existingPayment.bundleId,
+    amount: existingPayment.amount,
+    status: existingPayment.status,
+    isBundle: true,
+    checkoutUrl: existingPayment.checkoutUrl,
+  });
+}
+
     // Create payment record.
     const createStart = performance.now();
 
@@ -423,6 +476,13 @@ export async function POST(request: NextRequest) {
         request.url
       ).toString(),
     });
+
+    await prisma.payment.update({
+  where: { id: payment.id },
+  data: {
+    checkoutUrl: checkout.redirectUrl,
+  },
+});
 
     console.info(
       `[Payments] PhonePe checkout: ${

@@ -4,6 +4,7 @@ import { useEffect, useState, FormEvent, useRef } from "react";
 import { createPortal } from "react-dom";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { Navbar } from "@/components/navbar";
@@ -22,6 +23,8 @@ export default function LoginPage() {
   const [resendMessage, setResendMessage] = useState("");
   const [resendError, setResendError] = useState("");
   const [dialogPortalRoot, setDialogPortalRoot] = useState<HTMLElement | null>(null);
+
+ const { data: session, status } = useSession();
 
   useEffect(() => {
     setDialogPortalRoot(document.documentElement);
@@ -62,6 +65,21 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  const user = session?.user;
+  const destination =
+    user?.role === "ADMIN"
+      ? "/admin"
+      : user?.role === "INSTRUCTOR"
+        ? "/instructor"
+        : "/dashboard";
+
+useEffect(() => {
+  if (status === "authenticated") {
+    router.replace(destination);
+  }
+}, [status, destination, router]);
+
 
   const [resendCooldown, setResendCooldown] = useState<number | null>(null);
   const resendCooldownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -146,7 +164,9 @@ export default function LoginPage() {
       setIsResending(false);
     }
   };
-
+if (status === "loading" || status === "authenticated") {
+  return <Navbar />;
+}
   return (
     <div className="auth-page">
       <Navbar />
@@ -165,14 +185,14 @@ export default function LoginPage() {
           </p>
           <div className="auth-story-code">
             <span>01</span>
-            <code>learn()</code>
+            <code>explore()</code>
             <i />
-            <code>build()</code>
+            <code>create()</code>
             <i />
-            <code>repeat()</code>
+            <code>innovate()</code>
           </div>
           <span className="auth-story-caption">
-            A little progress, every day.
+            Your next big idea starts here.
           </span>
         </aside>
         <section className="auth-content">

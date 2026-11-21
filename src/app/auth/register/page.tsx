@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useEffect, useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { Navbar } from "@/components/navbar";
@@ -17,6 +18,8 @@ import {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
+  
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -82,8 +85,26 @@ export default function RegisterPage() {
       setIsLoading(false);
     }
   };
+ const user = session?.user;
+  const destination =
+    user?.role === "ADMIN"
+      ? "/admin"
+      : user?.role === "INSTRUCTOR"
+        ? "/instructor"
+        : "/dashboard";
+
+useEffect(() => {
+  if (status === "authenticated") {
+    router.replace(destination);
+  }
+}, [status, destination, router]);
+
+  if (status === "loading" || status === "authenticated") {
+  return <Navbar />;
+}
 
   return (
+
     <div className="auth-page">
       <Navbar />
 
@@ -101,11 +122,11 @@ export default function RegisterPage() {
           </p>
           <div className="auth-story-code">
             <span>01</span>
-            <code>curiosity</code>
+            <code>curiosity()</code>
             <i />
-            <code>practice</code>
+            <code>practice()</code>
             <i />
-            <code>progress</code>
+            <code>progress()</code>
           </div>
           <span className="auth-story-caption">
             Your pace. Your next chapter.

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
-import { Award, LoaderCircle, Lock } from "lucide-react";
+import { ArrowRight, Award, LoaderCircle, Lock, ShieldCheck } from "lucide-react";
 import toast from "react-hot-toast";
 import { useResource } from "@/lib/use-resource";
 
@@ -16,14 +16,16 @@ interface Certificate {
 }
 
 export default function CertificatesPage() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const certificatesRes = useResource<Certificate[]>({
-    key: "certificates",
-    url: "/api/certificates",
-    scope: "me",
-    enabled: status === "authenticated",
-    select: (json) => (json as { data?: Certificate[] }).data ?? [],
-  });
+  key: "certificates",
+  url: "/api/certificates",
+  scope: session?.user?.id ?? "me",
+  enabled: status === "authenticated",
+  freshForMs: 5 * 60 * 1000,
+  revalidateOnFocus: true,
+  select: (json) => (json as { data?: Certificate[] }).data ?? [],
+});
   const certificates = certificatesRes.data ?? [];
   const isLoading = certificatesRes.isLoading;
 
@@ -61,44 +63,60 @@ export default function CertificatesPage() {
     }
   }, [status, certificatesRes.error]);
 
-  if (status === "loading" || (status === "authenticated" && isLoading)) {
-    return (
-      <div className="auth-page">
-        <Navbar />
-        <main className="auth-layout">
-          <div className="auth-content">
-            <div className="auth-card" style={{ textAlign: "center" }}>
-              <LoaderCircle
-                className="animate-spin"
-                size={28}
-                style={{ margin: "0 auto", color: "#e95f32" }}
-              />
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
+  // if (status === "loading" || (status === "authenticated" && isLoading)) {
+  //   return (
+  //     <div className="auth-page-">
+  //       <Navbar />
+  //       <main className="auth-layout-">
+  //         <div className="auth-content">
+  //           <div className="auth-card" style={{ textAlign: "center" }}>
+  //             <LoaderCircle
+  //               className="animate-spin"
+  //               size={28}
+  //               style={{ margin: "0 auto", color: "#e95f32" }}
+  //             />
+  //           </div>
+  //         </div>
+  //       </main>
+  //     </div>
+  //   );
+  // }
 
   return (
-    <div className="auth-page">
+     <main className="catalog-page certificates-page">
       <Navbar />
-      <main className="auth-layout">
-        <div className="auth-content">
-          <div className="auth-card cert-page-card">
-            <div className="auth-card-eyebrow">YOUR ACHIEVEMENTS</div>
-            <h1>Certificates</h1>
-            <p className="auth-card-description">
-              {status === "unauthenticated"
-                ? "Check any ProPyCoder certificate below — no account needed."
-                : "Certificates unlock automatically when you finish every lesson in a course."}
-            </p>
+      <header className="catalog-hero">
+              <div className="catalog-hero-inner">
+                <div className="catalog-eyebrow">
+                  <Award size={14} /> YOUR ACHIEVEMENTS
+                </div>
+      
+                <div className="catalog-hero-row">
+                  <div>
+                    <h1>
+                      Earned <em>certificates.</em>
+                    </h1>
+                    <p>
+                      Celebrate your skills, showcase your achievements, and verify
+                      certificates issued by ProPyCoder.
+                    </p>
+                  </div>
+      
+                  <div className="catalog-hero-note">
+                    <span>YOUR ACHIEVEMENTS</span>
+                    <strong>Every completed course is a milestone.</strong>
+                  </div>
+                </div>
+              </div>
+            </header>
+        <section className="catalog-section">
+          <div className="-auth-card -cert-page-card md:flex justify-evenly gap-6">
 
-            <section className="cert-verify">
-              <div className="auth-card-eyebrow">Verify certificate</div>
-              <h2>Verify by certificate number</h2>
+            <section className="cert-verify md:w-[50%]">
+               <div className="catalog-eyebrow"><ShieldCheck size={14} />Verify certificate</div>
+              {/* <h2>Verify by certificate number</h2> */}
               <p>
-                Enter a certificate number below to confirm it is valid and belongs to you. Your own numbers are listed as <span className="cert-item-meta"><strong>certificate number</strong></span> on each certificate below.
+                Enter a certificate number below to confirm its authenticity.
               </p>
               <form
                 noValidate
@@ -141,6 +159,7 @@ export default function CertificatesPage() {
                 </div>
               ) : null}
             </section>
+            
             {status === "unauthenticated" ? (
               <div className="cert-empty">
                 <span className="cert-empty-icon" aria-hidden="true">
@@ -148,12 +167,20 @@ export default function CertificatesPage() {
                 </span>
                 <h2>Your certificates live in your account</h2>
                 <p>
-                  Log in to see and download the certificates you have earned —
-                  anyone can still verify a certificate with the tool above.
+                  Log in to see and download the certificates you have earned.
+                  Anyone can still verify a certificate with the tool above.
                 </p>
                 <Link href="/auth/login" className="auth-submit cert-empty-link">
                   Log in
                 </Link>
+              </div>
+            ) : isLoading ? (
+              <div style={{ textAlign: "center", padding: "24px 0" }}>
+                <LoaderCircle
+                  className="animate-spin"
+                  size={28}
+                  style={{ margin: "0 auto", color: "#e95f32" }}
+                />
               </div>
             ) : certificates.length === 0 ? (
               <div className="cert-empty">
@@ -170,7 +197,15 @@ export default function CertificatesPage() {
                 </Link>
               </div>
             ) : (
-              <ul className="cert-list">
+              <ul className="cert-list"><div className="catalog-section-heading">
+          <div>
+            <span className="catalog-eyebrow">YOUR COLLECTION <span className="cert-verify-count">
+              {certificates.length}
+            </span></span>
+            {/* <h2>My certificates</h2> */}
+          </div>
+  
+        </div>
                 {certificates.map((certificate) => (
                   <li key={certificate.id} className="cert-item">
                     <Link
@@ -195,8 +230,17 @@ export default function CertificatesPage() {
               </ul>
             )}
           </div>
-        </div>
+        </section>
+        {/* Footer */}
+      <footer className="catalog-footer">
+        <span>PROPYCODER LEARNING</span>
+        <span>Stay informed. Keep growing.</span>
+
+        <Link href="/courses">
+          Browse all courses
+          <ArrowRight size={14} />
+        </Link>
+      </footer>
       </main>
-    </div>
   );
 }

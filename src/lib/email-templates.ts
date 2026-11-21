@@ -317,7 +317,8 @@ function generateInstructorRecruitmentTemplate(
     customSubject || "We'd love to have you teach on ProPyCoder";
   const safeName = escapeHtml(firstName);
   const safeLogoUrl = escapeHtml(logoUrl);
-  const applyUrl = new URL("/instructor", origin).toString();
+  // const applyUrl = new URL("/instructor", origin).toString();
+  const applyUrl = "https://whatsapp.com/channel/0029Vb9YmiuFcovygAGBtZ0Y";
   const safeApplyUrl = escapeHtml(applyUrl);
 
   const htmlContent = customHtml || `<!doctype html>
@@ -351,12 +352,12 @@ function generateInstructorRecruitmentTemplate(
             <tr><td style="height:4px;border-radius:10px 10px 0 0;background:#f15a2a;font-size:0;line-height:0;">&nbsp;</td></tr>
             <tr><td class="email-card-content" style="padding:38px 40px 34px;">
               <p style="margin:0 0 12px;color:#b84c2b;font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;">INSTRUCTOR OPPORTUNITY</p>
-              <h1 class="email-heading" style="margin:0 0 20px;color:#242424;font-size:30px;font-weight:700;line-height:1.18;letter-spacing:-.7px;">Teach the next generation of Python builders.</h1>
+              <h1 class="email-heading" style="margin:0 0 20px;color:#242424;font-size:30px;font-weight:700;line-height:1.18;letter-spacing:-.7px;">Teach the Next Generation of Developers.</h1>
               <p style="margin:0 0 9px;color:#333;font-size:15px;line-height:1.6;">Hi ${safeName},</p>
               <p style="margin:0 0 27px;color:#626262;font-size:15px;line-height:1.75;">We're growing the ProPyCoder instructor team, and based on your background we think you'd be a great fit. Our instructors lead project-based courses, mentor learners through real builds, and shape the curriculum alongside our team.</p>
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 18px;">
                 <tr><td align="center" bgcolor="#e95725" style="border-radius:5px;background-color:#e95725;">
-                  <a href="${safeApplyUrl}" style="display:inline-block;padding:15px 25px;border:1px solid #e95725;border-radius:5px;color:#ffffff;font-size:14px;font-weight:700;line-height:1.2;text-decoration:none;">Apply as an instructor&nbsp; &#8594;</a>
+                  <a href="${safeApplyUrl}" style="display:inline-block;padding:15px 25px;border:1px solid #e95725;border-radius:5px;color:#ffffff;font-size:14px;font-weight:700;line-height:1.2;text-decoration:none;">Join Whatsapp Channel&nbsp; &#8594;</a>
                 </td></tr>
               </table>
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td style="height:1px;background-color:#ecebe8;font-size:0;line-height:0;">&nbsp;</td></tr></table>

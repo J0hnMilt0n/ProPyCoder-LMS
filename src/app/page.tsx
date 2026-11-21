@@ -9,12 +9,14 @@ import {
   Sparkles,
   Terminal,
 } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { Navbar } from "@/components/navbar";
 import { BrandLogo } from "@/components/brand-logo";
 import { prisma } from "@/lib/prisma";
 import { getHomeData } from "@/lib/page-cache";
 import { HomeCoursePrice } from "@/components/home-course-price";
 import { imageUrl } from "@/lib/image-urls";
+import { HomeLearningLink } from "@/components/home-link";
 
 export const revalidate = 2592000;
 
@@ -83,12 +85,7 @@ export default async function Home() {
             <Link href="/courses" className="home-primary-button">
               Explore courses <ArrowRight size={17} />
             </Link>
-            <Link href="/auth/register" className="home-quiet-link">
-              <span className="home-play-icon">
-                <Play size={13} fill="currentColor" />
-              </span>{" "}
-              Start learning free
-            </Link>
+            <HomeLearningLink />
           </div>
           <div className="home-hero-proof">
             <div className="home-proof-avatars">
@@ -252,9 +249,7 @@ export default async function Home() {
             Join a growing community of developers learning by doing, one good
             project at a time.
           </p>
-          <Link href="/auth/register" className="home-primary-button">
-            Create your account <ArrowRight size={17} />
-          </Link>
+          <HomeLearningLink variant="primary" />
           <span>
             {enrollmentCount.toLocaleString()}{" "}
             {enrollmentCount === 1 ? "course enrollment" : "course enrollments"}{" "}
