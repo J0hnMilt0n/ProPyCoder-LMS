@@ -149,16 +149,45 @@ export async function POST(request: NextRequest, { params }: Props) {
       return NextResponse.json({ error: "Payment provider is not configured" }, { status: 409 });
     }
     const provider = await getPhonePeOrderStatus(payment.id);
-    const amountInRupees = Number(provider.amount) || 0;
-    if (Math.round(amountInRupees * 100) !== Math.round(payment.amount * 100)) {
-      return NextResponse.json({ error: "Payment amount verification failed" }, { status: 409 });
-    }
-    if (provider.state !== "COMPLETED") {
-      if (provider.state === "FAILED") {
-        await prisma.payment.updateMany({ where: { id, status: "PENDING" }, data: { status: "FAILED" } });
-      }
-      return NextResponse.json({ error: "PhonePe has not confirmed this payment" }, { status: 409 });
-    }
+    const providerAmount = Number(provider.amount);
+const expectedAmount = Math.round(payment.amount * 100);
+
+if (
+  !Number.isSafeInteger(providerAmount) ||
+  providerAmount !== expectedAmount
+) {
+  console.error("[Payments] Amount verification failed:", {
+    paymentId: id,
+    providerAmount,
+    expectedAmount,
+  });
+
+  return NextResponse.json(
+    { error: "Payment amount verification failed" },
+    { status: 409 }
+  );
+}
+
+const providerState = provider.state?.toUpperCase();
+
+if (providerState !== "COMPLETED") {
+  if (providerState === "FAILED" || providerState === "EXPIRED") {
+    await prisma.payment.updateMany({
+      where: { id, status: "PENDING" },
+      data: { status: "FAILED" },
+    });
+  }
+
+  console.warn("[Payments] Payment not completed:", {
+    paymentId: id,
+    providerState,
+  });
+
+  return NextResponse.json(
+    { error: "PhonePe has not confirmed this payment" },
+    { status: 409 }
+  );
+}
 
     return NextResponse.json(await completePhonePePayment(id, session.user.id, provider));
   } catch (error) {
