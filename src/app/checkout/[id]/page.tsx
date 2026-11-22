@@ -295,9 +295,7 @@ export default function CheckoutPage({ params }: Props) {
             </div>
 
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {isPaying
-                ? "Verifying your payment"
-                : "Loading checkout"}
+            Verifying your payment
             </h1>
 
             <p className="mt-3 text-sm leading-6 text-gray-600 dark:text-[#a7a5ae]">
@@ -330,7 +328,7 @@ export default function CheckoutPage({ params }: Props) {
   // CHECKOUT NOT FOUND
   // --------------------------------------------------
 
-  if (!payment) {
+  else if (!payment) {
     return (
       <div className="min-h-screen bg-gray-50 check-out-page">
         <Navbar />
@@ -355,7 +353,7 @@ export default function CheckoutPage({ params }: Props) {
   // PAYMENT FAILED / REFUNDED
   // --------------------------------------------------
 
-  if (
+  else if (
     payment.status === "FAILED" ||
     payment.status === "REFUNDED"
   ) {
@@ -396,7 +394,7 @@ export default function CheckoutPage({ params }: Props) {
   // --------------------------------------------------
   // CHECKOUT PAGE
   // --------------------------------------------------
-
+else{
   const title =
     payment.bundle?.title ??
     payment.course?.title ??
@@ -539,5 +537,5 @@ export default function CheckoutPage({ params }: Props) {
         </div>
       </main>
     </div>
-  );
+  );}
 }

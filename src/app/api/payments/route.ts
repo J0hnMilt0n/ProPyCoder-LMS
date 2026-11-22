@@ -21,11 +21,12 @@ type ExistingPayment = {
 
 async function verifyExistingCheckout(payment: ExistingPayment) {
   if (!payment.checkoutUrl) {
-    return {
-      action: "BLOCK" as const,
-      message: "Your payment is being initialized. Please retry shortly.",
-      status: 409,
-    };
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: { status: "FAILED" },
+    });
+
+    return { action: "CREATE" as const };
   }
 
   const provider = await getPhonePeOrderStatus(payment.id);
