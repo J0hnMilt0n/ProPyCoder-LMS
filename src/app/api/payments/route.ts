@@ -16,18 +16,10 @@ type ExistingPayment = {
   amount: number;
   status: string;
   checkoutUrl: string | null;
+  createdAt: Date;
 };
 
-function getExpiryTimestamp(expireAt: number): number {
-  // Support Unix timestamps in either seconds or milliseconds.
-  return expireAt < 1_000_000_000_000
-    ? expireAt * 1000
-    : expireAt;
-}
-
-async function verifyExistingCheckout(
-  payment: ExistingPayment
-) {
+async function verifyExistingCheckout(payment: ExistingPayment) {
   if (!payment.checkoutUrl) {
     return {
       action: "BLOCK" as const,
@@ -39,6 +31,7 @@ async function verifyExistingCheckout(
   const provider = await getPhonePeOrderStatus(payment.id);
   const state = provider.state?.toUpperCase();
 
+  // Never expire a successfully completed payment.
   if (state === "COMPLETED") {
     return {
       action: "BLOCK" as const,
@@ -53,39 +46,27 @@ async function verifyExistingCheckout(
       data: { status: "FAILED" },
     });
 
-    console.log("here");
-
     return { action: "CREATE" as const };
   }
 
   if (state === "PENDING") {
-    if (
-      typeof provider.expireAt !== "number" ||
-      !Number.isFinite(provider.expireAt)
-    ) {
-      return {
-        action: "BLOCK" as const,
-        message: "PhonePe did not return the order expiry. Please retry later.",
-        status: 503,
-      };
-    }
+    const createdAt = new Date(payment.createdAt).getTime();
+    const expiresAt = createdAt + 60 * 1000;
+    const isExpired = Date.now() >= expiresAt;
 
-    const expiryTime = getExpiryTimestamp(provider.expireAt);
-
-    if (expiryTime > Date.now()) {
+    if (!isExpired) {
       return {
         action: "REUSE" as const,
         checkoutUrl: payment.checkoutUrl,
       };
     }
 
-    // Do not create another order until PhonePe confirms
-    // the old order has reached a terminal state.
-    return {
-      action: "BLOCK" as const,
-      message: "Your previous checkout has expired locally but PhonePe has not confirmed its final status. Please retry shortly.",
-      status: 409,
-    };
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data: { status: "FAILED" },
+    });
+
+    return { action: "CREATE" as const };
   }
 
   return {
@@ -301,6 +282,7 @@ export async function POST(request: NextRequest) {
     amount: true,
     status: true,
     checkoutUrl: true,
+    createdAt: true,
   },
 });
 
@@ -536,6 +518,7 @@ if (existingPayment) {
     amount: true,
     status: true,
     checkoutUrl: true,
+    createdAt: true,
   },
 });
 
