@@ -2881,7 +2881,7 @@ html[data-theme="dark"] .learning-welcome-art {
 .auth-switch {
   margin-top: 19px;
   /* padding-top: 16px; */
-  border-top: 1px solid #efefef;
+  /* border-top: 1px solid #efefef; */
   color: #858585;
   text-align: center;
   font-size: 12px;
@@ -7800,7 +7800,8 @@ html[data-theme="dark"] .text-emerald-600 {
 .course-certificate-card.is-unlocked:hover small {
   color: #a97f14;
 }
-/* Certificate — list */
+
+/* Certificate list */
 .cert-list {
   display: flex;
   flex-direction: column;
@@ -7809,34 +7810,61 @@ html[data-theme="dark"] .text-emerald-600 {
   padding: 0;
   list-style: none;
 }
+
 .cert-item-link {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid #e6e6e6;
-  border-radius: 5px;
-  background: #fff;
-  color: inherit;
+  gap: 13px;
+  min-width: 0;
+  padding: 14px 16px;
+  overflow: hidden;
+  border: 2px solid #e7d5a8;
+  border-radius: 8px;
+  background: linear-gradient(110deg, #fffefa 0%, #fffaf0 100%);
+  color: #292929;
   text-decoration: none;
   transition:
-    border-color 0.15s,
-    background 0.15s,
-    transform 0.15s;
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
+
 .cert-item-link:hover {
-  border-color: #e9c368;
-  background: #fffdf6;
-  transform: translateY(-1px);
+  border-color: #c99b43;
+  background: #fff9e9;
+  box-shadow: 0 4px 14px rgba(174, 130, 48, 0.09);
+  transform: translateY(-2px);
 }
+
+.cert-item-link:focus-visible {
+  outline: 2px solid #c18b2c;
+  outline-offset: 3px;
+}
+
+.cert-item-link:active {
+  transform: translateY(0);
+}
+
+/* Dark theme */
 html[data-theme="dark"] .cert-item-link {
-  border: solid 1px #414141;
+  border-color: #51452e;
+  background: linear-gradient(110deg, #151515 0%, #1c1a16 100%);
+  color: #f1f0ed;
+  box-shadow: none;
 }
+
 html[data-theme="dark"] .cert-item-link:hover {
-  border-color: #ddb45a;
-  background: #121212;
-  transform: translateY(-1px);
+  border-color: #c49a4b;
+  background: linear-gradient(110deg, #1c1a16 0%, #242017 100%);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
 }
+
+html[data-theme="dark"] .cert-item-link:focus-visible {
+  outline-color: #d4aa5d;
+}
+
 html[data-theme="dark"] .course-certificate-card.is-unlocked {
   background: linear-gradient(135deg, #2b2100, #403000) !important;
 }

@@ -102,7 +102,7 @@ export default async function Home() {
               {studentCount === 1 ? "learner" : "learners"} building real skills
             </span>
           </div>
-        </div>
+        </div><Link href={"/pycoder"}>
         <div className="home-code-window" aria-label="A Python code sample">
           <div className="home-code-top">
             <span>
@@ -125,7 +125,7 @@ export default async function Home() {
           <div className="home-code-status">
             <span /> Project-based learning <ArrowUpRight size={14} />
           </div>
-        </div>
+        </div></Link>
         <div className="home-scroll-cue">
           SCROLL TO EXPLORE <span />
         </div>
