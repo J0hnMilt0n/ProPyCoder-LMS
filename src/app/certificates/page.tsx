@@ -113,7 +113,7 @@ export default function CertificatesPage() {
           <div className="-auth-card -cert-page-card md:flex justify-evenly gap-6">
 
             <section className="cert-verify md:w-[50%]">
-               <div className="catalog-eyebrow"><ShieldCheck size={14} />Verify certificate</div>
+               <div className="catalog-eyebrow"><ShieldCheck size={14} />VERIFY CERTIFICATE</div>
               {/* <h2>Verify by certificate number</h2> */}
               <p>
                 Enter a certificate number below to confirm its authenticity.

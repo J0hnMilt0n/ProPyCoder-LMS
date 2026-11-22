@@ -2072,6 +2072,8 @@ html[data-auth-hint="authenticated"] .site-account-guest {
   margin: 0 auto;
   padding: 40px 0 65px;
 }
+
+
 .learning-welcome {
   position: relative;
   display: flex;
@@ -2080,56 +2082,65 @@ html[data-auth-hint="authenticated"] .site-account-guest {
   justify-content: space-between;
   overflow: hidden;
   padding: 31px 36px;
+  border: 1px solid #e3e8f1;
   border-radius: 5px;
-  background-color: #2b2b2b;
-  background-image: linear-gradient(
+  background: linear-gradient(
     105deg,
-    rgba(12, 23, 44, 0.98) 0%,
-    rgba(21, 36, 67, 0.96) 66%,
-    rgba(35, 54, 88, 0.91) 100%
+    #ffffff 0%,
+    #f7f8fb 66%,
+    #f1f3f8 100%
   );
-  color: #fff;
+  color: var(--ink);
+  box-shadow: 0 8px 28px rgba(23, 55, 132, 0.055);
 }
+
 .learning-welcome::after {
   position: absolute;
   right: -60px;
   top: -178px;
   width: 390px;
   height: 390px;
-  border: 1px solid rgba(242, 150, 104, 0.2);
+  border: 1px solid rgba(241, 91, 50, 0.2);
   border-radius: 50%;
   box-shadow:
-    0 0 0 35px rgba(242, 150, 104, 0.035),
-    0 0 0 72px rgba(242, 150, 104, 0.026);
+    0 0 0 35px rgba(23, 55, 132, 0.025),
+    0 0 0 72px rgba(241, 91, 50, 0.035);
   content: "";
 }
+
 .learning-welcome > div:first-child {
   position: relative;
   z-index: 1;
 }
+
 .learning-eyebrow,
 .learning-section-label {
-  color: #b8b8b8;
+  color: #778198;
   font-size: 12px;
   font-weight: 750;
   letter-spacing: 1px;
 }
+
 .learning-welcome h1 {
   margin: 11px 0 7px;
+  color: var(--ink);
   font-size: 30px;
   font-weight: 710;
   line-height: 1.16;
   letter-spacing: 0;
 }
+
 .learning-welcome h1 em {
-  color: #f5a378;
+  color: #f15b32;
   font-style: normal;
 }
+
 .learning-welcome p {
   margin: 0;
-  color: #d9d9d9;
+  color: #687386;
   font-size: 13px;
 }
+
 .learning-browse-button {
   position: relative;
   z-index: 2;
@@ -2138,15 +2149,20 @@ html[data-auth-hint="authenticated"] .site-account-guest {
   gap: 10px;
   min-height: 39px;
   padding: 0 12px;
+  border: 1px solid transparent;
   border-radius: 3px;
-  background: #f16839;
+  background: #f15b32;
   color: #fff;
   font-size: 12px;
   font-weight: 680;
+  transition: background 0.2s ease, transform 0.2s ease;
 }
+
 .learning-browse-button:hover {
-  background: #d95128;
+  background: #d94b25;
+  transform: translateY(-1px);
 }
+
 .learning-welcome-art {
   position: absolute;
   right: 28%;
@@ -2155,14 +2171,57 @@ html[data-auth-hint="authenticated"] .site-account-guest {
   width: 145px;
   height: 145px;
   place-items: center;
-  color: rgba(239, 169, 126, 0.34);
+  color: rgba(241, 91, 50, 0.16);
   transform: rotate(-12deg);
 }
+
 .learning-welcome-art svg {
   width: 92px;
   height: 92px;
   stroke-width: 0.8;
 }
+
+/* Dark theme — charcoal */
+html[data-theme="dark"] .learning-welcome {
+  border-color: #292929;
+  background: linear-gradient(
+    105deg,
+    #111111 0%,
+    #181818 66%,
+    #202020 100%
+  );
+  color: #f1f0f2;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+html[data-theme="dark"] .learning-welcome::after {
+  border-color: rgba(245, 130, 85, 0.2);
+  box-shadow:
+    0 0 0 35px rgba(245, 130, 85, 0.035),
+    0 0 0 72px rgba(245, 130, 85, 0.02);
+}
+
+html[data-theme="dark"] .learning-welcome .learning-eyebrow {
+  color: #a7a5ae;
+}
+
+html[data-theme="dark"] .learning-welcome h1 {
+  color: #f5f5f5;
+}
+
+html[data-theme="dark"] .learning-welcome h1 em {
+  color: #f0855c;
+}
+
+html[data-theme="dark"] .learning-welcome p {
+  color: #b8b8b8;
+}
+
+html[data-theme="dark"] .learning-welcome-art {
+  color: rgba(245, 130, 85, 0.2);
+}
+
+
 .learning-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2319,11 +2378,11 @@ html[data-auth-hint="authenticated"] .site-account-guest {
   color: #333333;
   font-size: 18px;
 }
-.learning-list-heading h2 span {
-  padding: 3px 6px;
+.learning-list-heading > .learning-section-label > span {
+  padding: 0 6px;
   border-radius: 3px;
-  background: #ededed;
-  color: #6f6f6f;
+  /* background: #ededed; */
+  /* color: #6f6f6f; */
   font-size: 11px;
 }
 .learning-search {
@@ -8442,7 +8501,7 @@ html[data-theme="dark"] .certificate-logo .site-brand {
   font-size: 17px;
 }
 .cert-verify p {
-  margin: 0 0 14px;
+  margin: 5px 0 14px;
   color: #6b6b6b;
   font-size: 13px;
   line-height: 1.5;
@@ -10951,4 +11010,20 @@ html[data-theme="dark"] .announcements-page .announcement-card.is-unread {
   gap: 5px;
   padding: 25px;
 
+}
+@media (min-width: 1024px) {
+  .admin-email-fields {
+    flex: 0 1 650px;
+    max-width: 650px;
+  }
+
+  .admin-email-fields input,
+  .admin-email-fields select {
+    width: 100%;
+    max-width: 450px;
+  }
+
+  .admin-email-actions {
+    margin-left: 24px;
+  }
 }

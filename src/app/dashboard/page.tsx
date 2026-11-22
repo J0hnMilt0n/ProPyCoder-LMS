@@ -355,12 +355,7 @@ export default function Dashboard() {
 
         <section className="learning-courses">
           <div className="learning-list-heading">
-            <div>
-              <div className="learning-section-label">YOUR LIBRARY</div>
-              <h2>
-                My courses <span>{enrollments.length}</span>
-              </h2>
-            </div>
+              <div className="learning-section-label flex items-center gap-1">YOUR LIBRARY<span className="">{enrollments.length}</span></div>
             <label className="learning-search">
               <Search size={16} />
               <input

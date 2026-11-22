@@ -342,71 +342,75 @@ export function EmailSender() {
   return (
     <section className="admin-panel admin-email-panel">
       <div className="admin-email-form">
-        <div className="lg:flex justify-between"> <div className="admin-email-fields w-100 gap-5 flex flex-col">
-          <label>
-            Recipient
-            <input
-              type="email"
-              placeholder="instructor@example.com"
-              value={recipient}
-              onChange={(event) => setRecipient(event.target.value)}
-            />
-          </label>
+        
+<div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between min-w-0 w-full">
+  <div className="admin-email-fields flex flex-1 min-w-0 w-full flex-col gap-5">
+    <label>
+      Recipient
+      <input
+        type="email"
+        placeholder="instructor@example.com"
+        value={recipient}
+        onChange={(event) => setRecipient(event.target.value)}
+      />
+    </label>
 
-          <label>
-            Subject
-            <input
-              type="text"
-              placeholder="Email subject"
-              value={subject}
-              onChange={(event) => setSubject(event.target.value)}
-            />
-          </label>
+    <label>
+      Subject
+      <input
+        type="text"
+        placeholder="Email subject"
+        value={subject}
+        onChange={(event) => setSubject(event.target.value)}
+      />
+    </label>
 
-          <label>
-            Send from
-            <select
-              value={senderEmail}
-              onChange={(event) => setSenderEmail(event.target.value)}
-            >
-              {SENDER_ADDRESSES.map((address) => (
-                <option key={address.value} value={address.value}>
-                  {address.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+    <label>
+      Send from
+      <select
+        value={senderEmail}
+        onChange={(event) => setSenderEmail(event.target.value)}
+      >
+        {SENDER_ADDRESSES.map((address) => (
+          <option key={address.value} value={address.value}>
+            {address.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  </div>
 
-        <div className="admin-email-actions flex flex-col gap-5 m-5">
-          <button
-            type="button"
-            className="admin-button"
-            onClick={() => void formatHTML()}
-            disabled={editorDisabled || !html.trim()}
-          >
-            {isFormatting ? (
-              <LoaderCircle size={15} className="spin" />
-            ) : (
-              <WandSparkles size={15} />
-            )}
-            {isFormatting ? "Formatting..." : "Format HTML"}
-          </button>
+  <div className="admin-email-actions flex flex-col gap-3 mt-2 lg:mt-0 lg:ml-5 shrink-0">
+    <button
+      type="button"
+      className="admin-button"
+      onClick={() => void formatHTML()}
+      disabled={editorDisabled || !html.trim()}
+    >
+      {isFormatting ? (
+        <LoaderCircle size={15} className="spin" />
+      ) : (
+        <WandSparkles size={15} />
+      )}
+      {isFormatting ? "Formatting..." : "Format HTML"}
+    </button>
 
-          <button
-            type="button"
-            className="admin-button admin-button-primary"
-            onClick={() => void handleSend()}
-            disabled={editorDisabled}
-          >
-            {isSending ? (
-              <LoaderCircle size={15} className="spin" />
-            ) : (
-              <Send size={15} />
-            )}
-            {isSending ? "Sending..." : "Send email"}
-          </button>
-        </div></div>
+    <button
+      type="button"
+      className="admin-button admin-button-primary"
+      onClick={() => void handleSend()}
+      disabled={editorDisabled}
+    >
+      {isSending ? (
+        <LoaderCircle size={15} className="spin" />
+      ) : (
+        <Send size={15} />
+      )}
+      {isSending ? "Sending..." : "Send email"}
+    </button>
+  </div>
+</div>
+
        
         <div className="admin-email-editor-toolbar">
             <button type="button" title="Bold" disabled={editorDisabled} onMouseDown={(event) => runVisualCommand(event, "bold")}><Bold size={16} /></button>
