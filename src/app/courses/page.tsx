@@ -106,6 +106,7 @@ async function fetchAllCourses(
   const firstResponse = await fetch(
     `/api/courses?${firstParams}`,
     {
+      cache: "no-store",
       signal,
     },
   );
@@ -144,6 +145,7 @@ async function fetchAllCourses(
         const response = await fetch(
           `/api/courses?${params}`,
           {
+            cache: "no-store",
             signal,
           },
         );
@@ -229,6 +231,8 @@ export default function CoursesPage() {
 
   const lastCatalogRevalidationRef = useRef(0);
   const catalogRequestInFlightRef = useRef(false);
+  const initialCatalogLoadRef = useRef(false);
+  const lastHandledRetryRef = useRef(retry);
 
   /**
    * INSTANT CLIENT-SIDE SEARCH
@@ -414,7 +418,15 @@ export default function CoursesPage() {
    * INITIAL LOAD AND MANUAL RETRY
    */
   useEffect(() => {
-    void loadCatalog(retry > 0);
+    const isFirstLoad = !initialCatalogLoadRef.current;
+    const isRetry = retry !== lastHandledRetryRef.current;
+
+    initialCatalogLoadRef.current = true;
+    lastHandledRetryRef.current = retry;
+
+    // Always fetch fresh data on the first page entry and on manual retry.
+    // Cached courses remain visible while the request is running.
+    void loadCatalog(isFirstLoad || isRetry);
   }, [loadCatalog, retry]);
 
   /**
