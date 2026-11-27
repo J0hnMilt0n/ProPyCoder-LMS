@@ -572,17 +572,17 @@ export default function BundleDetailPage() {
       </main>
 
       {/* The PhonePe SDK owns and renders its checkout iframe. */}
-      {showIframe && (
+      {/* {showIframe && (
         <div
           className="fixed left-1/2 top-[max(12px,env(safe-area-inset-top))] z-[100000] w-[min(92vw,420px)] -translate-x-1/2 rounded-lg bg-gray-900/95 px-3 py-2 text-center text-xs text-white shadow-xl sm:text-sm"
           role="status"
           aria-live="polite"
         >
-          {/* {isPhonePeReady
+          {isPhonePeReady
             ? "PhonePe secure checkout is open. Complete or cancel the payment there."
-            : "Loading secure PhonePe checkout..."} */}
+            : "Loading secure PhonePe checkout..."}
         </div>
-      )}
+      )} */}
 
       {isVerifyingPayment && (
         <div
