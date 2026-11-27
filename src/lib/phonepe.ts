@@ -415,6 +415,7 @@ export async function createPhonePeOrder(input: {
   paymentId: string;
   amountRupees: number;
   redirectUrl: string;
+  productName?: string;
 }): Promise<{ redirectUrl: string }> {
   const start = performance.now();
 
@@ -477,7 +478,9 @@ export async function createPhonePeOrder(input: {
       paymentFlow: {
         type: "PG_CHECKOUT",
 
-        message: "ProPyCoder course purchase",
+        message: input.productName?.trim()
+          ? `ProPyCoder - ${input.productName.trim()}`.slice(0, 100)
+          : "ProPyCoder course purchase",
 
         merchantUrls: {
           redirectUrl: input.redirectUrl,

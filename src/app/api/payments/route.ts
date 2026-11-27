@@ -52,7 +52,8 @@ async function verifyExistingCheckout(payment: ExistingPayment) {
 
   if (state === "PENDING") {
     const createdAt = new Date(payment.createdAt).getTime();
-    const expiresAt = createdAt + 4.51 * 60 * 1000;
+    // const expiresAt = createdAt + 4.51 * 60 * 1000;
+    const expiresAt = createdAt + 20 * 60 * 1000;
     const isExpired = Date.now() >= expiresAt;
 
     if (!isExpired) {
