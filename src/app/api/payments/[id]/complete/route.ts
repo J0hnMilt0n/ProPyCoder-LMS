@@ -1,4 +1,3 @@
-
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
@@ -27,10 +26,7 @@ function verifyProviderAmount(
   const expectedAmount = Math.round(paymentAmount * 100);
   const actualAmount = Number(providerAmount);
 
-  return (
-    Number.isSafeInteger(actualAmount) &&
-    actualAmount === expectedAmount
-  );
+  return Number.isSafeInteger(actualAmount) && actualAmount === expectedAmount;
 }
 
 // GET payment status
@@ -63,18 +59,12 @@ export async function GET(request: NextRequest, { params }: Props) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    if (
-      payment.status === "PENDING" &&
-      payment.paymentMethod === "PHONEPE"
-    ) {
+    if (payment.status === "PENDING" && payment.paymentMethod === "PHONEPE") {
       const providerOrderId = getProviderOrderId(payment);
       const provider = await getPhonePeOrderStatus(providerOrderId);
       const providerState = provider.state?.toUpperCase();
 
-      if (
-        provider.orderId &&
-        provider.orderId !== providerOrderId
-      ) {
+      if (provider.orderId && provider.orderId !== providerOrderId) {
         logger.error("[Payments] PhonePe order ID mismatch", {
           metadata: {
             paymentId: payment.id,
@@ -105,11 +95,7 @@ export async function GET(request: NextRequest, { params }: Props) {
           );
         }
 
-        await completePhonePePayment(
-          payment.id,
-          session.user.id,
-          provider,
-        );
+        await completePhonePePayment(payment.id, session.user.id, provider);
 
         const refreshed = await prisma.payment.findUnique({
           where: { id },
@@ -128,9 +114,7 @@ export async function GET(request: NextRequest, { params }: Props) {
               where: {
                 studentId: session.user.id,
                 courseId: {
-                  in: refreshed.bundle.courses.map(
-                    ({ courseId }) => courseId,
-                  ),
+                  in: refreshed.bundle.courses.map(({ courseId }) => courseId),
                 },
               },
               select: { courseId: true },
@@ -145,9 +129,7 @@ export async function GET(request: NextRequest, { params }: Props) {
               refreshed.bundle.courses.reduce(
                 (total, { course }) =>
                   total +
-                  (ownedIds.has(course.id)
-                    ? effectiveCoursePrice(course)
-                    : 0),
+                  (ownedIds.has(course.id) ? effectiveCoursePrice(course) : 0),
                 0,
               ),
             );
@@ -165,10 +147,7 @@ export async function GET(request: NextRequest, { params }: Props) {
 
           return NextResponse.json(refreshed);
         }
-      } else if (
-        providerState === "FAILED" ||
-        providerState === "EXPIRED"
-      ) {
+      } else if (providerState === "FAILED" || providerState === "EXPIRED") {
         await prisma.payment.updateMany({
           where: {
             id: payment.id,
@@ -192,18 +171,14 @@ export async function GET(request: NextRequest, { params }: Props) {
         select: { courseId: true },
       });
 
-      const ownedIds = new Set(
-        ownedCourses.map(({ courseId }) => courseId),
-      );
+      const ownedIds = new Set(ownedCourses.map(({ courseId }) => courseId));
 
       const purchaseCredit = Math.min(
         payment.bundle.price,
         payment.bundle.courses.reduce(
           (total, { course }) =>
             total +
-            (ownedIds.has(course.id)
-              ? effectiveCoursePrice(course)
-              : 0),
+            (ownedIds.has(course.id) ? effectiveCoursePrice(course) : 0),
           0,
         ),
       );
@@ -286,10 +261,7 @@ export async function POST(request: NextRequest, { params }: Props) {
     const provider = await getPhonePeOrderStatus(providerOrderId);
     const providerState = provider.state?.toUpperCase();
 
-    if (
-      provider.orderId &&
-      provider.orderId !== providerOrderId
-    ) {
+    if (provider.orderId && provider.orderId !== providerOrderId) {
       logger.error("[Payments] PhonePe order ID mismatch", {
         metadata: {
           paymentId: payment.id,
@@ -304,10 +276,7 @@ export async function POST(request: NextRequest, { params }: Props) {
       );
     }
 
-    if (
-      providerState === "FAILED" ||
-      providerState === "EXPIRED"
-    ) {
+    if (providerState === "FAILED" || providerState === "EXPIRED") {
       await prisma.payment.updateMany({
         where: {
           id: payment.id,
@@ -354,11 +323,7 @@ export async function POST(request: NextRequest, { params }: Props) {
 
     // Use internal Prisma ID for payment completion.
     return NextResponse.json(
-      await completePhonePePayment(
-        payment.id,
-        session.user.id,
-        provider,
-      ),
+      await completePhonePePayment(payment.id, session.user.id, provider),
     );
   } catch (error) {
     logger.error("Payment verification error", {

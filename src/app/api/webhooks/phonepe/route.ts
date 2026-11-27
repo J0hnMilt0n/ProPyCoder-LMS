@@ -1,13 +1,10 @@
-
 import { createHash, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getPhonePeOrderStatus } from "@/lib/phonepe";
 import { completePhonePePaymentFromWebhook } from "@/lib/payment-completion";
 import { logger } from "@/lib/logger";
 
-function verifyWebhookAuthorization(
-  authorization: string | null,
-): boolean {
+function verifyWebhookAuthorization(authorization: string | null): boolean {
   const username = process.env.PHONEPE_WEBHOOK_USERNAME;
   const password = process.env.PHONEPE_WEBHOOK_PASSWORD;
 
@@ -28,19 +25,14 @@ function verifyWebhookAuthorization(
   const supplied = Buffer.from(suppliedHex, "hex");
 
   return (
-    supplied.length === expected.length &&
-    timingSafeEqual(supplied, expected)
+    supplied.length === expected.length && timingSafeEqual(supplied, expected)
   );
 }
 
 export async function POST(request: Request) {
   try {
     // 1. Authenticate PhonePe's callback.
-    if (
-      !verifyWebhookAuthorization(
-        request.headers.get("authorization"),
-      )
-    ) {
+    if (!verifyWebhookAuthorization(request.headers.get("authorization"))) {
       return Response.json(
         { success: false, message: "Unauthorized webhook" },
         { status: 401 },
@@ -54,10 +46,7 @@ export async function POST(request: Request) {
     const merchantOrderId = body?.payload?.merchantOrderId;
 
     if (
-      ![
-        "checkout.order.completed",
-        "checkout.order.failed",
-      ].includes(event)
+      !["checkout.order.completed", "checkout.order.failed"].includes(event)
     ) {
       return Response.json({
         success: true,
@@ -65,10 +54,7 @@ export async function POST(request: Request) {
       });
     }
 
-    if (
-      typeof merchantOrderId !== "string" ||
-      !merchantOrderId.trim()
-    ) {
+    if (typeof merchantOrderId !== "string" || !merchantOrderId.trim()) {
       return Response.json(
         { success: false, message: "Invalid merchantOrderId" },
         { status: 400 },
@@ -120,10 +106,7 @@ export async function POST(request: Request) {
     const providerState = provider.state?.toUpperCase();
 
     // Verify returned order ID when supplied.
-    if (
-      provider.orderId &&
-      provider.orderId !== merchantOrderId
-    ) {
+    if (provider.orderId && provider.orderId !== merchantOrderId) {
       logger.error("[PhonePe Webhook] Order ID mismatch", {
         metadata: {
           paymentId: payment.id,
@@ -140,9 +123,7 @@ export async function POST(request: Request) {
 
     // 6. Verify amount only when PhonePe confirms completion.
     if (providerState === "COMPLETED") {
-      const expectedAmount = Math.round(
-        Number(payment.amount) * 100,
-      );
+      const expectedAmount = Math.round(Number(payment.amount) * 100);
 
       const providerAmount = Number(provider.amount);
 
@@ -191,10 +172,7 @@ export async function POST(request: Request) {
     }
 
     // 8. Mark failed only when PhonePe confirms failure.
-    if (
-      providerState === "FAILED" ||
-      providerState === "EXPIRED"
-    ) {
+    if (providerState === "FAILED" || providerState === "EXPIRED") {
       await prisma.payment.updateMany({
         where: {
           id: payment.id,

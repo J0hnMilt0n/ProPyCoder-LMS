@@ -656,8 +656,7 @@ export default function CourseDetailPage({ params }: Props) {
           }
 
           lastError =
-            result?.error ||
-            "PhonePe has not confirmed this payment yet.";
+            result?.error || "PhonePe has not confirmed this payment yet.";
 
           // 409 means the order is still pending or not yet confirmed.
           // Other errors (unauthorized, invalid order, amount mismatch, etc.)
@@ -707,30 +706,30 @@ export default function CourseDetailPage({ params }: Props) {
   // PHONEPE CHECKOUT BROWSER-BACK HANDLING
   // --------------------------------------------------
 
-  const closePhonePeCheckout = useCallback(
-    (showCancelledToast: boolean) => {
-      if (window.PhonePeCheckout) {
-        try {
-          window.PhonePeCheckout.closePage();
-        } catch (error) {
-          console.warn("[PhonePe] closePage failed", error);
-        }
+  const closePhonePeCheckout = useCallback((showCancelledToast: boolean) => {
+    if (window.PhonePeCheckout) {
+      try {
+        window.PhonePeCheckout.closePage();
+      } catch (error) {
+        console.warn("[PhonePe] closePage failed", error);
       }
+    }
 
-      phonePeStartedRef.current = false;
-      setShowIframe(false);
-      setIframeTokenUrl("");
-      setActivePaymentId(null);
+    phonePeStartedRef.current = false;
+    setShowIframe(false);
+    setIframeTokenUrl("");
+    setActivePaymentId(null);
 
-      if (showCancelledToast) {
-        toast("Payment window closed. If you completed payment, check its status before trying again.", {
+    if (showCancelledToast) {
+      toast(
+        "Payment window closed. If you completed payment, check its status before trying again.",
+        {
           icon: "ℹ️",
           duration: 5000,
-        });
-      }
-    },
-    [],
-  );
+        },
+      );
+    }
+  }, []);
 
   useEffect(() => {
     if (!showIframe) return;
@@ -795,12 +794,7 @@ export default function CourseDetailPage({ params }: Props) {
       // race the SDK teardown. Explicit close actions are handled separately.
       phonePeStartedRef.current = false;
     };
-  }, [
-    showIframe,
-    iframeTokenUrl,
-    isPhonePeReady,
-    handlePhonePeCallback,
-  ]);
+  }, [showIframe, iframeTokenUrl, isPhonePeReady, handlePhonePeCallback]);
 
   // --------------------------------------------------
   // CLOSE IFRAME MANUALLY
@@ -1074,10 +1068,13 @@ export default function CourseDetailPage({ params }: Props) {
 
   const handleEnroll = async () => {
     if (status === "loading") {
-      toast("Your account information is still loading. Please wait a moment and try again.", {
-        icon: "⏳",
-        duration: 4000,
-      });
+      toast(
+        "Your account information is still loading. Please wait a moment and try again.",
+        {
+          icon: "⏳",
+          duration: 4000,
+        },
+      );
       return;
     }
 
@@ -1103,10 +1100,13 @@ export default function CourseDetailPage({ params }: Props) {
       // Free courses enroll directly. For paid courses, make sure the
       // checkout SDK is ready BEFORE creating a payment record/order.
       if (course?.price !== 0 && (!isPhonePeReady || !window.PhonePeCheckout)) {
-        toast("Secure checkout is still loading. Please wait a moment and try again.", {
-          icon: "⏳",
-          duration: 4000,
-        });
+        toast(
+          "Secure checkout is still loading. Please wait a moment and try again.",
+          {
+            icon: "⏳",
+            duration: 4000,
+          },
+        );
         return;
       }
 
@@ -1171,7 +1171,10 @@ export default function CourseDetailPage({ params }: Props) {
         toast.error(payload.error || "Failed to start checkout");
       }
     } catch (error) {
-      console.error("[Course enrollment] Failed to start enrollment/payment", error);
+      console.error(
+        "[Course enrollment] Failed to start enrollment/payment",
+        error,
+      );
       toast.error(
         error instanceof Error
           ? error.message
@@ -1393,13 +1396,17 @@ export default function CourseDetailPage({ params }: Props) {
           if (ready) {
             console.info("[PhonePe] Checkout SDK ready");
           } else {
-            console.error("[PhonePe] Script loaded but checkout SDK is unavailable");
+            console.error(
+              "[PhonePe] Script loaded but checkout SDK is unavailable",
+            );
           }
         }}
         onError={() => {
           setIsPhonePeReady(false);
           console.error("[PhonePe] Failed to load checkout SDK");
-          toast.error("Unable to load PhonePe checkout. Please refresh and try again.");
+          toast.error(
+            "Unable to load PhonePe checkout. Please refresh and try again.",
+          );
         }}
       />
       <Navbar />

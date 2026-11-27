@@ -103,10 +103,13 @@ export default function BundleDetailPage() {
         setCheckoutTokenUrl("");
         setPaymentId(null);
         phonePeStartedRef.current = false;
-        toast("Payment window closed. If you completed payment, check its status before trying again.", {
-          icon: "ℹ️",
-          duration: 5000,
-        });
+        toast(
+          "Payment window closed. If you completed payment, check its status before trying again.",
+          {
+            icon: "ℹ️",
+            duration: 5000,
+          },
+        );
         if (shouldGoBack) {
           isClosingPhonePeFromPopStateRef.current = true;
           window.history.back();
@@ -119,7 +122,9 @@ export default function BundleDetailPage() {
       if (!paymentId) {
         setShowIframe(false);
         setCheckoutTokenUrl("");
-        toast.error("We couldn't identify this payment. Please check your payment history.");
+        toast.error(
+          "We couldn't identify this payment. Please check your payment history.",
+        );
         return;
       }
 
@@ -156,9 +161,10 @@ export default function BundleDetailPage() {
           lastMessage = result.error ?? lastMessage;
           if (verification.status !== 409) break;
         } catch (error) {
-          lastMessage = error instanceof Error
-            ? error.message
-            : "Unable to contact the payment verification service.";
+          lastMessage =
+            error instanceof Error
+              ? error.message
+              : "Unable to contact the payment verification service.";
         }
 
         if (attempt < 5) {
@@ -211,10 +217,13 @@ export default function BundleDetailPage() {
     setCheckoutTokenUrl("");
     setPaymentId(null);
     if (showToast) {
-      toast("Payment window closed. If you completed payment, check its status before trying again.", {
-        icon: "ℹ️",
-        duration: 5000,
-      });
+      toast(
+        "Payment window closed. If you completed payment, check its status before trying again.",
+        {
+          icon: "ℹ️",
+          duration: 5000,
+        },
+      );
     }
   }, []);
 
@@ -276,7 +285,8 @@ export default function BundleDetailPage() {
 
   const closeIframe = useCallback(() => {
     const shouldGoBack =
-      phonePeHistoryEntryRef.current && !isClosingPhonePeFromPopStateRef.current;
+      phonePeHistoryEntryRef.current &&
+      !isClosingPhonePeFromPopStateRef.current;
     phonePeHistoryEntryRef.current = false;
     closePhonePeCheckout(false);
     if (shouldGoBack) {
@@ -299,7 +309,9 @@ export default function BundleDetailPage() {
     }
 
     if (!isPhonePeReady || !window.PhonePeCheckout) {
-      toast.error("PhonePe checkout is still loading. Please try again shortly.");
+      toast.error(
+        "PhonePe checkout is still loading. Please try again shortly.",
+      );
       return;
     }
 
@@ -396,14 +408,20 @@ export default function BundleDetailPage() {
           const ready = Boolean(window.PhonePeCheckout);
           setIsPhonePeReady(ready);
           if (!ready) {
-            console.error("[PhonePe] Script loaded but checkout SDK is unavailable");
-            toast.error("Unable to load PhonePe checkout. Please refresh and try again.");
+            console.error(
+              "[PhonePe] Script loaded but checkout SDK is unavailable",
+            );
+            toast.error(
+              "Unable to load PhonePe checkout. Please refresh and try again.",
+            );
           }
         }}
         onError={() => {
           setIsPhonePeReady(false);
           console.error("[PhonePe] Failed to load checkout SDK");
-          toast.error("Unable to load PhonePe checkout. Please refresh and try again.");
+          toast.error(
+            "Unable to load PhonePe checkout. Please refresh and try again.",
+          );
         }}
       />
       <Navbar />
@@ -506,7 +524,12 @@ export default function BundleDetailPage() {
               <button
                 className="bundle-buy w-50 flex justify-center"
                 onClick={() => void buyBundle()}
-                disabled={isBuying || isVerifyingPayment || !isPhonePeReady || remainingCourses.length === 0}
+                disabled={
+                  isBuying ||
+                  isVerifyingPayment ||
+                  !isPhonePeReady ||
+                  remainingCourses.length === 0
+                }
               >
                 {isBuying ? (
                   <LoaderCircle size={16} className="animate-spin" />
@@ -522,7 +545,8 @@ export default function BundleDetailPage() {
                 )}
               </button>
               <p className="text-xs text-gray-400 mt-3 text-center">
-                Secure PhonePe checkout. Your courses unlock after payment verification.
+                Secure PhonePe checkout. Your courses unlock after payment
+                verification.
               </p>
               {showIframe && (
                 <button
@@ -574,7 +598,6 @@ export default function BundleDetailPage() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

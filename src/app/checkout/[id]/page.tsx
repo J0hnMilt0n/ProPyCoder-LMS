@@ -50,14 +50,7 @@ interface PhonePeCheckout {
   closePage: () => void;
 }
 
-declare global {
-  interface Window {
-    PhonePeCheckout?: PhonePeCheckout;
-  }
-}
-
-const PHONEPE_SCRIPT_URL =
-  "https://mercury.phonepe.com/web/bundle/checkout.js";
+const PHONEPE_SCRIPT_URL = "https://mercury.phonepe.com/web/bundle/checkout.js";
 const VERIFICATION_RETRY_COUNT = 5;
 const VERIFICATION_RETRY_DELAY_MS = 2000;
 
@@ -259,7 +252,11 @@ export default function CheckoutPage({ params }: Props) {
       }
 
       try {
-        for (let attempt = 0; attempt < VERIFICATION_RETRY_COUNT; attempt += 1) {
+        for (
+          let attempt = 0;
+          attempt < VERIFICATION_RETRY_COUNT;
+          attempt += 1
+        ) {
           const response = await fetch(`/api/payments/${paymentId}/complete`, {
             method: "POST",
             cache: "no-store",
@@ -308,7 +305,9 @@ export default function CheckoutPage({ params }: Props) {
 
         await loadPayment({ silent: true });
         toast.dismiss("phonepe-verification");
-        toast("PhonePe has not confirmed the payment yet. Please check again shortly.");
+        toast(
+          "PhonePe has not confirmed the payment yet. Please check again shortly.",
+        );
       } catch (error) {
         console.error("[Checkout] Payment verification error:", error);
         toast.dismiss("phonepe-verification");
@@ -356,13 +355,7 @@ export default function CheckoutPage({ params }: Props) {
 
     returnVerificationStartedFor.current = payment.id;
     void verifyPayment("return");
-  }, [
-    isPhonePeReturn,
-    status,
-    payment,
-    isPaying,
-    verifyPayment,
-  ]);
+  }, [isPhonePeReturn, status, payment, isPaying, verifyPayment]);
 
   // Invoke the PhonePe SDK directly from the user's click handler so browser
   // user-activation requirements are preserved. Do not create a second iframe.
