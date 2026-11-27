@@ -1,30 +1,31 @@
 "use client";
 
-import { useState, FormEvent, useEffect, useRef, useCallback } from "react";
+import { useState, FormEvent, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
-import { Mail, Loader, ArrowRight, CheckCircle2, X } from "lucide-react";
+import { Mail, Loader, ArrowRight, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [message, setMessage] = useState("");
   const [cooldown, setCooldown] = useState<number | null>(null);
   const [showDialog, setShowDialog] = useState(false);
-  const [dialogPortalRoot, setDialogPortalRoot] = useState<HTMLElement | null>(null);
+  const [dialogPortalRoot, setDialogPortalRoot] = useState<HTMLElement | null>(
+    null,
+  );
   const cooldownTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const hydratedFromStorage = useRef(false);
   const { data: session, status } = useSession();
   const isAuthenticated = status === "authenticated";
 
-useEffect(() => {
-  if (isAuthenticated && session?.user?.email) {
-    setEmail(session.user.email);
-  }
-}, [isAuthenticated, session?.user?.email]);
+  useEffect(() => {
+    if (isAuthenticated && session?.user?.email) {
+      setEmail(session.user.email);
+    }
+  }, [isAuthenticated, session?.user?.email]);
   useEffect(() => {
     setDialogPortalRoot(document.documentElement);
   }, []);
@@ -49,7 +50,10 @@ useEffect(() => {
     const stored = localStorage.getItem("propycoder_pw_reset_next_allowed");
     if (stored) {
       const expiration = Number(stored);
-      const remaining = Math.max(0, Math.floor((expiration - Date.now()) / 1000));
+      const remaining = Math.max(
+        0,
+        Math.floor((expiration - Date.now()) / 1000),
+      );
       if (remaining > 0) {
         setCooldown(remaining);
         cooldownTimer.current = setInterval(() => {
@@ -77,7 +81,10 @@ useEffect(() => {
     if (!hydratedFromStorage.current) return;
     if (cooldown !== null) {
       const expiration = Date.now() + cooldown * 1000;
-      localStorage.setItem("propycoder_pw_reset_next_allowed", expiration.toString());
+      localStorage.setItem(
+        "propycoder_pw_reset_next_allowed",
+        expiration.toString(),
+      );
     } else {
       localStorage.removeItem("propycoder_pw_reset_next_allowed");
     }
@@ -86,7 +93,6 @@ useEffect(() => {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setMessage("");
 
     try {
       const response = await fetch("/api/auth/forgot-password", {
@@ -95,12 +101,16 @@ useEffect(() => {
         body: JSON.stringify({ email: email.trim() }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Could not send reset email.");
+      if (!response.ok)
+        throw new Error(data.error || "Could not send reset email.");
       setShowDialog(true);
 
       if (data.resendNextAllowedAt) {
         const expiration = new Date(data.resendNextAllowedAt).getTime();
-        const remaining = Math.max(0, Math.floor((expiration - Date.now()) / 1000));
+        const remaining = Math.max(
+          0,
+          Math.floor((expiration - Date.now()) / 1000),
+        );
         if (remaining > 0) {
           setCooldown(remaining);
           if (cooldownTimer.current) clearInterval(cooldownTimer.current);
@@ -117,7 +127,9 @@ useEffect(() => {
         }
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not send reset email.");
+      toast.error(
+        error instanceof Error ? error.message : "Could not send reset email.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -131,13 +143,12 @@ useEffect(() => {
           <span className="auth-story-eyebrow">BUILD BEYOND EXPECTATIONS.</span>
           <h2>
             Make your skill
-
             <br />
             <em> Your super power</em>
           </h2>
           <p>
-            Learn with curiosity and ready to build something real. Turn “someday” into
-something you built.
+            Learn with curiosity and ready to build something real. Turn
+            “someday” into something you built.
           </p>
           <div className="auth-story-code">
             <span>01</span>
@@ -154,53 +165,74 @@ something you built.
         <section className="auth-content items-center">
           <div className="auth-card">
             <div className="auth-card-eyebrow">PASSWORD RESET</div>
-<h1>{isAuthenticated ? "Reset Password" : "Forgot Password"}</h1>
+            <h1>{isAuthenticated ? "Reset Password" : "Forgot Password"}</h1>
 
-<p className="auth-card-description">
-  {isAuthenticated
-    ? "We'll send a password reset link to your registered email address."
-    : "Enter your email address and we'll send you a link to reset your password."}
-</p>
+            <p className="auth-card-description">
+              {isAuthenticated
+                ? "We&apos;ll send a password reset link to your registered email address."
+                : "Enter your email address and we&apos;ll send you a link to reset your password."}
+            </p>
 
-            {showDialog && dialogPortalRoot && createPortal(
-              <div
-                className="auth-dialog-backdrop"
-                onMouseDown={(event) => {
-                  if (event.target === event.currentTarget) setShowDialog(false);
-                }}
-              >
-                <section className="auth-dialog" role="dialog" aria-modal="true" aria-labelledby="reset-dialog-title">
-                  <button className="auth-dialog-close" type="button" onClick={() => setShowDialog(false)} aria-label="Close dialog">
-                    <X size={19} />
-                  </button>
-                  <div className="auth-dialog-icon"><Mail size={22} /></div>
-                  <div className="auth-card-eyebrow">ONE QUICK STEP</div>
-                  <h2 id="reset-dialog-title">Check your inbox</h2>
-                  <p className="auth-dialog-description">
-                    If an account exists with <strong>{email}</strong>, a password reset link has been sent. Check your spam folder if it doesn't arrive.
-                  </p>
-                  {cooldown !== null ? (
-                    <button className="auth-submit" type="button" disabled>
-                      <Loader className="h-4 w-4 animate-spin" />
-                      Resend in {formatCooldown(cooldown)}
-                    </button>
-                  ) : (
+            {showDialog &&
+              dialogPortalRoot &&
+              createPortal(
+                <div
+                  className="auth-dialog-backdrop"
+                  onMouseDown={(event) => {
+                    if (event.target === event.currentTarget)
+                      setShowDialog(false);
+                  }}
+                >
+                  <section
+                    className="auth-dialog"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="reset-dialog-title"
+                  >
                     <button
-                      className="auth-submit"
+                      className="auth-dialog-close"
                       type="button"
                       onClick={() => setShowDialog(false)}
+                      aria-label="Close dialog"
                     >
-                      Back <ArrowRight size={16} />
+                      <X size={19} />
                     </button>
-                  )}
-                  {cooldown !== null && (
-                    <p className="auth-dialog-help">You can request another link after the cooldown expires.</p>
-                  )}
-                  <p className="auth-dialog-help">The link expires after 30 minutes.</p>
-                </section>
-              </div>,
-              dialogPortalRoot
-            )}
+                    <div className="auth-dialog-icon">
+                      <Mail size={22} />
+                    </div>
+                    <div className="auth-card-eyebrow">ONE QUICK STEP</div>
+                    <h2 id="reset-dialog-title">Check your inbox</h2>
+                    <p className="auth-dialog-description">
+                      If an account exists with <strong>{email}</strong>, a
+                      password reset link has been sent. Check your spam folder
+                      if it doesn&apos;t arrive.
+                    </p>
+                    {cooldown !== null ? (
+                      <button className="auth-submit" type="button" disabled>
+                        <Loader className="h-4 w-4 animate-spin" />
+                        Resend in {formatCooldown(cooldown)}
+                      </button>
+                    ) : (
+                      <button
+                        className="auth-submit"
+                        type="button"
+                        onClick={() => setShowDialog(false)}
+                      >
+                        Back <ArrowRight size={16} />
+                      </button>
+                    )}
+                    {cooldown !== null && (
+                      <p className="auth-dialog-help">
+                        You can request another link after the cooldown expires.
+                      </p>
+                    )}
+                    <p className="auth-dialog-help">
+                      The link expires after 30 minutes.
+                    </p>
+                  </section>
+                </div>,
+                dialogPortalRoot,
+              )}
             {!showDialog && (
               <form onSubmit={handleSubmit} className="auth-form">
                 <div className="auth-field">
@@ -223,23 +255,28 @@ something you built.
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? (
-                    <><Loader className="h-4 w-4 animate-spin" /> Sending...</>
+                    <>
+                      <Loader className="h-4 w-4 animate-spin" /> Sending...
+                    </>
                   ) : (
-                    <>Send reset link <ArrowRight size={16} /></>
+                    <>
+                      Send reset link <ArrowRight size={16} />
+                    </>
                   )}
                 </button>
               </form>
             )}
 
             <div className="auth-switch">
-  {isAuthenticated ? (
-    <Link href="/profile">Back to profile</Link>
-  ) : (
-    <>
-      Remember your password? <Link href="/auth/login">Sign in</Link>
-    </>
-  )}
-</div>
+              {isAuthenticated ? (
+                <Link href="/profile">Back to profile</Link>
+              ) : (
+                <>
+                  Remember your password?{" "}
+                  <Link href="/auth/login">Sign in</Link>
+                </>
+              )}
+            </div>
           </div>
         </section>
       </main>

@@ -1,6 +1,8 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
+import { EMAIL_TIMEOUT_MS } from "@/lib/config";
+import { logger } from "@/lib/logger";
 
 const TOKEN_TTL_MS = 30 * 60 * 1000;
 
@@ -140,7 +142,7 @@ export async function sendVerificationEmail(input: {
       htmlContent,
     }),
     cache: "no-store",
-    signal: AbortSignal.timeout(15_000),
+    signal: AbortSignal.timeout(EMAIL_TIMEOUT_MS),
   });
 
   if (!response.ok) {
@@ -158,9 +160,12 @@ export async function sendVerificationEmail(input: {
     } catch {
       // The HTTP status remains useful when Brevo returns a non-JSON response.
     }
-    console.error("Brevo verification email request failed", response.status);
-    if (detail) console.error("Brevo response:", detail);
-    throw new Error(`Could not send verification email (Brevo HTTP ${response.status})`);
+    logger.error("Brevo verification email request failed", {
+      metadata: { status: response.status, detail },
+    });
+    throw new Error(
+      `Could not send verification email (Brevo HTTP ${response.status})`,
+    );
   }
 }
 
@@ -171,13 +176,18 @@ export async function issueVerificationEmail(user: {
 }) {
   const verification = createEmailVerificationToken();
   const updated = await prisma.user.updateMany({
-    where: { id: user.id, emailVerified: false, emailVerificationTokenHash: null },
+    where: {
+      id: user.id,
+      emailVerified: false,
+      emailVerificationTokenHash: null,
+    },
     data: {
       emailVerificationTokenHash: verification.tokenHash,
       emailVerificationExpiresAt: verification.expiresAt,
     },
   });
-  if (updated.count !== 1) throw new Error("Could not create verification token");
+  if (updated.count !== 1)
+    throw new Error("Could not create verification token");
 
   try {
     await sendVerificationEmail({
@@ -187,7 +197,11 @@ export async function issueVerificationEmail(user: {
     });
   } catch {
     await prisma.user.deleteMany({
-      where: { id: user.id, emailVerified: false, emailVerificationTokenHash: verification.tokenHash },
+      where: {
+        id: user.id,
+        emailVerified: false,
+        emailVerificationTokenHash: verification.tokenHash,
+      },
     });
     throw new Error("Could not deliver verification email");
   }

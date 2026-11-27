@@ -4,6 +4,7 @@ import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { invalidateCatalog, invalidateCourse } from "@/lib/course-cache";
 import { NS, invalidateUser, userCached } from "@/lib/page-cache";
 import { imageUrl } from "@/lib/image-urls";
+import { logger } from "@/lib/logger";
 
 // GET user's enrollments
 export async function GET() {
@@ -62,7 +63,10 @@ export async function GET() {
 
     return NextResponse.json({ data });
   } catch (error) {
-    console.error("Enrollment fetch error:", error);
+    logger.error("Enrollment fetch error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to fetch enrollments" },
       { status: 500 },
@@ -117,7 +121,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(enrollment, { status: 201 });
   } catch (error) {
-    console.error("Enrollment creation error:", error);
+    logger.error("Enrollment creation error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to enroll in course" },
       { status: 500 },

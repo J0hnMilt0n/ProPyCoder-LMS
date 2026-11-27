@@ -1,22 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createHash, randomBytes } from "node:crypto";
-
-// Exponential backoff table (same as resend-verification)
-const COOLDOWN_TABLE_MS = [
-  30 * 1000,                    // 30s  - attempt 2
-  5 * 60 * 1000,                // 5m   - attempt 4
-  30 * 60 * 1000,               // 30m  - attempt 6
-  2 * 60 * 60 * 1000,           // 2h   - attempt 7
-  4 * 60 * 60 * 1000,           // 4h   - attempt 8
-  6 * 60 * 60 * 1000,           // 6h   - attempt 9
-  12 * 60 * 60 * 1000,          // 10h - attempt 10
-];
-
-function getCooldownMs(attemptNumber: number): number {
-  const index = Math.min(Math.max(attemptNumber - 1, 0), COOLDOWN_TABLE_MS.length - 1);
-  return COOLDOWN_TABLE_MS[index];
-}
+import { withRateLimit, authRateLimiters } from "@/lib/rate-limit";
+import { getAuthCooldownMs, EMAIL_TIMEOUT_MS } from "@/lib/config";
+import { logger } from "@/lib/logger";
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>\"']/g, (character) => {
@@ -33,12 +20,16 @@ function escapeHtml(value: string): string {
 
 const TOKEN_TTL_MS = 30 * 60 * 1000;
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(async (request: NextRequest) => {
   try {
     const body = await request.json();
-    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    const email =
+      typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
-      return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Enter a valid email address." },
+        { status: 400 },
+      );
     }
 
     const user = await prisma.user.findUnique({
@@ -53,30 +44,39 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const genericMessage = "If an account exists with that email, a password reset link has been sent.";
+    const genericMessage =
+      "If an account exists with that email, a password reset link has been sent.";
 
     // Don't reveal if account exists
     if (!user) {
-      return NextResponse.json({ message: genericMessage, resendNextAllowedAt: null });
+      return NextResponse.json({
+        message: genericMessage,
+        resendNextAllowedAt: null,
+      });
     }
 
-// Reset attempt count if 24 hours have passed since last attempt
+    // Reset attempt count if 24 hours have passed since last attempt
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const effectiveAttemptCount = (user.passwordResetLastAttemptAt && user.passwordResetLastAttemptAt < twentyFourHoursAgo)
-      ? 0
-      : (user.passwordResetAttemptCount ?? 0);
+    const effectiveAttemptCount =
+      user.passwordResetLastAttemptAt &&
+      user.passwordResetLastAttemptAt < twentyFourHoursAgo
+        ? 0
+        : (user.passwordResetAttemptCount ?? 0);
 
     const attemptNumber = effectiveAttemptCount + 1;
 
     // Check cooldown
-    if (user.passwordResetNextAllowedAt && user.passwordResetNextAllowedAt > new Date()) {
+    if (
+      user.passwordResetNextAllowedAt &&
+      user.passwordResetNextAllowedAt > new Date()
+    ) {
       return NextResponse.json({
         message: genericMessage,
         resendNextAllowedAt: user.passwordResetNextAllowedAt.toISOString(),
       });
     }
 
-    const cooldownMs = getCooldownMs(attemptNumber);
+    const cooldownMs = getAuthCooldownMs(attemptNumber);
     const nextAllowedAt = new Date(Date.now() + cooldownMs);
 
     // Generate reset token
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-// Send email with Brevo
+    // Send email with Brevo
     const apiKey = process.env.BREVO_API_KEY;
     const senderEmail = process.env.BREVO_SENDER_EMAIL;
     const senderName = process.env.BREVO_SENDER_NAME?.trim() || "ProPyCoder";
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
           htmlContent,
         }),
         cache: "no-store",
-        signal: AbortSignal.timeout(15_000),
+        signal: AbortSignal.timeout(EMAIL_TIMEOUT_MS),
       });
     }
 
@@ -210,7 +210,13 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Could not send password reset email:", message);
-    return NextResponse.json({ error: "Could not send reset email. Please try again later." }, { status: 503 });
+    logger.error("Could not send password reset email", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: message },
+    });
+    return NextResponse.json(
+      { error: "Could not send reset email. Please try again later." },
+      { status: 503 },
+    );
   }
-}
+}, authRateLimiters.forgotPassword);

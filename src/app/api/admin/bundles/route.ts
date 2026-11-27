@@ -1,9 +1,11 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { getAdminBundles, invalidateBundles } from "@/lib/page-cache";
+import { clearCourseResourceCache } from "@/lib/use-resource";
 import { MAX_SLUG_LENGTH, SLUG_PATTERN } from "@/lib/slug";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 const bundleInput = z.object({
   // Optional author-chosen slug, stored as the bundle id (permanent).
@@ -70,7 +72,10 @@ export async function GET() {
     }));
     return NextResponse.json({ bundles });
   } catch (error) {
-    console.error("Admin bundles error:", error);
+    logger.error("Admin bundles error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to load bundles" },
       { status: 500 },
@@ -132,6 +137,10 @@ export async function POST(request: NextRequest) {
       select: bundleSelect,
     });
     invalidateBundles();
+    // Clear client cache for all courses in the bundle
+    for (const courseId of uniqueIds) {
+      clearCourseResourceCache(courseId);
+    }
     return NextResponse.json({ bundle }, { status: 201 });
   } catch (error) {
     // A taken slug surfaces as a unique-constraint violation — report it
@@ -146,7 +155,10 @@ export async function POST(request: NextRequest) {
         { status: 409 },
       );
     }
-    console.error("Create bundle error:", error);
+    logger.error("Create bundle error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to create bundle" },
       { status: 500 },

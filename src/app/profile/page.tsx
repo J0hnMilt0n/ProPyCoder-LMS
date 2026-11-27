@@ -30,15 +30,12 @@ interface Profile {
   createdAt: string;
 }
 
-const MAX_AVATAR_BYTES = 1_600_000; // keep well under the API's 2MB limit
-
 export default function ProfilePage() {
   const router = useRouter();
   const { data: session, status: authStatus, update } = useSession();
   const fileRef = useRef<HTMLInputElement>(null);
   const [loadedAvatarUrl, setLoadedAvatarUrl] = useState<string | null>(null);
 
-  // const { status: authStatus } = useSession();
   const authenticated = authStatus === "authenticated";
 
   // Stale-while-revalidate: paint the cached profile instantly, refresh in the
@@ -50,22 +47,16 @@ export default function ProfilePage() {
     enabled: authenticated,
   });
   const profile = profileRes.data;
-  const isLoading = profileRes.isLoading;
 
   const [firstName, setFirstName] = useState(
-  session?.user?.name?.split(" ")[0] ?? ""
-);
-const [lastName, setLastName] = useState(
-  session?.user?.name?.split(" ").slice(1).join(" ") ?? ""
-);
+    session?.user?.name?.split(" ")[0] ?? "",
+  );
+  const [lastName, setLastName] = useState(
+    session?.user?.name?.split(" ").slice(1).join(" ") ?? "",
+  );
   const [avatar, setAvatar] = useState<string | null>(null);
   const [avatarCropSrc, setAvatarCropSrc] = useState<string | null>(null);
   const [isSavingDetails, setIsSavingDetails] = useState(false);
-
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [isSavingPassword, setIsSavingPassword] = useState(false);
 
   // Keep the editable fields in sync with the loaded profile. Runs only when
   // the payload actually changes, so a background no-op refresh never resets
@@ -145,37 +136,6 @@ const [lastName, setLastName] = useState(
     }
   };
 
-  const handleSavePassword = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (isSavingPassword) return;
-    if (newPassword !== confirmPassword) {
-      toast.error("New passwords do not match");
-      return;
-    }
-    setIsSavingPassword(true);
-    try {
-      const response = await fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Could not change password");
-      }
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      toast.success("Password changed");
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not change password",
-      );
-    } finally {
-      setIsSavingPassword(false);
-    }
-  };
-
   const initials =
     `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase() || "";
 
@@ -214,11 +174,11 @@ const [lastName, setLastName] = useState(
 
             <div className="profile-meta">
               {profile?.role && (
-  <span className="profile-role">
-    <Shield size={13} />
-    {profile.role}
-  </span>
-)}
+                <span className="profile-role">
+                  <Shield size={13} />
+                  {profile.role}
+                </span>
+              )}
               <Link href="/certificates" className="profile-cert-link">
                 <Award size={13} />
                 My certificates
@@ -231,32 +191,32 @@ const [lastName, setLastName] = useState(
 
               <div className="profile-avatar-row">
                 <div className="profile-avatar" aria-hidden="true">
-  {avatar ? (
-    <>
-      {loadedAvatarUrl !== avatar && (
-        <span
-          className="profile-avatar-skeleton"
-          aria-hidden="true"
-        />
-      )}
+                  {avatar ? (
+                    <>
+                      {loadedAvatarUrl !== avatar && (
+                        <span
+                          className="profile-avatar-skeleton"
+                          aria-hidden="true"
+                        />
+                      )}
 
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={avatar}
-        alt=""
-        className={`profile-avatar-image${
-          loadedAvatarUrl === avatar ? " is-loaded" : ""
-        }`}
-        width={80}
-        height={80}
-        onLoad={() => setLoadedAvatarUrl(avatar)}
-        onError={() => setLoadedAvatarUrl(avatar)}
-      />
-    </>
-  ) : (
-    <span>{initials}</span>
-  )}
-</div>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={avatar}
+                        alt=""
+                        className={`profile-avatar-image${
+                          loadedAvatarUrl === avatar ? " is-loaded" : ""
+                        }`}
+                        width={80}
+                        height={80}
+                        onLoad={() => setLoadedAvatarUrl(avatar)}
+                        onError={() => setLoadedAvatarUrl(avatar)}
+                      />
+                    </>
+                  ) : (
+                    <span>{initials}</span>
+                  )}
+                </div>
                 <div className="profile-avatar-actions">
                   <button
                     type="button"
@@ -265,7 +225,7 @@ const [lastName, setLastName] = useState(
                   >
                     <Camera size={16} />
                     <span>Change photo</span>
-                  </button>            
+                  </button>
                   {avatar && (
                     <button
                       type="button"
@@ -324,7 +284,11 @@ const [lastName, setLastName] = useState(
                 <label>Email</label>
                 <div className="auth-field-control">
                   <Mail size={17} />
-                  <input className="auth-input" value={profile?.email ?? session?.user?.email ?? ""} disabled />
+                  <input
+                    className="auth-input"
+                    value={profile?.email ?? session?.user?.email ?? ""}
+                    disabled
+                  />
                 </div>
               </div>
 
@@ -405,40 +369,37 @@ const [lastName, setLastName] = useState(
               </button>
             </form> */}
             {/* Password */}
-<div className="auth-form profile-password-form">
-  <h2 className="profile-section-title">
-    <Lock size={16} /> Password & Security
-  </h2>
+            <div className="auth-form profile-password-form">
+              <h2 className="profile-section-title">
+                <Lock size={16} /> Password & Security
+              </h2>
 
-  <p className="profile-hint">
-    Need to change your password? Reset it securely using your registered
-    email address.
-  </p>
+              <p className="profile-hint">
+                Need to change your password? Reset it securely using your
+                registered email address.
+              </p>
 
-  <Link
-    href="/auth/forgot-password"
-    className="auth-submit"
-  >
-    <Lock size={16} />
-    Reset password
-  </Link>
-</div>
+              <Link href="/auth/forgot-password" className="auth-submit">
+                <Lock size={16} />
+                Reset password
+              </Link>
+            </div>
           </div>
         </div>
       </main>
-{avatarCropSrc && (
-          <ImageCropModal
-            src={avatarCropSrc}
-            onApply={(cropped) => {
-              setAvatar(cropped);
-              setAvatarCropSrc(null);
-            }}
-            onCancel={() => setAvatarCropSrc(null)}
-            aspectRatio={1}
-            maxDim={256}
-            quality={0.7}
-          />
-        )}
+      {avatarCropSrc && (
+        <ImageCropModal
+          src={avatarCropSrc}
+          onApply={(cropped) => {
+            setAvatar(cropped);
+            setAvatarCropSrc(null);
+          }}
+          onCancel={() => setAvatarCropSrc(null)}
+          aspectRatio={1}
+          maxDim={256}
+          quality={0.7}
+        />
+      )}
     </div>
   );
 }

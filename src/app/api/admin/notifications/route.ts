@@ -8,6 +8,7 @@ import {
   invalidateAnnouncements,
   invalidateUserNamespace,
 } from "@/lib/page-cache";
+import { logger } from "@/lib/logger";
 
 const announcementInput = z.object({
   title: z.string().trim().min(3).max(120),
@@ -71,7 +72,10 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     );
   } catch (error) {
-    console.error("Admin announcement error:", error);
+    logger.error("Admin announcement error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to send announcement" },
       { status: 500 },

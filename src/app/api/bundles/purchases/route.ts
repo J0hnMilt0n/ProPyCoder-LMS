@@ -1,6 +1,7 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 // Return the current user's purchased course IDs grouped by published bundle.
 export async function GET() {
@@ -17,9 +18,13 @@ export async function GET() {
         courses: { select: { courseId: true } },
       },
     });
-    const courseIds = [...new Set(
-      bundles.flatMap((bundle) => bundle.courses.map(({ courseId }) => courseId)),
-    )];
+    const courseIds = [
+      ...new Set(
+        bundles.flatMap((bundle) =>
+          bundle.courses.map(({ courseId }) => courseId),
+        ),
+      ),
+    ];
     const enrollments = courseIds.length
       ? await prisma.enrollment.findMany({
           where: {
@@ -44,7 +49,10 @@ export async function GET() {
 
     return NextResponse.json({ purchases });
   } catch (error) {
-    console.error("Bundle purchase statuses error:", error);
+    logger.error("Bundle purchase statuses error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to load purchase statuses" },
       { status: 500 },

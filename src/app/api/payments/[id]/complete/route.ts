@@ -4,6 +4,7 @@ import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { effectiveCoursePrice } from "@/lib/pricing";
 import { getPhonePeOrderStatus } from "@/lib/phonepe";
 import { completePhonePePayment } from "@/lib/payment-completion";
+import { logger } from "@/lib/logger";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -32,34 +33,38 @@ export async function GET(request: NextRequest, { params }: Props) {
     });
 
     if (!payment) {
-      return NextResponse.json(
-        { error: "Payment not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Payment not found" }, { status: 404 });
     }
 
     if (payment.userId !== session.user.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-     if (payment.status === "PENDING" && payment.paymentMethod === "PHONEPE") {
+    if (payment.status === "PENDING" && payment.paymentMethod === "PHONEPE") {
       const provider = await getPhonePeOrderStatus(payment.id);
       const amountInPaise = Math.round(payment.amount * 100);
       if (provider.amount !== amountInPaise)
-        return NextResponse.json({ error: "Payment amount verification failed" }, { status: 502 });
-      
+        return NextResponse.json(
+          { error: "Payment amount verification failed" },
+          { status: 502 },
+        );
+
       if (provider.state === "COMPLETED") {
         await completePhonePePayment(payment.id, session.user.id, provider);
         const refreshed = await prisma.payment.findUnique({
           where: { id },
-          include: { course: true, bundle: { include: { courses: { include: { course: true } } } }, enrollment: true },
+          include: {
+            course: true,
+            bundle: { include: { courses: { include: { course: true } } } },
+            enrollment: true,
+          },
         });
         if (refreshed) return NextResponse.json(refreshed);
       } else if (provider.state === "FAILED") {
-        await prisma.payment.updateMany({ where: { id, status: "PENDING" }, data: { status: "FAILED" } });
+        await prisma.payment.updateMany({
+          where: { id, status: "PENDING" },
+          data: { status: "FAILED" },
+        });
         payment.status = "FAILED";
       }
     }
@@ -68,7 +73,9 @@ export async function GET(request: NextRequest, { params }: Props) {
       const ownedCourses = await prisma.enrollment.findMany({
         where: {
           studentId: session.user.id,
-          courseId: { in: payment.bundle.courses.map(({ courseId }) => courseId) },
+          courseId: {
+            in: payment.bundle.courses.map(({ courseId }) => courseId),
+          },
         },
         select: { courseId: true },
       });
@@ -77,7 +84,8 @@ export async function GET(request: NextRequest, { params }: Props) {
         payment.bundle.price,
         payment.bundle.courses.reduce(
           (total, { course }) =>
-            total + (ownedIds.has(course.id) ? effectiveCoursePrice(course) : 0),
+            total +
+            (ownedIds.has(course.id) ? effectiveCoursePrice(course) : 0),
           0,
         ),
       );
@@ -95,10 +103,13 @@ export async function GET(request: NextRequest, { params }: Props) {
 
     return NextResponse.json(payment);
   } catch (error) {
-    console.error("Payment fetch error:", error);
+    logger.error("Payment fetch error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to fetch payment" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -122,17 +133,11 @@ export async function POST(request: NextRequest, { params }: Props) {
     });
 
     if (!payment) {
-      return NextResponse.json(
-        { error: "Payment not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Payment not found" }, { status: 404 });
     }
 
     if (payment.userId !== session.user.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
     if (payment.status === "COMPLETED") {
@@ -141,57 +146,65 @@ export async function POST(request: NextRequest, { params }: Props) {
     if (payment.status !== "PENDING") {
       return NextResponse.json(
         { error: "Payment already processed" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (payment.paymentMethod !== "PHONEPE") {
-      return NextResponse.json({ error: "Payment provider is not configured" }, { status: 409 });
+      return NextResponse.json(
+        { error: "Payment provider is not configured" },
+        { status: 409 },
+      );
     }
     const provider = await getPhonePeOrderStatus(payment.id);
     const providerAmount = Number(provider.amount);
-const expectedAmount = Math.round(payment.amount * 100);
+    const expectedAmount = Math.round(payment.amount * 100);
 
-if (
-  !Number.isSafeInteger(providerAmount) ||
-  providerAmount !== expectedAmount
-) {
-  console.error("[Payments] Amount verification failed:", {
-    paymentId: id,
-    providerAmount,
-    expectedAmount,
-  });
+    if (
+      !Number.isSafeInteger(providerAmount) ||
+      providerAmount !== expectedAmount
+    ) {
+      logger.error("[Payments] Amount verification failed", {
+        metadata: { paymentId: id, providerAmount, expectedAmount },
+      });
 
-  return NextResponse.json(
-    { error: "Payment amount verification failed" },
-    { status: 409 }
-  );
-}
+      return NextResponse.json(
+        { error: "Payment amount verification failed" },
+        { status: 409 },
+      );
+    }
 
-const providerState = provider.state?.toUpperCase();
+    const providerState = provider.state?.toUpperCase();
 
-if (providerState !== "COMPLETED") {
-  if (providerState === "FAILED" || providerState === "EXPIRED") {
-    await prisma.payment.updateMany({
-      where: { id, status: "PENDING" },
-      data: { status: "FAILED" },
-    });
-  }
+    if (providerState !== "COMPLETED") {
+      if (providerState === "FAILED" || providerState === "EXPIRED") {
+        await prisma.payment.updateMany({
+          where: { id, status: "PENDING" },
+          data: { status: "FAILED" },
+        });
+      }
 
-  console.warn("[Payments] Payment not completed:", {
-    paymentId: id,
-    providerState,
-  });
+      logger.warn("[Payments] Payment not completed", {
+        metadata: { paymentId: id, providerState },
+      });
 
-  return NextResponse.json(
-    { error: "PhonePe has not confirmed this payment" },
-    { status: 409 }
-  );
-}
+      return NextResponse.json(
+        { error: "PhonePe has not confirmed this payment" },
+        { status: 409 },
+      );
+    }
 
-    return NextResponse.json(await completePhonePePayment(id, session.user.id, provider));
+    return NextResponse.json(
+      await completePhonePePayment(id, session.user.id, provider),
+    );
   } catch (error) {
-    console.error("Payment verification error:", error);
-    return NextResponse.json({ error: "Failed to verify payment" }, { status: 502 });
+    logger.error("Payment verification error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
+    return NextResponse.json(
+      { error: "Failed to verify payment" },
+      { status: 502 },
+    );
   }
 }

@@ -5,11 +5,9 @@ import {
   BookOpen,
   Code2,
   GraduationCap,
-  Play,
   Sparkles,
   Terminal,
 } from "lucide-react";
-import { useSession } from "next-auth/react";
 import { Navbar } from "@/components/navbar";
 import { BrandLogo } from "@/components/brand-logo";
 import { prisma } from "@/lib/prisma";
@@ -24,38 +22,40 @@ export default async function Home() {
   // Public marketing page — cache the featured courses + counts globally.
   // Course/enrollment writes invalidate the "home" tag, so the numbers stay
   // fresh without every visit hitting the remote database.
-  const [courses, studentCount, enrollmentCount] = await getHomeData(async () => {
-    const [courses, studentCount, enrollmentCount] = await Promise.all([
-      prisma.course.findMany({
-        where: { status: "PUBLISHED" },
-        select: {
-          id: true,
-          title: true,
-          description: true,
-          category: true,
-          level: true,
-          duration: true,
-          image: true,
-          price: true,
-          offerPrice: true,
-          instructor: { select: { firstName: true, lastName: true } },
-          _count: { select: { enrollments: true } },
-        },
-        orderBy: { createdAt: "desc" },
-        take: 3,
-      }),
-      prisma.user.count({ where: { role: "STUDENT", isActive: true } }),
-      prisma.enrollment.count(),
-    ]);
-    return [
-      courses.map((course) => ({
-        ...course,
-        image: imageUrl(course.image, "course", course.id),
-      })),
-      studentCount,
-      enrollmentCount,
-    ] as const;
-  });
+  const [courses, studentCount, enrollmentCount] = await getHomeData(
+    async () => {
+      const [courses, studentCount, enrollmentCount] = await Promise.all([
+        prisma.course.findMany({
+          where: { status: "PUBLISHED" },
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            category: true,
+            level: true,
+            duration: true,
+            image: true,
+            price: true,
+            offerPrice: true,
+            instructor: { select: { firstName: true, lastName: true } },
+            _count: { select: { enrollments: true } },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 3,
+        }),
+        prisma.user.count({ where: { role: "STUDENT", isActive: true } }),
+        prisma.enrollment.count(),
+      ]);
+      return [
+        courses.map((course) => ({
+          ...course,
+          image: imageUrl(course.image, "course", course.id),
+        })),
+        studentCount,
+        enrollmentCount,
+      ] as const;
+    },
+  );
 
   return (
     <main className="site-home">
@@ -102,30 +102,33 @@ export default async function Home() {
               {studentCount === 1 ? "learner" : "learners"} building real skills
             </span>
           </div>
-        </div><Link href={"/pycoder"}>
-        <div className="home-code-window" aria-label="A Python code sample">
-          <div className="home-code-top">
-            <span>
-              <i />
-              <i />
-              <i />
-            </span>
-            <small>first_project.py</small>
-            <Terminal size={15} />
+        </div>
+        <Link href={"/pycoder"}>
+          <div className="home-code-window" aria-label="A Python code sample">
+            <div className="home-code-top">
+              <span>
+                <i />
+                <i />
+                <i />
+              </span>
+              <small>first_project.py</small>
+              <Terminal size={15} />
+            </div>
+            <pre>
+              <span className="code-purple">def</span>{" "}
+              <span className="code-yellow">build_your_future</span>():{"\n"}{" "}
+              skills = [
+              <span className="code-azure">&quot;curiosity&quot;</span>,{"\n"}{" "}
+              <span className="code-azure">&quot;practice&quot;</span>,{"\n"}{" "}
+              <span className="code-azure">&quot;you&quot;</span>]{"\n"}{" "}
+              <span className="code-purple">return</span>{" "}
+              <span className="code-yellow">make_it_real</span>(skills)
+            </pre>
+            <div className="home-code-status">
+              <span /> Project-based learning <ArrowUpRight size={14} />
+            </div>
           </div>
-          <pre>
-            <span className="code-purple">def</span>{" "}
-            <span className="code-yellow">build_your_future</span>():{"\n"}{" "}
-            skills = [<span className="code-azure">&quot;curiosity&quot;</span>,
-            {"\n"} <span className="code-azure">&quot;practice&quot;</span>,
-            {"\n"} <span className="code-azure">&quot;you&quot;</span>]{"\n"}{" "}
-            <span className="code-purple">return</span>{" "}
-            <span className="code-yellow">make_it_real</span>(skills)
-          </pre>
-          <div className="home-code-status">
-            <span /> Project-based learning <ArrowUpRight size={14} />
-          </div>
-        </div></Link>
+        </Link>
         <div className="home-scroll-cue">
           SCROLL TO EXPLORE <span />
         </div>
@@ -180,21 +183,25 @@ export default async function Home() {
                       : undefined
                   }
                 >
-                  {!course.image
-                      ? (<>
-                  <span>{course.category}</span>
-                  <div className="home-course-art-mark">
-                    {index === 0 ? (
-                      <Code2 />
-                    ) : index === 1 ? (
-                      <Terminal />
-                    ) : (
-                      <BookOpen />
-                    )}
-                  </div>
-                  <span className="home-course-level">
-                    {course.level.toLowerCase()}
-                  </span></>):<></>}
+                  {!course.image ? (
+                    <>
+                      <span>{course.category}</span>
+                      <div className="home-course-art-mark">
+                        {index === 0 ? (
+                          <Code2 />
+                        ) : index === 1 ? (
+                          <Terminal />
+                        ) : (
+                          <BookOpen />
+                        )}
+                      </div>
+                      <span className="home-course-level">
+                        {course.level.toLowerCase()}
+                      </span>
+                    </>
+                  ) : (
+                    <></>
+                  )}
                 </div>
                 <div className="home-course-copy">
                   <h3>{course.title}</h3>
@@ -205,7 +212,7 @@ export default async function Home() {
                     </span>
                     <span>
                       {course.duration} hours <i /> {course._count.enrollments}{" "}
-                      learner{course._count.enrollments>1?"s":""}
+                      learner{course._count.enrollments > 1 ? "s" : ""}
                     </span>
                   </div>
                   <div className="home-course-bottom">

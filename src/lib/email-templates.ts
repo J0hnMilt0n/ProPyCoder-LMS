@@ -16,51 +16,88 @@ export interface EmailTemplateResult {
 
 export interface EmailTemplateInput {
   templateType: EmailTemplateType;
-  data: Record<string, any>;
+  data:
+    | { firstName?: string; resetUrl?: string }
+    | { firstName?: string; verifyUrl?: string }
+    | { title?: string; message?: string; link?: string }
+    | { firstName?: string };
   customSubject?: string;
   customHtml?: string;
 }
 
 export function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] || c),
+  return value.replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ] || c,
   );
 }
 
-export function generateEmailTemplate(input: EmailTemplateInput): EmailTemplateResult {
+export function generateEmailTemplate(
+  input: EmailTemplateInput,
+): EmailTemplateResult {
   const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
   const origin = new URL(baseUrl);
   const logoUrl = new URL("/propycoder-logo.png", origin).toString();
 
   switch (input.templateType) {
     case "password-reset":
-      return generatePasswordResetTemplate(input.data, origin, logoUrl, input.customSubject, input.customHtml);
+      return generatePasswordResetTemplate(
+        input.data as { firstName?: string; resetUrl?: string },
+        origin,
+        logoUrl,
+        input.customSubject,
+        input.customHtml,
+      );
     case "email-verification":
-      return generateEmailVerificationTemplate(input.data, origin, logoUrl, input.customSubject, input.customHtml);
+      return generateEmailVerificationTemplate(
+        input.data as { firstName?: string; verifyUrl?: string },
+        origin,
+        logoUrl,
+        input.customSubject,
+        input.customHtml,
+      );
     case "announcement":
-      return generateAnnouncementTemplate(input.data, origin, logoUrl, input.customSubject, input.customHtml);
-        case "instructor-recruitment":
-          return generateInstructorRecruitmentTemplate(input.data, origin, logoUrl, input.customSubject, input.customHtml);
+      return generateAnnouncementTemplate(
+        input.data as { title?: string; message?: string; link?: string },
+        origin,
+        logoUrl,
+        input.customSubject,
+        input.customHtml,
+      );
+    case "instructor-recruitment":
+      return generateInstructorRecruitmentTemplate(
+        input.data as { firstName?: string },
+        origin,
+        logoUrl,
+        input.customSubject,
+        input.customHtml,
+      );
     default:
       throw new Error(`Unknown template type: ${input.templateType}`);
   }
 }
 
 function generatePasswordResetTemplate(
-  data: Record<string, any>,
+  data: { firstName?: string; resetUrl?: string },
   origin: URL,
   logoUrl: string,
   customSubject?: string,
   customHtml?: string,
 ): EmailTemplateResult {
   const firstName = data.firstName || "User";
-  const resetUrl = data.resetUrl || new URL("/auth/reset-password", origin).toString();
+  const resetUrl =
+    data.resetUrl || new URL("/auth/reset-password", origin).toString();
   const subject = customSubject || "Reset your ProPyCoder password";
   const safeName = escapeHtml(firstName);
   const safeUrl = escapeHtml(resetUrl);
   const safeLogoUrl = escapeHtml(logoUrl);
 
-  const htmlContent = customHtml || `<!doctype html>
+  const htmlContent =
+    customHtml ||
+    `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -132,24 +169,33 @@ Practical skills. Real projects. Your next chapter.
 Need help? support@propycoder.com
 © ProPyCoder · This is an account-related message.`;
 
-  return { subject, htmlContent, textContent, previewUrl: resetUrl, templateType: "password-reset" };
+  return {
+    subject,
+    htmlContent,
+    textContent,
+    previewUrl: resetUrl,
+    templateType: "password-reset",
+  };
 }
 
 function generateEmailVerificationTemplate(
-  data: Record<string, any>,
+  data: { firstName?: string; verifyUrl?: string },
   origin: URL,
   logoUrl: string,
   customSubject?: string,
   customHtml?: string,
 ): EmailTemplateResult {
   const firstName = data.firstName || "User";
-  const verifyUrl = data.verifyUrl || new URL("/auth/verify-email", origin).toString();
+  const verifyUrl =
+    data.verifyUrl || new URL("/auth/verify-email", origin).toString();
   const subject = customSubject || "Verify your ProPyCoder email address";
   const safeName = escapeHtml(firstName);
   const safeUrl = escapeHtml(verifyUrl);
   const safeLogoUrl = escapeHtml(logoUrl);
 
-  const htmlContent = customHtml || `<!doctype html>
+  const htmlContent =
+    customHtml ||
+    `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -223,11 +269,17 @@ Need help? support@propycoder.com
 © ProPyCoder · This is an account-related message.
 You're receiving this because an account was created using this email address.`;
 
-  return { subject, htmlContent, textContent, previewUrl: verifyUrl, templateType: "email-verification" };
+  return {
+    subject,
+    htmlContent,
+    textContent,
+    previewUrl: verifyUrl,
+    templateType: "email-verification",
+  };
 }
 
 function generateAnnouncementTemplate(
-  data: Record<string, any>,
+  data: { title?: string; message?: string; link?: string },
   origin: URL,
   logoUrl: string,
   customSubject?: string,
@@ -241,7 +293,9 @@ function generateAnnouncementTemplate(
   const safeMessage = escapeHtml(message);
   const safeLogoUrl = escapeHtml(logoUrl);
 
-  const htmlContent = customHtml || `<!doctype html>
+  const htmlContent =
+    customHtml ||
+    `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -274,11 +328,15 @@ function generateAnnouncementTemplate(
               <p style="margin:0 0 12px;color:#b84c2b;font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;">ANNOUNCEMENT</p>
               <h1 class="email-heading" style="margin:0 0 20px;color:#242424;font-size:30px;font-weight:700;line-height:1.18;letter-spacing:-.7px;">${safeTitle}</h1>
               <div style="margin:0 0 27px;color:#626262;font-size:15px;line-height:1.75;">${safeMessage}</div>
-              ${link ? `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 18px;">
+              ${
+                link
+                  ? `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 18px;">
                 <tr><td align="center" bgcolor="#e95725" style="border-radius:5px;background-color:#e95725;">
                   <a href="${escapeHtml(link)}" style="display:inline-block;padding:15px 25px;border:1px solid #e95725;border-radius:5px;color:#ffffff;font-size:14px;font-weight:700;line-height:1.2;text-decoration:none;">View details&nbsp; &#8594;</a>
                 </td></tr>
-              </table>` : ""}
+              </table>`
+                  : ""
+              }
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td style="height:1px;background-color:#ecebe8;font-size:0;line-height:0;">&nbsp;</td></tr></table>
               <p style="margin:19px 0 6px;color:#777777;font-size:12px;line-height:1.6;">© ProPyCoder · This is an account-related message.</p>
             </td></tr>
@@ -302,26 +360,33 @@ ${message}
 
 © ProPyCoder · This is an account-related message.`;
 
-  return { subject, htmlContent, textContent, previewUrl: link || new URL("/", origin).toString(), templateType: "announcement" };
+  return {
+    subject,
+    htmlContent,
+    textContent,
+    previewUrl: link || new URL("/", origin).toString(),
+    templateType: "announcement",
+  };
 }
 
 function generateInstructorRecruitmentTemplate(
-  data: Record<string, any>,
+  data: { firstName?: string },
   origin: URL,
   logoUrl: string,
   customSubject?: string,
   customHtml?: string,
 ): EmailTemplateResult {
   const firstName = data.firstName || "there";
-  const subject =
-    customSubject || "We'd love to have you teach on ProPyCoder";
+  const subject = customSubject || "We'd love to have you teach on ProPyCoder";
   const safeName = escapeHtml(firstName);
   const safeLogoUrl = escapeHtml(logoUrl);
   // const applyUrl = new URL("/instructor", origin).toString();
   const applyUrl = "https://whatsapp.com/channel/0029Vb9YmiuFcovygAGBtZ0Y";
   const safeApplyUrl = escapeHtml(applyUrl);
 
-  const htmlContent = customHtml || `<!doctype html>
+  const htmlContent =
+    customHtml ||
+    `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -394,5 +459,11 @@ Practical skills. Real projects. Your next chapter.
 Need help? support@propycoder.com
 © ProPyCoder`;
 
-  return { subject, htmlContent, textContent, previewUrl: applyUrl, templateType: "instructor-recruitment" };
+  return {
+    subject,
+    htmlContent,
+    textContent,
+    previewUrl: applyUrl,
+    templateType: "instructor-recruitment",
+  };
 }

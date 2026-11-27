@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { invalidateAdminOverview, invalidateHome } from "@/lib/page-cache";
+import { logger } from "@/lib/logger";
 
 const updateInput = z
   .object({
@@ -65,7 +66,10 @@ export async function PATCH(
 
     return NextResponse.json(user);
   } catch (error) {
-    console.error("Admin user update error:", error);
+    logger.error("Admin user update error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to update student" },
       { status: 500 },

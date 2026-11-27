@@ -23,7 +23,7 @@ class EmailNotVerifiedSignin extends CredentialsSignin {
 // the remote database on every request, which made the whole API feel
 // slow. Cache the result briefly per user; session updates invalidate it
 // immediately and the TTL bounds any other staleness.
-const SESSION_PROFILE_TTL_MS = 30_000;
+import { SESSION_PROFILE_TTL_MS } from "@/lib/config";
 const sessionProfileCache = new Map<
   string,
   { name: string; avatar: string | null; expires: number }
@@ -34,6 +34,12 @@ const sessionProfileInflight = new Map<
   string,
   Promise<{ name: string; avatar: string | null } | null>
 >();
+
+/** Clear the session profile cache for a specific user. */
+export function clearSessionProfileCache(userId: string): void {
+  sessionProfileCache.delete(userId);
+  sessionProfileInflight.delete(userId);
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [

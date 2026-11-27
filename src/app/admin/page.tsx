@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -17,7 +23,6 @@ import {
   BookOpen,
   Check,
   CircleDollarSign,
-  Clock3,
   GraduationCap,
   LayoutDashboard,
   LoaderCircle,
@@ -178,9 +183,7 @@ const COURSE_CATEGORIES = [
 ];
 
 type CourseModalState =
-  | { mode: "create" }
-  | { mode: "edit"; courseId: string }
-  | null;
+  { mode: "create" } | { mode: "edit"; courseId: string } | null;
 
 export default function AdminPage() {
   const { data: session, status } = useSession();
@@ -237,7 +240,7 @@ export default function AdminPage() {
   const [enrollCourseSearch, setEnrollCourseSearch] = useState("");
 
   const handleClearCourseCache = async (courseIds?: string[]) => {
-    handleClearCache()
+    handleClearCache();
     if (!courseIds || courseIds.length === 0) {
       setSelectedCourseIds([]);
       setShowCourseCacheModal(true);
@@ -280,7 +283,6 @@ export default function AdminPage() {
     }
   };
 
-
   const handleRestore = async () => {
     if (!restoreFile) return;
     setIsRestoring(true);
@@ -288,7 +290,10 @@ export default function AdminPage() {
     const formData = new FormData();
     formData.append("file", restoreFile);
     try {
-      const res = await fetch("/api/admin/restore", { method: "POST", body: formData });
+      const res = await fetch("/api/admin/restore", {
+        method: "POST",
+        body: formData,
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Restore failed");
       toast.success("Database restored successfully");
@@ -301,12 +306,9 @@ export default function AdminPage() {
     }
   };
 
-  const loadOverview = useCallback(
-    (_refresh?: boolean) => {
-      overviewRes.refresh();
-    },
-    [overviewRes],
-  );
+  const loadOverview = useCallback(() => {
+    overviewRes.refresh();
+  }, [overviewRes]);
 
   const confirm = useConfirm();
 
@@ -387,43 +389,43 @@ export default function AdminPage() {
                 ],
               ),
             ]
-        : view === "enrollments"
-          ? [
-              ["Student", "Email", "Course", "Status", "Enrolled"],
-              ...(filteredItems as AdminOverview["recentEnrollments"]).map(
-                (entry) => [
-                  `${entry.student.firstName} ${entry.student.lastName}`,
-                  entry.student.email,
-                  entry.course.title,
-                  entry.status,
-                  new Date(entry.enrolledAt).toLocaleDateString(),
-                ],
-              ),
-            ]
-          : view === "announcements"
+          : view === "enrollments"
             ? [
-                ["Title", "Message", "Recipients", "Sent"],
-                ...(filteredItems as AdminOverview["recentAnnouncements"]).map(
-                  (announcement) => [
+                ["Student", "Email", "Course", "Status", "Enrolled"],
+                ...(filteredItems as AdminOverview["recentEnrollments"]).map(
+                  (entry) => [
+                    `${entry.student.firstName} ${entry.student.lastName}`,
+                    entry.student.email,
+                    entry.course.title,
+                    entry.status,
+                    new Date(entry.enrolledAt).toLocaleDateString(),
+                  ],
+                ),
+              ]
+            : view === "announcements"
+              ? [
+                  ["Title", "Message", "Recipients", "Sent"],
+                  ...(
+                    filteredItems as AdminOverview["recentAnnouncements"]
+                  ).map((announcement) => [
                     announcement.title,
                     announcement.message.replaceAll("\n", " "),
                     String(announcement.recipients),
                     new Date(announcement.createdAt).toLocaleDateString(),
-                  ],
-                ),
-              ]
-            : [
-              ["Course", "Category", "Instructor", "Status", "Students"],
-              ...(filteredItems as AdminOverview["recentCourses"]).map(
-                (course) => [
-                  course.title,
-                  course.category,
-                  `${course.instructor.firstName} ${course.instructor.lastName}`,
-                  course.status,
-                  String(course._count.enrollments),
-                ],
-              ),
-            ];
+                  ]),
+                ]
+              : [
+                  ["Course", "Category", "Instructor", "Status", "Students"],
+                  ...(filteredItems as AdminOverview["recentCourses"]).map(
+                    (course) => [
+                      course.title,
+                      course.category,
+                      `${course.instructor.firstName} ${course.instructor.lastName}`,
+                      course.status,
+                      String(course._count.enrollments),
+                    ],
+                  ),
+                ];
     const csv = rows
       .map((row) =>
         row.map((value) => `"${value.replaceAll('"', '""')}"`).join(","),
@@ -441,10 +443,10 @@ export default function AdminPage() {
 
   async function updateStudentStatus(userId: string, isActive: boolean) {
     if (
-      !await confirm({
+      !(await confirm({
         title: "Confirm action",
         message: `${isActive ? "Deactivate" : "Reactivate"} this student account?`,
-      })
+      }))
     )
       return;
     try {
@@ -455,7 +457,7 @@ export default function AdminPage() {
       });
       if (!response.ok) throw new Error("Student update failed");
       toast.success(`Student ${isActive ? "deactivated" : "reactivated"}`);
-      await loadOverview(true);
+      await loadOverview();
     } catch {
       toast.error("Could not update this student account");
     }
@@ -473,7 +475,7 @@ export default function AdminPage() {
       toast.success(
         `Course ${nextStatus === "PUBLISHED" ? "published" : "unpublished"}`,
       );
-      await loadOverview(true);
+      await loadOverview();
     } catch {
       toast.error("Could not update this course");
     }
@@ -570,7 +572,7 @@ export default function AdminPage() {
       }
       toast.success(editing ? "Course updated" : "Course created");
       setCourseModal(null);
-      await loadOverview(true);
+      await loadOverview();
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Could not save the course",
@@ -582,10 +584,10 @@ export default function AdminPage() {
 
   async function deleteCourse(course: AdminOverview["recentCourses"][number]) {
     if (
-      !await confirm({
+      !(await confirm({
         title: "Delete course",
         message: `Delete "${course.title}"? Its modules, lessons, quizzes and enrollments will be removed too.`,
-      })
+      }))
     )
       return;
     try {
@@ -594,7 +596,7 @@ export default function AdminPage() {
       });
       if (!response.ok) throw new Error("Course deletion failed");
       toast.success("Course deleted");
-      await loadOverview(true);
+      await loadOverview();
     } catch {
       toast.error("Could not delete this course");
     }
@@ -606,12 +608,13 @@ export default function AdminPage() {
   ) {
     const name = `${user.firstName} ${user.lastName}`;
     if (
-      !await confirm({
+      !(await confirm({
         title: "Confirm role change",
-        message: role === "INSTRUCTOR"
-          ? `Promote ${name} to instructor? They will be able to create and manage courses.`
-          : `Demote ${name} back to student?`,
-      })
+        message:
+          role === "INSTRUCTOR"
+            ? `Promote ${name} to instructor? They will be able to create and manage courses.`
+            : `Demote ${name} back to student?`,
+      }))
     )
       return;
     try {
@@ -631,7 +634,7 @@ export default function AdminPage() {
           ? `${name} is now an instructor`
           : `${name} is now a student`,
       );
-      await loadOverview(true);
+      await loadOverview();
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Could not update this role",
@@ -644,10 +647,10 @@ export default function AdminPage() {
   ) {
     const name = `${enrollment.student.firstName} ${enrollment.student.lastName}`;
     if (
-      !await confirm({
+      !(await confirm({
         title: "Remove enrollment",
         message: `Remove ${name} from "${enrollment.course.title}"? Their progress in this course will no longer count.`,
-      })
+      }))
     )
       return;
     try {
@@ -656,7 +659,7 @@ export default function AdminPage() {
       });
       if (!response.ok) throw new Error("Enrollment removal failed");
       toast.success(`${name} removed from the course`);
-      await loadOverview(true);
+      await loadOverview();
     } catch {
       toast.error("Could not remove this enrollment");
     }
@@ -666,10 +669,10 @@ export default function AdminPage() {
     announcement: AdminOverview["recentAnnouncements"][number],
   ) {
     if (
-      !await confirm({
+      !(await confirm({
         title: "Delete announcement",
         message: `Delete "${announcement.title}"? It will disappear from the public board and from every inbox.`,
-      })
+      }))
     )
       return;
     try {
@@ -679,7 +682,7 @@ export default function AdminPage() {
       );
       if (!response.ok) throw new Error("Announcement deletion failed");
       toast.success("Announcement deleted");
-      await loadOverview(true);
+      await loadOverview();
     } catch {
       toast.error("Could not delete this announcement");
     }
@@ -711,7 +714,7 @@ export default function AdminPage() {
       );
       setAnnouncementOpen(false);
       setAnnounceForm({ title: "", message: "", link: "", audience: "ALL" });
-      await loadOverview(true);
+      await loadOverview();
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -731,10 +734,10 @@ export default function AdminPage() {
   }) {
     const name = `${user.firstName} ${user.lastName}`;
     if (
-      !await confirm({
+      !(await confirm({
         title: "Confirm action",
         message: `${user.isActive ? "Deactivate" : "Reactivate"} ${name}'s instructor account?`,
-      })
+      }))
     )
       return;
     try {
@@ -745,7 +748,7 @@ export default function AdminPage() {
       });
       if (!response.ok) throw new Error("Instructor update failed");
       toast.success(`Account ${user.isActive ? "deactivated" : "reactivated"}`);
-      await loadOverview(true);
+      await loadOverview();
     } catch {
       toast.error("Could not update this instructor account");
     }
@@ -862,7 +865,7 @@ export default function AdminPage() {
               <button
                 className="admin-button"
                 title="Refresh dashboard"
-                onClick={() => void loadOverview(true)}
+                onClick={() => void loadOverview()}
                 disabled={isRefreshing}
               >
                 <RefreshCw
@@ -949,7 +952,7 @@ export default function AdminPage() {
                   <button
                     type="button"
                     className="admin-shortcut admin-shortcut-button"
-          
+
                     onClick={() => void handleClearCourseCache()}
                     disabled={isClearingCache}
                   >
@@ -961,7 +964,9 @@ export default function AdminPage() {
                       )}
                     </span>
                     <span>
-                      <strong>{isClearingCache ? "Clearing..." : "Clear server cache"}</strong>
+                      <strong>
+                        {isClearingCache ? "Clearing..." : "Clear server cache"}
+                      </strong>
                       <small>Purge cache for a specific course</small>
                     </span>
                     <ArrowUpRight size={16} />
@@ -969,28 +974,143 @@ export default function AdminPage() {
                   {showCourseCacheModal && (
                     <div
                       className="auth-dialog-backdrop"
-                      onClick={(e) => { if (e.target === e.currentTarget) setShowCourseCacheModal(false); }}
-                      style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
+                      onClick={(e) => {
+                        if (e.target === e.currentTarget)
+                          setShowCourseCacheModal(false);
+                      }}
+                      style={{
+                        position: "fixed",
+                        inset: 0,
+                        zIndex: 9999,
+                        background: "rgba(0,0,0,0.5)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
                     >
-                      <div className="auth-dialog" style={{ maxWidth: 520, width: "100%", padding: 20, borderRadius: 12 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                      <div
+                        className="auth-dialog"
+                        style={{
+                          maxWidth: 520,
+                          width: "100%",
+                          padding: 20,
+                          borderRadius: 12,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: 8,
+                          }}
+                        >
                           <h2 style={{ margin: 0 }}>Clear course cache</h2>
-                          <button type="button" onClick={() => setShowCourseCacheModal(false)} style={{ background: "transparent", border: "none", fontSize: 20, cursor: "pointer", color: "#6b7280" }}>×</button>
+                          <button
+                            type="button"
+                            onClick={() => setShowCourseCacheModal(false)}
+                            style={{
+                              background: "transparent",
+                              border: "none",
+                              fontSize: 20,
+                              cursor: "pointer",
+                              color: "#6b7280",
+                            }}
+                          >
+                            ×
+                          </button>
                         </div>
-                        <p className="auth-dialog-description" style={{ marginBottom: 12 }}>
-                          Select one or more courses to revalidate. Shift-click a checkbox to select the range between two selections.
+                        <p
+                          className="auth-dialog-description"
+                          style={{ marginBottom: 12 }}
+                        >
+                          Select one or more courses to revalidate. Shift-click
+                          a checkbox to select the range between two selections.
                         </p>
-                        <input type="text" placeholder="Search courses..." value={cacheSearch} onChange={(e) => setCacheSearch(e.target.value)} onFocus={(e) => (e.currentTarget.style.borderColor = "#e95f32")} onBlur={(e) => (e.currentTarget.style.borderColor = "var(--line)")} style={{ width: "100%", marginBottom: 8, padding: 6, border: "1px solid var(--line)", borderRadius: 6, background: "var(--background)", color: "var(--foreground)", outline: "none" }} />
-                        <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
-                          <button type="button" className="admin-button" onClick={() => setSelectedCourseIds(filteredCacheCourses.map((c) => c.id))}>Select all</button>
-                          <button type="button" className="admin-button" onClick={() => setSelectedCourseIds([])}>Clear selection</button>
-                          <button type="button" className="admin-button" onClick={() => setSelectedCourseIds((prev) => filteredCacheCourses.map((c) => c.id).filter((id) => !prev.includes(id)))}>Inverse</button>
-                          <span style={{ marginLeft: "auto", alignSelf: "center", fontSize: 13, color: "#6b7280" }}>
+                        <input
+                          type="text"
+                          placeholder="Search courses..."
+                          value={cacheSearch}
+                          onChange={(e) => setCacheSearch(e.target.value)}
+                          onFocus={(e) =>
+                            (e.currentTarget.style.borderColor = "#e95f32")
+                          }
+                          onBlur={(e) =>
+                            (e.currentTarget.style.borderColor = "var(--line)")
+                          }
+                          style={{
+                            width: "100%",
+                            marginBottom: 8,
+                            padding: 6,
+                            border: "1px solid var(--line)",
+                            borderRadius: 6,
+                            background: "var(--background)",
+                            color: "var(--foreground)",
+                            outline: "none",
+                          }}
+                        />
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 6,
+                            marginBottom: 8,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <button
+                            type="button"
+                            className="admin-button"
+                            onClick={() =>
+                              setSelectedCourseIds(
+                                filteredCacheCourses.map((c) => c.id),
+                              )
+                            }
+                          >
+                            Select all
+                          </button>
+                          <button
+                            type="button"
+                            className="admin-button"
+                            onClick={() => setSelectedCourseIds([])}
+                          >
+                            Clear selection
+                          </button>
+                          <button
+                            type="button"
+                            className="admin-button"
+                            onClick={() =>
+                              setSelectedCourseIds((prev) =>
+                                filteredCacheCourses
+                                  .map((c) => c.id)
+                                  .filter((id) => !prev.includes(id)),
+                              )
+                            }
+                          >
+                            Inverse
+                          </button>
+                          <span
+                            style={{
+                              marginLeft: "auto",
+                              alignSelf: "center",
+                              fontSize: 13,
+                              color: "#6b7280",
+                            }}
+                          >
                             {selectedCourseIds.length} selected
                           </span>
                         </div>
-                        <div style={{ maxHeight: 320, overflowY: "auto", border: "1px solid var(--line)", borderRadius: 8, padding: 4, marginBottom: 12, background: "var(--paper)" }}>
-                          {filteredCacheCourses.map((course, idx) => (
+                        <div
+                          style={{
+                            maxHeight: 320,
+                            overflowY: "auto",
+                            border: "1px solid var(--line)",
+                            borderRadius: 8,
+                            padding: 4,
+                            marginBottom: 12,
+                            background: "var(--paper)",
+                          }}
+                        >
+                          {filteredCacheCourses.map((course) => (
                             <label
                               key={course.id}
                               style={{
@@ -1000,7 +1120,11 @@ export default function AdminPage() {
                                 padding: "8px 10px",
                                 borderRadius: 6,
                                 cursor: "pointer",
-                                background: selectedCourseIds.includes(course.id) ? "rgba(233, 95, 50, 0.2)" : "transparent",
+                                background: selectedCourseIds.includes(
+                                  course.id,
+                                )
+                                  ? "rgba(233, 95, 50, 0.2)"
+                                  : "transparent",
                                 transition: "background 0.15s",
                               }}
                             >
@@ -1008,12 +1132,20 @@ export default function AdminPage() {
                                 type="checkbox"
                                 checked={selectedCourseIds.includes(course.id)}
                                 onChange={(e) => {
-                                  const idx = filteredCacheCourses.findIndex((c) => c.id === course.id);
-                                  const shift = (e.nativeEvent as MouseEvent).shiftKey;
+                                  const idx = filteredCacheCourses.findIndex(
+                                    (c) => c.id === course.id,
+                                  );
+                                  const shift = (e.nativeEvent as MouseEvent)
+                                    .shiftKey;
                                   if (shift && lastCheckedIndex !== null) {
-                                    const start = Math.min(lastCheckedIndex, idx);
+                                    const start = Math.min(
+                                      lastCheckedIndex,
+                                      idx,
+                                    );
                                     const end = Math.max(lastCheckedIndex, idx);
-                                    const rangeIds = filteredCacheCourses.slice(start, end + 1).map((c) => c.id);
+                                    const rangeIds = filteredCacheCourses
+                                      .slice(start, end + 1)
+                                      .map((c) => c.id);
                                     const willCheck = e.target.checked;
                                     setSelectedCourseIds((prev) => {
                                       const set = new Set(prev);
@@ -1026,22 +1158,48 @@ export default function AdminPage() {
                                   } else {
                                     setSelectedCourseIds((prev) =>
                                       e.target.checked
-                                        ? (prev.includes(course.id) ? prev : [...prev, course.id])
+                                        ? prev.includes(course.id)
+                                          ? prev
+                                          : [...prev, course.id]
                                         : prev.filter((id) => id !== course.id),
                                     );
                                   }
                                   setLastCheckedIndex(idx);
                                 }}
-                                style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#e95f32" }}
+                                style={{
+                                  width: 16,
+                                  height: 16,
+                                  cursor: "pointer",
+                                  accentColor: "#e95f32",
+                                }}
                               />
-                              <span style={{ flex: 1, color: "var(--foreground)" }}>{course.title}</span>
+                              <span
+                                style={{ flex: 1, color: "var(--foreground)" }}
+                              >
+                                {course.title}
+                              </span>
                             </label>
                           ))}
                           {filteredCacheCourses.length === 0 && (
-                            <p style={{ padding: 12, textAlign: "center", color: "#6b7280", margin: 0 }}>No courses found.</p>
+                            <p
+                              style={{
+                                padding: 12,
+                                textAlign: "center",
+                                color: "#6b7280",
+                                margin: 0,
+                              }}
+                            >
+                              No courses found.
+                            </p>
                           )}
                         </div>
-                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            justifyContent: "flex-end",
+                          }}
+                        >
                           <button
                             className="admin-button"
                             type="button"
@@ -1053,10 +1211,16 @@ export default function AdminPage() {
                           <button
                             className="admin-button admin-button-primary"
                             type="button"
-                            onClick={() => void handleClearCourseCache(selectedCourseIds)}
-                            disabled={isClearingCache || selectedCourseIds.length === 0}
+                            onClick={() =>
+                              void handleClearCourseCache(selectedCourseIds)
+                            }
+                            disabled={
+                              isClearingCache || selectedCourseIds.length === 0
+                            }
                           >
-                            {isClearingCache ? "Clearing..." : `Clear (${selectedCourseIds.length})`}
+                            {isClearingCache
+                              ? "Clearing..."
+                              : `Clear (${selectedCourseIds.length})`}
                           </button>
                         </div>
                       </div>
@@ -1104,7 +1268,9 @@ export default function AdminPage() {
                       )}
                     </span>
                     <span>
-                      <strong>{isRestoring ? "Restoring..." : "Restore DB backup"}</strong>
+                      <strong>
+                        {isRestoring ? "Restoring..." : "Restore DB backup"}
+                      </strong>
                       <small>Import data from JSON file</small>
                     </span>
                     <ArrowUpRight size={16} />
@@ -1130,44 +1296,83 @@ export default function AdminPage() {
                     <ArrowUpRight size={16} />
                   </Link> */}
                   {showRestoreConfirm && (
-                <div
-                  className="auth-dialog-backdrop"
-                  onClick={(e) => { if (e.target === e.currentTarget) setShowRestoreConfirm(false); }}
-                  style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}
-                >
-                  <div className="auth-dialog">
-                    <div className="auth-dialog-icon" style={{ textAlign: "center", marginBottom: 12 }}>
-                      <ArrowDownToLine size={22} style={{ transform: "rotate(180deg)" }} />
+                    <div
+                      className="auth-dialog-backdrop"
+                      onClick={(e) => {
+                        if (e.target === e.currentTarget)
+                          setShowRestoreConfirm(false);
+                      }}
+                      style={{
+                        position: "fixed",
+                        inset: 0,
+                        zIndex: 9999,
+                        background: "rgba(0,0,0,0.5)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <div className="auth-dialog">
+                        <div
+                          className="auth-dialog-icon"
+                          style={{ textAlign: "center", marginBottom: 12 }}
+                        >
+                          <ArrowDownToLine
+                            size={22}
+                            style={{ transform: "rotate(180deg)" }}
+                          />
+                        </div>
+                        <h2 style={{ textAlign: "center", marginBottom: 8 }}>
+                          Restore Database
+                        </h2>
+                        <p
+                          className="auth-dialog-description"
+                          style={{ textAlign: "center", marginBottom: 16 }}
+                        >
+                          This will <strong>replace ALL existing data</strong>{" "}
+                          with the contents of the backup file. This action
+                          cannot be undone.
+                        </p>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            justifyContent: "flex-end",
+                          }}
+                        >
+                          <button
+                            className="admin-button"
+                            type="button"
+                            onClick={() => {
+                              setShowRestoreConfirm(false);
+                              setRestoreFile(null);
+                            }}
+                            disabled={isRestoring}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            className="admin-button admin-button-danger"
+                            type="button"
+                            onClick={handleRestore}
+                            disabled={isRestoring}
+                          >
+                            {isRestoring ? (
+                              <>
+                                <LoaderCircle
+                                  size={16}
+                                  className="admin-spin"
+                                />{" "}
+                                Restoring...
+                              </>
+                            ) : (
+                              "Confirm Restore"
+                            )}
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <h2 style={{ textAlign: "center", marginBottom: 8 }}>Restore Database</h2>
-                    <p className="auth-dialog-description" style={{ textAlign: "center", marginBottom: 16 }}>
-                      This will <strong>replace ALL existing data</strong> with the contents of the backup file. This action cannot be undone.
-                    </p>
-                    <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                      <button
-                        className="admin-button"
-                        type="button"
-                        onClick={() => { setShowRestoreConfirm(false); setRestoreFile(null); }}
-                        disabled={isRestoring}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        className="admin-button admin-button-danger"
-                        type="button"
-                        onClick={handleRestore}
-                        disabled={isRestoring}
-                      >
-                        {isRestoring ? (
-                          <><LoaderCircle size={16} className="admin-spin" /> Restoring...</>
-                        ) : (
-                          "Confirm Restore"
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
+                  )}
                 </section>
               </div>
               <section className="admin-panel admin-recent-panel">
@@ -1228,8 +1433,8 @@ export default function AdminPage() {
                         : view === "instructors"
                           ? `${overview.instructors.filter((entry) => entry.role === "INSTRUCTOR").length} instructors · ${metrics.instructorCount} active`
                           : view === "announcements"
-                          ? `${overview.recentAnnouncements.length} announcements sent`
-                          : `${metrics.enrollmentCount} total enrollments`}
+                            ? `${overview.recentAnnouncements.length} announcements sent`
+                            : `${metrics.enrollmentCount} total enrollments`}
                   </p>
                 </div>
                 <div className="admin-management-actions">
@@ -1290,80 +1495,185 @@ export default function AdminPage() {
                   onDemote={updateUserRole}
                 />
               ) : view === "enrollments" ? (
-                 <>
-                 <button
-                   className="admin-button admin-button-primary"
-                   style={{ marginBottom: 12 }}
-                   onClick={() => {
-                     setEnrollStudentId(overview.recentUsers[0]?.id ?? "");
-                     setEnrollCourseId(overview.recentCourses[0]?.id ?? "");
-                     setShowEnrollModal(true);
-                   }}
-                 >
-                   Enroll student
-                 </button>
+                <>
+                  <button
+                    className="admin-button admin-button-primary"
+                    style={{ marginBottom: 12 }}
+                    onClick={() => {
+                      setEnrollStudentId(overview.recentUsers[0]?.id ?? "");
+                      setEnrollCourseId(overview.recentCourses[0]?.id ?? "");
+                      setShowEnrollModal(true);
+                    }}
+                  >
+                    Enroll student
+                  </button>
 
-                 {showEnrollModal && (
-                   <div className="admin-modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setShowEnrollModal(false); }}>
-                     <div className="admin-modal">
-                       <div className="admin-modal-head">
-                         <h2>Enroll student</h2>
-                         <button type="button" className="admin-modal-close" onClick={() => setShowEnrollModal(false)}>×</button>
-                       </div>
-                       <form className="instructor-form admin-modal-form" onSubmit={async (e) => {
-                         e.preventDefault();
-                         setIsEnrolling(true);
-                         try {
-                           const response = await fetch("/api/admin/enrollments", {
-                             method: "POST",
-                             headers: { "Content-Type": "application/json" },
-                             body: JSON.stringify({ studentId: enrollStudentId, courseId: enrollCourseId }),
-                           });
-                           const data = await response.json().catch(() => null);
-                           if (!response.ok) throw new Error(data?.error ?? "Enrollment failed");
-                           toast.success("Student enrolled successfully");
-                           setShowEnrollModal(false);
-                           overviewRes.refresh();
-                         } catch (err) {
-                           toast.error(err instanceof Error ? err.message : "Enrollment failed");
-                         } finally {
-                           setIsEnrolling(false);
-                         }
-                       }}>
-                         <label>
-                           Student
-                           <input type="text" placeholder="Search student..." value={enrollStudentSearch} onChange={(e) => setEnrollStudentSearch(e.target.value)} />
-                           <select value={enrollStudentId} onChange={(e) => setEnrollStudentId(e.target.value)} required>
-                             {overview.recentUsers.filter((u) => u.role === "STUDENT" && `${u.firstName} ${u.lastName} ${u.email}`.toLowerCase().includes(enrollStudentSearch.toLowerCase())).map((u) => (
-                               <option key={u.id} value={u.id}>{u.firstName} {u.lastName} ({u.email})</option>
-                             ))}
-                           </select>
-                         </label>
-                         <label>
-                           Course
-                           <input type="text" placeholder="Search course..." value={enrollCourseSearch} onChange={(e) => setEnrollCourseSearch(e.target.value)} />
-                           <select value={enrollCourseId} onChange={(e) => setEnrollCourseId(e.target.value)} required>
-                             {overview.recentCourses.filter((c) => c.title.toLowerCase().includes(enrollCourseSearch.toLowerCase()) && !overview.recentEnrollments.some((e) => e.student && e.course.id === c.id && e.student.email && overview.recentUsers.find((u) => u.id === enrollStudentId)?.email === e.student.email)).map((c) => (
-                               <option key={c.id} value={c.id}>{c.title}</option>
-                             ))}
-                           </select>
-                         </label>
-                         <div className="admin-modal-actions">
-                           <button type="button" className="admin-button" onClick={() => setShowEnrollModal(false)} disabled={isEnrolling}>Cancel</button>
-                           <button type="submit" className="admin-button admin-button-primary" disabled={isEnrolling || !enrollStudentId || !enrollCourseId}>
-                             {isEnrolling ? "Enrolling..." : "Enroll"}
-                           </button>
-                         </div>
-                       </form>
-                     </div>
-                   </div>
-                 )}
+                  {showEnrollModal && (
+                    <div
+                      className="admin-modal-backdrop"
+                      onMouseDown={(e) => {
+                        if (e.target === e.currentTarget)
+                          setShowEnrollModal(false);
+                      }}
+                    >
+                      <div className="admin-modal">
+                        <div className="admin-modal-head">
+                          <h2>Enroll student</h2>
+                          <button
+                            type="button"
+                            className="admin-modal-close"
+                            onClick={() => setShowEnrollModal(false)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                        <form
+                          className="instructor-form admin-modal-form"
+                          onSubmit={async (e) => {
+                            e.preventDefault();
+                            setIsEnrolling(true);
+                            try {
+                              const response = await fetch(
+                                "/api/admin/enrollments",
+                                {
+                                  method: "POST",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                  },
+                                  body: JSON.stringify({
+                                    studentId: enrollStudentId,
+                                    courseId: enrollCourseId,
+                                  }),
+                                },
+                              );
+                              const data = await response
+                                .json()
+                                .catch(() => null);
+                              if (!response.ok)
+                                throw new Error(
+                                  data?.error ?? "Enrollment failed",
+                                );
+                              toast.success("Student enrolled successfully");
+                              setShowEnrollModal(false);
+                              overviewRes.refresh();
+                            } catch (err) {
+                              toast.error(
+                                err instanceof Error
+                                  ? err.message
+                                  : "Enrollment failed",
+                              );
+                            } finally {
+                              setIsEnrolling(false);
+                            }
+                          }}
+                        >
+                          <label>
+                            Student
+                            <input
+                              type="text"
+                              placeholder="Search student..."
+                              value={enrollStudentSearch}
+                              onChange={(e) =>
+                                setEnrollStudentSearch(e.target.value)
+                              }
+                            />
+                            <select
+                              value={enrollStudentId}
+                              onChange={(e) =>
+                                setEnrollStudentId(e.target.value)
+                              }
+                              required
+                            >
+                              {overview.recentUsers
+                                .filter(
+                                  (u) =>
+                                    u.role === "STUDENT" &&
+                                    `${u.firstName} ${u.lastName} ${u.email}`
+                                      .toLowerCase()
+                                      .includes(
+                                        enrollStudentSearch.toLowerCase(),
+                                      ),
+                                )
+                                .map((u) => (
+                                  <option key={u.id} value={u.id}>
+                                    {u.firstName} {u.lastName} ({u.email})
+                                  </option>
+                                ))}
+                            </select>
+                          </label>
+                          <label>
+                            Course
+                            <input
+                              type="text"
+                              placeholder="Search course..."
+                              value={enrollCourseSearch}
+                              onChange={(e) =>
+                                setEnrollCourseSearch(e.target.value)
+                              }
+                            />
+                            <select
+                              value={enrollCourseId}
+                              onChange={(e) =>
+                                setEnrollCourseId(e.target.value)
+                              }
+                              required
+                            >
+                              {overview.recentCourses
+                                .filter(
+                                  (c) =>
+                                    c.title
+                                      .toLowerCase()
+                                      .includes(
+                                        enrollCourseSearch.toLowerCase(),
+                                      ) &&
+                                    !overview.recentEnrollments.some(
+                                      (e) =>
+                                        e.student &&
+                                        e.course.id === c.id &&
+                                        e.student.email &&
+                                        overview.recentUsers.find(
+                                          (u) => u.id === enrollStudentId,
+                                        )?.email === e.student.email,
+                                    ),
+                                )
+                                .map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    {c.title}
+                                  </option>
+                                ))}
+                            </select>
+                          </label>
+                          <div className="admin-modal-actions">
+                            <button
+                              type="button"
+                              className="admin-button"
+                              onClick={() => setShowEnrollModal(false)}
+                              disabled={isEnrolling}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="submit"
+                              className="admin-button admin-button-primary"
+                              disabled={
+                                isEnrolling ||
+                                !enrollStudentId ||
+                                !enrollCourseId
+                              }
+                            >
+                              {isEnrolling ? "Enrolling..." : "Enroll"}
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  )}
 
-                <EnrollmentTable
-                  items={filteredItems as AdminOverview["recentEnrollments"]}
-                  onRemove={removeEnrollment}
-                />
-                 </>
+                  <EnrollmentTable
+                    items={filteredItems as AdminOverview["recentEnrollments"]}
+                    onRemove={removeEnrollment}
+                  />
+                </>
               ) : (
                 <AnnouncementTable
                   items={filteredItems as AdminOverview["recentAnnouncements"]}
@@ -1382,8 +1692,8 @@ export default function AdminPage() {
                   : view === "announcements"
                     ? 25
                     : 50}{" "}
-                latest records.
-                Dashboard data is read directly from your LMS database.
+                latest records. Dashboard data is read directly from your LMS
+                database.
               </div>
             </section>
           )}
@@ -1762,8 +2072,7 @@ export default function AdminPage() {
                       </select>
                     </label>
                     <label>
-                      Link{" "}
-                      <span className="instructor-optional">Optional</span>
+                      Link <span className="instructor-optional">Optional</span>
                       <input
                         type="url"
                         value={announceForm.link}
@@ -1836,7 +2145,7 @@ export default function AdminPage() {
                 <div className="admin-modal-scroll">
                   <CourseContentManager
                     courseId={contentCourse.id}
-                    onChanged={() => void loadOverview(true)}
+                    onChanged={() => void loadOverview()}
                   />
                 </div>
               </div>
@@ -1981,7 +2290,10 @@ function StudentTable({
                 <span className="admin-avatar">
                   {user.avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={user.avatar} alt="" />
+                    <img
+                      src={user.avatar}
+                      alt={`${user.firstName} ${user.lastName}`}
+                    />
                   ) : (
                     <>
                       {user.firstName[0]}
@@ -2093,7 +2405,9 @@ function AnnouncementTable({
   onDelete,
 }: {
   items: AdminOverview["recentAnnouncements"];
-  onDelete: (announcement: AdminOverview["recentAnnouncements"][number]) => void;
+  onDelete: (
+    announcement: AdminOverview["recentAnnouncements"][number],
+  ) => void;
 }) {
   return (
     <div className="admin-table-scroll">
@@ -2188,7 +2502,10 @@ function InstructorTable({
                 <span className="admin-avatar">
                   {instructor.avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={instructor.avatar} alt="" />
+                    <img
+                      src={instructor.avatar}
+                      alt={`${instructor.firstName} ${instructor.lastName}`}
+                    />
                   ) : (
                     <>
                       {instructor.firstName[0]}

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   try {
@@ -80,7 +81,13 @@ export async function GET() {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Database backup error:", message);
-    return NextResponse.json({ error: "Failed to create backup." }, { status: 500 });
+    logger.error("Database backup error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: message },
+    });
+    return NextResponse.json(
+      { error: "Failed to create backup." },
+      { status: 500 },
+    );
   }
 }

@@ -1,17 +1,14 @@
 import { prisma } from "@/lib/prisma";
+import { CATALOG_CACHE_CONTROL } from "@/lib/config";
 import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
-
-// Public catalog � safe to cache at the edge to reduce Fast Origin Transfer.
-export const revalidate = 2592000;
 import { auth } from "@/app/api/auth/[...nextauth]/route";
-import {
-  CATALOG_TAG,
-  invalidateCatalog,
-} from "@/lib/course-cache";
+import { CATALOG_TAG, invalidateCatalog } from "@/lib/course-cache";
+import { clearCourseResourceCache } from "@/lib/use-resource";
 import { invalidateAdminOverview, invalidateHome } from "@/lib/page-cache";
 import { imageUrl } from "@/lib/image-urls";
+import { logger } from "@/lib/logger";
 
 // GET all courses
 export async function GET(request: NextRequest) {
@@ -124,12 +121,14 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(payload, {
       headers: {
-        "Cache-Control":
-          "public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=60",
+        "Cache-Control": CATALOG_CACHE_CONTROL,
       },
     });
   } catch (error) {
-    console.error("Course fetch error:", error);
+    logger.error("Course fetch error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to fetch courses" },
       { status: 500 },
@@ -177,13 +176,17 @@ export async function POST(request: NextRequest) {
     });
 
     invalidateCatalog();
+    clearCourseResourceCache(course.id);
     // New course moves the platform totals on the admin dashboard.
     invalidateAdminOverview();
     invalidateHome();
 
     return NextResponse.json(course, { status: 201 });
   } catch (error) {
-    console.error("Course creation error:", error);
+    logger.error("Course creation error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to create course" },
       { status: 500 },

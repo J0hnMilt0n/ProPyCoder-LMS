@@ -2,6 +2,7 @@ import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { NS, invalidateUser, userCached } from "@/lib/page-cache";
+import { logger } from "@/lib/logger";
 
 // GET the signed-in user's personal notification inbox (incl. unread count)
 export async function GET() {
@@ -41,7 +42,10 @@ export async function GET() {
 
     return NextResponse.json(payload);
   } catch (error) {
-    console.error("Inbox error:", error);
+    logger.error("Inbox error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to load notifications" },
       { status: 500 },
@@ -78,7 +82,10 @@ export async function PATCH(request: NextRequest) {
     invalidateUser(NS.notifications, session.user.id);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Inbox update error:", error);
+    logger.error("Inbox update error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to update notifications" },
       { status: 500 },

@@ -1,6 +1,6 @@
-
 import { prisma } from "@/lib/prisma";
 import { invalidateCatalog, invalidateCourse } from "@/lib/course-cache";
+import { clearCourseResourceCache } from "@/lib/use-resource";
 import {
   NS,
   invalidateAdminOverview,
@@ -30,16 +30,12 @@ export async function completePhonePePayment(
     return { success: true, alreadyCompleted: true };
   }
 
-  if (
-    payment.status !== "PENDING" ||
-    payment.paymentMethod !== "PHONEPE"
-  ) {
+  if (payment.status !== "PENDING" || payment.paymentMethod !== "PHONEPE") {
     throw new Error("Payment is not eligible for completion");
   }
 
   const detail = provider.paymentDetails?.find(
-    (attempt) =>
-      attempt.state === "COMPLETED" && attempt.transactionId,
+    (attempt) => attempt.state === "COMPLETED" && attempt.transactionId,
   );
 
   const result = await prisma.$transaction(async (tx) => {
@@ -66,9 +62,7 @@ export async function completePhonePePayment(
 
     if (payment.bundleId && payment.bundle) {
       // Bundle: create all missing enrollments.
-      const courseIds = payment.bundle.courses.map(
-        ({ courseId }) => courseId,
-      );
+      const courseIds = payment.bundle.courses.map(({ courseId }) => courseId);
 
       await tx.enrollment.createMany({
         data: courseIds.map((courseId) => ({
@@ -125,11 +119,7 @@ export async function completePhonePePayment(
 
     // For individual purchases, only link the enrollment if
     // another payment does not already reference it.
-    if (
-      !payment.bundleId &&
-      payment.courseId &&
-      enrollments[0]
-    ) {
+    if (!payment.bundleId && payment.courseId && enrollments[0]) {
       const existingLink = await tx.payment.findFirst({
         where: {
           enrollmentId: enrollments[0].id,
@@ -159,6 +149,7 @@ export async function completePhonePePayment(
     result.enrollments.map(({ courseId }) => courseId),
   )) {
     invalidateCourse(courseId);
+    clearCourseResourceCache(courseId);
   }
 
   invalidateCatalog();

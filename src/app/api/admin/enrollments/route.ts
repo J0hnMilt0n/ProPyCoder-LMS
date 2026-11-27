@@ -1,6 +1,7 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { invalidateCatalog, invalidateCourse } from "@/lib/course-cache";
+import { clearCourseResourceCache } from "@/lib/use-resource";
 import {
   NS,
   invalidateAdminOverview,
@@ -8,6 +9,7 @@ import {
   invalidateUser,
 } from "@/lib/page-cache";
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 // POST manually enroll a student in a course (admin only)
 export async function POST(request: NextRequest) {
@@ -26,12 +28,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const student = await prisma.user.findUnique({ where: { id: studentId }, select: { id: true, role: true } });
+    const student = await prisma.user.findUnique({
+      where: { id: studentId },
+      select: { id: true, role: true },
+    });
     if (!student || student.role !== "STUDENT") {
-      return NextResponse.json(
-        { error: "Student not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Student not found" }, { status: 404 });
     }
     const course = await prisma.course.findUnique({ where: { id: courseId } });
     if (!course) {
@@ -58,6 +60,7 @@ export async function POST(request: NextRequest) {
 
     invalidateCourse(courseId);
     invalidateCatalog();
+    clearCourseResourceCache(courseId);
     invalidateAdminOverview();
     invalidateHome();
     invalidateUser(NS.enrollments, studentId);
@@ -65,7 +68,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(enrollment, { status: 201 });
   } catch (error) {
-    console.error("Admin enrollment creation error:", error);
+    logger.error("Admin enrollment creation error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to enroll student" },
       { status: 500 },

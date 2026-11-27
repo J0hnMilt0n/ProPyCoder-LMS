@@ -7,6 +7,7 @@ import type {
   ChangeEvent,
   PointerEvent as ReactPointerEvent,
 } from "react";
+import type { YTPlayer, YTEvent } from "@/types/youtube";
 import {
   Maximize,
   Lock,
@@ -33,15 +34,17 @@ const RATES = [0.25, 0.5, 1, 1.25, 1.5, 2];
  */
 function resolveVideoSource(
   videoId: string | null,
-  videoUrl: string | null | undefined
+  videoUrl: string | null | undefined,
 ): {
   src: string | null;
   type: "proxy" | "youtube" | "native" | "obfuscated";
   label: string;
 } {
-
   // If we have a direct videoUrl that's not YouTube, use it natively
-  if (videoUrl && !/^(?:https?:)?\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//.test(videoUrl)) {
+  if (
+    videoUrl &&
+    !/^(?:https?:)?\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//.test(videoUrl)
+  ) {
     // console.log("Failed")
     return { src: videoUrl, type: "native", label: "Direct video URL" };
   }
@@ -49,15 +52,26 @@ function resolveVideoSource(
   if (videoId) {
     return { src: videoId, type: "youtube", label: "YouTube embed (fallback)" };
   }
-  if (videoUrl && /^(?:https?:)?\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//.test(videoUrl)) {
+  if (
+    videoUrl &&
+    /^(?:https?:)?\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//.test(videoUrl)
+  ) {
     const videoId = extractYouTubeId(videoUrl);
     if (videoId) {
-      return { src: videoId, type: "youtube", label: "YouTube embed (fallback)" };
+      return {
+        src: videoId,
+        type: "youtube",
+        label: "YouTube embed (fallback)",
+      };
     }
     // Fallback to iframe if we can't extract the ID
-    return { src: videoUrl, type: "youtube", label: "YouTube embed (fallback)" };
+    return {
+      src: videoUrl,
+      type: "youtube",
+      label: "YouTube embed (fallback)",
+    };
   }
-  
+
   // If we have a YouTube videoId, use the stream proxy
   // if (videoId) {
   //   const proxyUrl = `/api/youtube/stream?videoId=${videoId}&itag=137`;
@@ -111,12 +125,7 @@ interface LessonVideoPlayerProps {
 }
 
 type GestureZone = "left" | "center" | "right";
-type GestureMode =
-  | "pending"
-  | "vertical"
-  | "horizontal"
-  | "hold"
-  | "ignored";
+type GestureMode = "pending" | "vertical" | "horizontal" | "hold" | "ignored";
 
 interface TouchGesture {
   pointerId: number;
@@ -154,8 +163,7 @@ export function LessonVideoPlayer({
 }: LessonVideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const ytContainerRef = useRef<HTMLDivElement>(null);
-  const ytPlayerRef = useRef<any>(null);
-  const [ytReady, setYtReady] = useState(false);
+  const ytPlayerRef = useRef<YTPlayer | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const controlsHiddenRef = useRef(false);
@@ -170,13 +178,12 @@ export function LessonVideoPlayer({
   const [rateMenuOpen, setRateMenuOpen] = useState(false);
   const youtubeId = videoId ?? (videoUrl ? extractYouTubeId(videoUrl) : null);
   const isYouTube = !!youtubeId;
-  
+
   // Resolve the video source using the new priority system
   const sourceInfo = resolveVideoSource(youtubeId, videoUrl);
   const src = sourceInfo.src;
   const hasMedia = !!youtubeId || !!src;
-  const sourceType = sourceInfo.type;
-  
+
   // Debug logging for source resolution
   // if (process.env.NODE_ENV === "development") {
   //   console.log(`[LessonVideoPlayer] Source resolution:`);
@@ -196,18 +203,17 @@ export function LessonVideoPlayer({
     durationMinutes != null && durationMinutes > 0
       ? configuredStartTime + durationMinutes * 60
       : null;
-  const requestedEndTime =
-    [videoEndTime, durationLimit].reduce<number | null>(
-      (endTime, candidate) =>
-        candidate != null &&
-        Number.isFinite(candidate) &&
-        candidate > configuredStartTime
-          ? endTime == null
-            ? candidate
-            : Math.min(endTime, candidate)
-          : endTime,
-      null,
-    );
+  const requestedEndTime = [videoEndTime, durationLimit].reduce<number | null>(
+    (endTime, candidate) =>
+      candidate != null &&
+      Number.isFinite(candidate) &&
+      candidate > configuredStartTime
+        ? endTime == null
+          ? candidate
+          : Math.min(endTime, candidate)
+        : endTime,
+    null,
+  );
   const clipStartTime =
     duration > 0
       ? Math.min(configuredStartTime, duration)
@@ -215,7 +221,7 @@ export function LessonVideoPlayer({
   const clipEndTime =
     duration > 0
       ? Math.min(requestedEndTime ?? duration, duration)
-      : requestedEndTime ?? duration;
+      : (requestedEndTime ?? duration);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [rateState, setRateState] = useState({
@@ -255,16 +261,19 @@ export function LessonVideoPlayer({
   }, []);
 
   useEffect(() => {
-  // const media = window.matchMedia("(max-width: 1024px)");
-  const media = window.matchMedia("(max-width: 1024px) and (pointer: coarse)");
-  const adaptive_media = window.matchMedia("(max-width: 740px)");
-  const update = () => {setIsMobile(media.matches)
-setIsAdaptive(adaptive_media.matches)
-  };
-  update();
-  media.addEventListener("change", update);
-  return () => media.removeEventListener("change", update);
-}, []);
+    // const media = window.matchMedia("(max-width: 1024px)");
+    const media = window.matchMedia(
+      "(max-width: 1024px) and (pointer: coarse)",
+    );
+    const adaptive_media = window.matchMedia("(max-width: 740px)");
+    const update = () => {
+      setIsMobile(media.matches);
+      setIsAdaptive(adaptive_media.matches);
+    };
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     const media = window.matchMedia("(orientation: portrait)");
@@ -374,7 +383,8 @@ setIsAdaptive(adaptive_media.matches)
           setIsOrientationLocked(false);
           setShowMobileCenterAction(false);
           try {
-            const orientation = window.screen.orientation as ScreenOrientation & {
+            const orientation = window.screen
+              .orientation as ScreenOrientation & {
               unlock?: () => void;
             };
             orientation.unlock?.();
@@ -392,7 +402,7 @@ setIsAdaptive(adaptive_media.matches)
     return () => {
       document.removeEventListener("fullscreenchange", syncFullscreen);
     };
-  }, [isMobile, isNativeFullscreen]);
+  }, [isMobile, isAdaptive, isNativeFullscreen]);
 
   useEffect(() => {
     if (!isMobile || !isFullscreen) return;
@@ -413,7 +423,10 @@ setIsAdaptive(adaptive_media.matches)
     setControlsVisible(true);
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     hideTimerRef.current = setTimeout(() => {
-      if (ytContainerRef.current || (videoRef.current && !videoRef.current.paused)) {
+      if (
+        ytContainerRef.current ||
+        (videoRef.current && !videoRef.current.paused)
+      ) {
         setControlsVisible(false);
         setShowMobileCenterAction(false);
       }
@@ -444,11 +457,7 @@ setIsAdaptive(adaptive_media.matches)
             const d = p.getDuration?.() ?? 0;
             const start =
               d > 0 ? Math.min(configuredStartTime, d) : configuredStartTime;
-            if (
-              requestedEndTime !== null &&
-              d > 0 &&
-              requestedEndTime < d
-            ) {
+            if (requestedEndTime !== null && d > 0 && requestedEndTime < d) {
               const end = Math.min(requestedEndTime, d);
               if (t >= end) {
                 p.seekTo?.(end, true);
@@ -495,16 +504,22 @@ setIsAdaptive(adaptive_media.matches)
 
     const init = () => {
       if (!ytContainerRef.current) return;
-      const YT = (window as any).YT;
+      const YT = window.YT;
+      if (!YT) return;
       const player = new YT.Player(ytContainerRef.current, {
         height: "100%",
         width: "100%",
         videoId: youtubeId,
-        playerVars: { controls: 0, modestbranding: 1, showinfo: 0, rel: 0, branding: 0 },
+        playerVars: {
+          controls: 0,
+          modestbranding: 1,
+          showinfo: 0,
+          rel: 0,
+          branding: 0,
+        },
         events: {
-          onReady: (event: any) => {
+          onReady: (event: YTEvent) => {
             ytPlayerRef.current = event.target;
-            setYtReady(true);
             const p = event.target;
             const d = p.getDuration?.();
             if (typeof d === "number" && d > 0) setDuration(d);
@@ -529,7 +544,7 @@ setIsAdaptive(adaptive_media.matches)
             const end =
               typeof d === "number" && d > 0
                 ? Math.min(requestedEndTime ?? d, d)
-                : requestedEndTime ?? start;
+                : (requestedEndTime ?? start);
             let restoreTime = start;
             if (lessonId) {
               try {
@@ -552,8 +567,9 @@ setIsAdaptive(adaptive_media.matches)
             setCurrentTime(restoreTime);
             progressRestoredRef.current = true;
           },
-          onStateChange: (event: any) => {
-            const YTNS = (window as any).YT;
+          onStateChange: (event: YTEvent) => {
+            const YTNS = window.YT;
+            if (!YTNS) return;
             const state = event.data;
             if (state === YTNS.PlayerState.PLAYING) {
               setIsPlaying(true);
@@ -582,7 +598,9 @@ setIsAdaptive(adaptive_media.matches)
               stopPolling();
               if (lessonId) {
                 try {
-                  window.localStorage.removeItem(`${PROGRESS_PREFIX}${lessonId}`);
+                  window.localStorage.removeItem(
+                    `${PROGRESS_PREFIX}${lessonId}`,
+                  );
                 } catch {
                   // ignore
                 }
@@ -600,12 +618,14 @@ setIsAdaptive(adaptive_media.matches)
       ytPlayerRef.current = player;
     };
 
-    if ((window as any).YT && (window as any).YT.Player) {
+    if (window.YT && window.YT.Player) {
       init();
     } else {
-      (window as any).onYouTubeIframeAPIReady = init;
+      window.onYouTubeIframeAPIReady = init;
       if (
-        !document.querySelector('script[src="https://www.youtube.com/iframe_api"]')
+        !document.querySelector(
+          'script[src="https://www.youtube.com/iframe_api"]',
+        )
       ) {
         const tag = document.createElement("script");
         tag.src = "https://www.youtube.com/iframe_api";
@@ -622,7 +642,6 @@ setIsAdaptive(adaptive_media.matches)
         // ignore
       }
       ytPlayerRef.current = null;
-      setYtReady(false);
     };
   }, [
     configuredStartTime,
@@ -751,8 +770,11 @@ setIsAdaptive(adaptive_media.matches)
         const upper =
           dur > 0
             ? Math.min(requestedEndTime ?? dur, dur)
-            : requestedEndTime ?? Math.max(target, lower);
-        const clamped = Math.min(Math.max(target, lower), Math.max(lower, upper));
+            : (requestedEndTime ?? Math.max(target, lower));
+        const clamped = Math.min(
+          Math.max(target, lower),
+          Math.max(lower, upper),
+        );
         p.seekTo?.(clamped, true);
         setCurrentTime(clamped);
         revealControls();
@@ -761,7 +783,9 @@ setIsAdaptive(adaptive_media.matches)
       const video = videoRef.current;
       if (!video) return;
       const target = video.currentTime + delta;
-      const mediaDuration = Number.isFinite(video.duration) ? video.duration : 0;
+      const mediaDuration = Number.isFinite(video.duration)
+        ? video.duration
+        : 0;
       const lower = Math.min(
         configuredStartTime,
         mediaDuration > 0 ? mediaDuration : configuredStartTime,
@@ -769,7 +793,7 @@ setIsAdaptive(adaptive_media.matches)
       const upper =
         mediaDuration > 0
           ? Math.min(requestedEndTime ?? mediaDuration, mediaDuration)
-          : requestedEndTime ?? Math.max(target, lower);
+          : (requestedEndTime ?? Math.max(target, lower));
       video.currentTime = Math.min(
         Math.max(target, lower),
         Math.max(lower, upper),
@@ -885,7 +909,6 @@ setIsAdaptive(adaptive_media.matches)
       // Portrait keeps the proven CSS fullscreen overlay so its rotate
       // control can rotate the player. Landscape requests native fullscreen.
       if (isPortrait || isAdaptive) {
-        console.log("Here")
         setIsNativeFullscreen(false);
         setIsFullscreen(true);
         revealControls();
@@ -928,7 +951,14 @@ setIsAdaptive(adaptive_media.matches)
     if (document.fullscreenElement === root) {
       setIsRotated(false);
     }
-  }, [isFullscreen, isMobile, isNativeFullscreen, isPortrait, revealControls]);
+  }, [
+    isFullscreen,
+    isMobile,
+    isAdaptive,
+    isNativeFullscreen,
+    isPortrait,
+    revealControls,
+  ]);
 
   const togglePlayerRotation = useCallback(() => {
     setIsRotated((rotated) => !rotated);
@@ -1006,9 +1036,7 @@ setIsAdaptive(adaptive_media.matches)
     persistVolume(value);
   };
 
-  const getGestureCoordinates = (
-    event: ReactPointerEvent<HTMLDivElement>,
-  ) => {
+  const getGestureCoordinates = (event: ReactPointerEvent<HTMLDivElement>) => {
     const bounds = event.currentTarget.getBoundingClientRect();
     if (isMobile && isFullscreen && isRotated) {
       // Map viewport coordinates back into the player's rotated coordinate space.
@@ -1027,7 +1055,9 @@ setIsAdaptive(adaptive_media.matches)
     };
   };
 
-  const handleGesturePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+  const handleGesturePointerDown = (
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
     if (event.pointerType !== "touch" || gestureRef.current) return;
     const inlineTouch = isMobile && !isFullscreen;
     if (!inlineTouch) event.preventDefault();
@@ -1080,7 +1110,8 @@ setIsAdaptive(adaptive_media.matches)
     }
     if (!inlineTouch && zone !== "center") {
       gesture.holdTimer = setTimeout(() => {
-        if (gestureRef.current !== gesture || gesture.mode !== "pending") return;
+        if (gestureRef.current !== gesture || gesture.mode !== "pending")
+          return;
         gesture.mode = "hold";
         if (gesture.zone === "left") {
           const video = videoRef.current;
@@ -1124,7 +1155,9 @@ setIsAdaptive(adaptive_media.matches)
     }
   };
 
-  const handleGesturePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+  const handleGesturePointerMove = (
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
     const gesture = gestureRef.current;
     if (
       event.pointerType !== "touch" ||
@@ -1198,10 +1231,7 @@ setIsAdaptive(adaptive_media.matches)
     }
 
     const amount = (deltaY / Math.max(position.height, 1)) * 1.5;
-    gesture.lastValue = Math.min(
-      1,
-      Math.max(0, gesture.initialValue + amount),
-    );
+    gesture.lastValue = Math.min(1, Math.max(0, gesture.initialValue + amount));
     applyVolume(gesture.lastValue);
     showGestureFeedback(`Volume ${Math.round(gesture.lastValue * 100)}%`);
   };
@@ -1278,15 +1308,15 @@ setIsAdaptive(adaptive_media.matches)
         const delta = gesture.zone === "left" ? -10 : 10;
         skip(delta);
         showGestureFeedback(`${delta > 0 ? "+" : ""}${delta}s`, 700);
-        hideControls()
+        hideControls();
         return;
       }
-      hideControls()
+      hideControls();
       if (pendingTap) clearTimeout(pendingTap.timer);
       const timer = setTimeout(() => {
         if (pendingTapRef.current?.timer === timer) {
           pendingTapRef.current = null;
-          handleVideoClick()
+          handleVideoClick();
         }
       }, 250);
       pendingTapRef.current = { zone: gesture.zone, timer };
@@ -1338,7 +1368,11 @@ setIsAdaptive(adaptive_media.matches)
     if (!gesture || gesture.pointerId !== event.pointerId) return;
     if (gesture.holdTimer) clearTimeout(gesture.holdTimer);
     if (gesture.reverseTimer) clearInterval(gesture.reverseTimer);
-    if (gesture.mode === "hold" && gesture.zone === "left" && gesture.wasPlaying) {
+    if (
+      gesture.mode === "hold" &&
+      gesture.zone === "left" &&
+      gesture.wasPlaying
+    ) {
       if (gesture.reversePlayback && videoRef.current) {
         videoRef.current.playbackRate = gesture.previousRate;
         if (videoRef.current.paused) {
@@ -1384,7 +1418,10 @@ setIsAdaptive(adaptive_media.matches)
         if (!isMobile) revealControls();
       }}
       onMouseLeave={() => {
-        if (ytContainerRef.current || (videoRef.current && !videoRef.current.paused)) {
+        if (
+          ytContainerRef.current ||
+          (videoRef.current && !videoRef.current.paused)
+        ) {
           setControlsVisible(false);
         }
       }}
@@ -1521,7 +1558,9 @@ setIsAdaptive(adaptive_media.matches)
 
       {!hasMedia && (
         <div className="lvp-loading">
-          {videoId || videoUrl ? "Preparing player…" : "No video for this lesson"}
+          {videoId || videoUrl
+            ? "Preparing player…"
+            : "No video for this lesson"}
         </div>
       )}
 
@@ -1547,9 +1586,7 @@ setIsAdaptive(adaptive_media.matches)
         <div className="lvp-spinner" role="status" aria-label="Buffering" />
       )}
 
-      {hasMedia &&
-        ((!hasStarted) ||
-          (showMobileCenterAction && isMobile)) && (
+      {hasMedia && (!hasStarted || (showMobileCenterAction && isMobile)) && (
         <button
           type="button"
           className={`lvp-big-play ${hasStarted ? "is-mobile-action" : ""}`}
@@ -1651,58 +1688,71 @@ setIsAdaptive(adaptive_media.matches)
             style={{ "--lvp-pct": `${volumePct}%` } as CSSProperties}
           />
           <div className="lvp-rate-menu">
-  <button
-    type="button"
-    className="lvp-btn lvp-rate"
-    aria-label="Playback speed"
-    aria-expanded={rateMenuOpen}
-    onClick={() => setRateMenuOpen((open) => !open)}
-  >
-    {RATES[rateIndex]}×
-  </button>
-
-  {rateMenuOpen && (
-    <div className="lvp-rate-options" role="menu">
-      {[...RATES].reverse().map((rate) => (
-        <button
-          key={rate}
-          type="button"
-          role="menuitemradio"
-          aria-checked={RATES[rateIndex] === rate}
-          onClick={() => {
-            const index = RATES.indexOf(rate);
-            setPlaybackRate(index);
-            setRateMenuOpen(false);
-          }}
-        >
-          {rate}×
-        </button>
-      ))}
-    </div>
-  )}
-</div>
-          {(isMobile || isAdaptive)  && isFullscreen && isPortrait && (
-  <button
-    type="button"
-    className={`lvp-btn ${isRotated ? "is-active" : ""}`}
-    aria-label={isRotated ? "Restore player orientation" : "Rotate player"}
-    aria-pressed={isRotated}
-    onClick={togglePlayerRotation}
-  >
-    ↻
-  </button>
-)}
-          {(isMobile || isAdaptive) && isFullscreen && !isPortrait && isNativeFullscreen && (
             <button
               type="button"
-              className={`lvp-btn ${isOrientationLocked ? "is-active" : ""}`}
-              aria-label={isOrientationLocked ? "Unlock landscape orientation" : "Lock landscape orientation"}
-              aria-pressed={isOrientationLocked}
-              onClick={() => void toggleOrientationLock()}
+              className="lvp-btn lvp-rate"
+              aria-label="Playback speed"
+              aria-expanded={rateMenuOpen}
+              onClick={() => setRateMenuOpen((open) => !open)}
             >
-              {isOrientationLocked ? <Unlock size={15} /> : <Lock size={15} />}
+              {RATES[rateIndex]}×
+            </button>
+
+            {rateMenuOpen && (
+              <div className="lvp-rate-options" role="menu">
+                {[...RATES].reverse().map((rate) => (
+                  <button
+                    key={rate}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={RATES[rateIndex] === rate}
+                    onClick={() => {
+                      const index = RATES.indexOf(rate);
+                      setPlaybackRate(index);
+                      setRateMenuOpen(false);
+                    }}
+                  >
+                    {rate}×
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {(isMobile || isAdaptive) && isFullscreen && isPortrait && (
+            <button
+              type="button"
+              className={`lvp-btn ${isRotated ? "is-active" : ""}`}
+              aria-label={
+                isRotated ? "Restore player orientation" : "Rotate player"
+              }
+              aria-pressed={isRotated}
+              onClick={togglePlayerRotation}
+            >
+              ↻
             </button>
           )}
+          {(isMobile || isAdaptive) &&
+            isFullscreen &&
+            !isPortrait &&
+            isNativeFullscreen && (
+              <button
+                type="button"
+                className={`lvp-btn ${isOrientationLocked ? "is-active" : ""}`}
+                aria-label={
+                  isOrientationLocked
+                    ? "Unlock landscape orientation"
+                    : "Lock landscape orientation"
+                }
+                aria-pressed={isOrientationLocked}
+                onClick={() => void toggleOrientationLock()}
+              >
+                {isOrientationLocked ? (
+                  <Unlock size={15} />
+                ) : (
+                  <Lock size={15} />
+                )}
+              </button>
+            )}
           <button
             type="button"
             className={`lvp-btn ${isFullscreen ? "is-active" : ""}`}
@@ -1717,4 +1767,3 @@ setIsAdaptive(adaptive_media.matches)
     </div>
   );
 }
-

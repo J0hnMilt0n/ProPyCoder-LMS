@@ -8,8 +8,13 @@ import { LoaderCircle, Package, ShoppingCart, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 import { Navbar } from "@/components/navbar";
 import { formatINR } from "@/lib/currency";
-import { bundleMrpTotal, discountPercent, effectiveCoursePrice } from "@/lib/pricing";
+import {
+  bundleMrpTotal,
+  discountPercent,
+  effectiveCoursePrice,
+} from "@/lib/pricing";
 import { useResource } from "@/lib/use-resource";
+import { CACHE_FRESH_MS } from "@/lib/config";
 
 interface DetailBundle {
   id: string;
@@ -52,7 +57,7 @@ export default function BundleDetailPage() {
     url: `/api/bundles/${id}/purchases`,
     scope: session?.user?.id ?? "",
     enabled: Boolean(id) && status === "authenticated",
-    freshForMs: 30_000, // Always fetch fresh purchase status
+    freshForMs: CACHE_FRESH_MS, // Always fetch fresh purchase status
     revalidateOnFocus: true,
     select: (json) => (json as { courseIds?: string[] }).courseIds ?? [],
   });
@@ -126,9 +131,7 @@ export default function BundleDetailPage() {
   const purchasedValue = courses.reduce(
     (total, course) =>
       total +
-      (purchasedCourseIds.has(course.id)
-        ? effectiveCoursePrice(course)
-        : 0),
+      (purchasedCourseIds.has(course.id) ? effectiveCoursePrice(course) : 0),
     0,
   );
   const bundlePrice = Math.max(0, bundle.price - purchasedValue);
@@ -248,7 +251,9 @@ export default function BundleDetailPage() {
                 ) : (
                   <>
                     <ShoppingCart size={15} />
-                    {remainingCourses.length === 0 ? "All courses purchased" : "Get this bundle"}
+                    {remainingCourses.length === 0
+                      ? "All courses purchased"
+                      : "Get this bundle"}
                   </>
                 )}
               </button>
@@ -263,4 +268,3 @@ export default function BundleDetailPage() {
     </div>
   );
 }
-

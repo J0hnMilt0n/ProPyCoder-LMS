@@ -1,11 +1,9 @@
-
 import "server-only";
+import { logger } from "@/lib/logger";
 
-const PHONEPE_SANDBOX =
-  "https://api-preprod.phonepe.com/apis/pg-sandbox";
+const PHONEPE_SANDBOX = "https://api-preprod.phonepe.com/apis/pg-sandbox";
 
-const PHONEPE_PRODUCTION =
-  "https://api.phonepe.com/apis/pg";
+const PHONEPE_PRODUCTION = "https://api.phonepe.com/apis/pg";
 
 type PhonePeConfig = {
   clientId: string;
@@ -69,16 +67,10 @@ function getConfig(): PhonePeConfig {
     throw new Error("PhonePe credentials are not configured");
   }
 
-  const environment =
-    process.env.PHONEPE_ENVIRONMENT ?? "SANDBOX";
+  const environment = process.env.PHONEPE_ENVIRONMENT ?? "SANDBOX";
 
-  if (
-    environment !== "SANDBOX" &&
-    environment !== "PRODUCTION"
-  ) {
-    throw new Error(
-      "PHONEPE_ENVIRONMENT must be SANDBOX or PRODUCTION"
-    );
+  if (environment !== "SANDBOX" && environment !== "PRODUCTION") {
+    throw new Error("PHONEPE_ENVIRONMENT must be SANDBOX or PRODUCTION");
   }
 
   return {
@@ -86,9 +78,7 @@ function getConfig(): PhonePeConfig {
     clientSecret,
     clientVersion,
     baseUrl:
-      environment === "PRODUCTION"
-        ? PHONEPE_PRODUCTION
-        : PHONEPE_SANDBOX,
+      environment === "PRODUCTION" ? PHONEPE_PRODUCTION : PHONEPE_SANDBOX,
   };
 }
 
@@ -96,11 +86,8 @@ function getConfig(): PhonePeConfig {
 // ACCESS TOKEN
 // --------------------------------------------------
 
-async function getAccessToken(
-  config: PhonePeConfig
-): Promise<string> {
-  const cacheKey =
-    `${config.baseUrl}:${config.clientId}:${config.clientVersion}`;
+async function getAccessToken(config: PhonePeConfig): Promise<string> {
+  const cacheKey = `${config.baseUrl}:${config.clientId}:${config.clientVersion}`;
 
   // Return cached token if still valid.
   if (
@@ -127,41 +114,30 @@ async function getAccessToken(
         grant_type: "client_credentials",
       });
 
-      const response = await fetch(
-        `${config.baseUrl}/v1/oauth/token`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/x-www-form-urlencoded",
-          },
-          body,
-          cache: "no-store",
-          signal: AbortSignal.timeout(10_000),
-        }
-      );
+      const response = await fetch(`${config.baseUrl}/v1/oauth/token`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body,
+        cache: "no-store",
+        signal: AbortSignal.timeout(10_000),
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
 
-        console.error(
-          "[PhonePe] Authorization failed:",
-          response.status,
-          errorText
-        );
+        logger.error("[PhonePe] Authorization failed", {
+          metadata: { status: response.status, errorText },
+        });
 
-        throw new Error(
-          `PhonePe authorization failed (${response.status})`
-        );
+        throw new Error(`PhonePe authorization failed (${response.status})`);
       }
 
-      const data =
-        (await response.json()) as TokenResponse;
+      const data = (await response.json()) as TokenResponse;
 
       if (!data.access_token) {
-        throw new Error(
-          "PhonePe returned no access token"
-        );
+        throw new Error("PhonePe returned no access token");
       }
 
       const expiresAt =
@@ -176,9 +152,9 @@ async function getAccessToken(
       };
 
       console.info(
-        `[PhonePe] Token request completed in ${
-          Math.round(performance.now() - start)
-        }ms`
+        `[PhonePe] Token request completed in ${Math.round(
+          performance.now() - start,
+        )}ms`,
       );
 
       return data.access_token;
@@ -196,7 +172,7 @@ async function getAccessToken(
 
 async function phonePeRequest<T>(
   path: string,
-  init: RequestInit = {}
+  init: RequestInit = {},
 ): Promise<T> {
   const totalStart = performance.now();
 
@@ -208,9 +184,7 @@ async function phonePeRequest<T>(
   const token = await getAccessToken(config);
 
   console.info(
-    `[PhonePe] Token duration: ${
-      Math.round(performance.now() - tokenStart)
-    }ms`
+    `[PhonePe] Token duration: ${Math.round(performance.now() - tokenStart)}ms`,
   );
 
   // Make API request.
@@ -219,54 +193,40 @@ async function phonePeRequest<T>(
   let response: Response;
 
   try {
-    response = await fetch(
-      `${config.baseUrl}${path}`,
-      {
-        ...init,
-        headers: {
-          Authorization: `O-Bearer ${token}`,
-          ...(init.body
-            ? { "Content-Type": "application/json" }
-            : {}),
-          ...init.headers,
-        },
-        cache: "no-store",
-        signal:
-          init.signal ?? AbortSignal.timeout(10_000),
-      }
-    );
+    response = await fetch(`${config.baseUrl}${path}`, {
+      ...init,
+      headers: {
+        Authorization: `O-Bearer ${token}`,
+        ...(init.body ? { "Content-Type": "application/json" } : {}),
+        ...init.headers,
+      },
+      cache: "no-store",
+      signal: init.signal ?? AbortSignal.timeout(10_000),
+    });
   } catch (error) {
-    console.error(
-      "[PhonePe] Network error:",
-      error
-    );
+    logger.error("[PhonePe] Network error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     throw error;
   }
 
   console.info(
-    `[PhonePe] API duration: ${
-      Math.round(performance.now() - apiStart)
-    }ms`
+    `[PhonePe] API duration: ${Math.round(performance.now() - apiStart)}ms`,
   );
 
   // Handle errors.
   if (!response.ok) {
-    const errorBody = await response
-      .json()
-      .catch(() => null) as
-      | {
-          code?: unknown;
-          message?: unknown;
-          data?: {
-            message?: unknown;
-          };
-        }
-      | null;
+    const errorBody = (await response.json().catch(() => null)) as {
+      code?: unknown;
+      message?: unknown;
+      data?: {
+        message?: unknown;
+      };
+    } | null;
 
     const providerCode =
-      typeof errorBody?.code === "string"
-        ? errorBody.code
-        : undefined;
+      typeof errorBody?.code === "string" ? errorBody.code : undefined;
 
     const providerMessage =
       typeof errorBody?.message === "string"
@@ -275,32 +235,26 @@ async function phonePeRequest<T>(
           ? errorBody.data.message
           : undefined;
 
-    console.error("[PhonePe] API error:", {
-      status: response.status,
-      providerCode,
-      providerMessage,
+    logger.error("[PhonePe] API error", {
+      metadata: { status: response.status, providerCode, providerMessage },
     });
 
     throw new PhonePeApiError(
       `PhonePe request failed (${response.status})${
         providerCode ? ` ${providerCode}` : ""
-      }${
-        providerMessage
-          ? `: ${providerMessage}`
-          : ""
-      }`,
+      }${providerMessage ? `: ${providerMessage}` : ""}`,
       response.status,
       providerCode,
-      providerMessage
+      providerMessage,
     );
   }
 
   const result = (await response.json()) as T;
 
   console.info(
-    `[PhonePe] Total request duration: ${
-      Math.round(performance.now() - totalStart)
-    }ms`
+    `[PhonePe] Total request duration: ${Math.round(
+      performance.now() - totalStart,
+    )}ms`,
   );
 
   return result;
@@ -318,38 +272,22 @@ export async function createPhonePeOrder(input: {
   const start = performance.now();
 
   // Convert rupees to paise.
-  const amount = Math.round(
-    input.amountRupees * 100
-  );
+  const amount = Math.round(input.amountRupees * 100);
 
-  if (
-    !Number.isSafeInteger(amount) ||
-    amount < 100
-  ) {
-    throw new Error(
-      "PhonePe requires an amount of at least ₹1.00"
-    );
+  if (!Number.isSafeInteger(amount) || amount < 100) {
+    throw new Error("PhonePe requires an amount of at least ₹1.00");
   }
 
   // Validate merchant order ID.
-  if (
-    !/^[A-Za-z0-9_-]{1,63}$/.test(input.paymentId)
-  ) {
-    throw new Error(
-      "Payment ID is not valid as a PhonePe merchantOrderId"
-    );
+  if (!/^[A-Za-z0-9_-]{1,63}$/.test(input.paymentId)) {
+    throw new Error("Payment ID is not valid as a PhonePe merchantOrderId");
   }
 
   // Validate redirect URL.
   const redirect = new URL(input.redirectUrl);
 
-  if (
-    redirect.protocol !== "https:" &&
-    redirect.hostname !== "localhost"
-  ) {
-    throw new Error(
-      "PhonePe redirect URL must use HTTPS outside localhost"
-    );
+  if (redirect.protocol !== "https:" && redirect.hostname !== "localhost") {
+    throw new Error("PhonePe redirect URL must use HTTPS outside localhost");
   }
 
   console.info("[PhonePe] Creating payment:", {
@@ -376,15 +314,11 @@ export async function createPhonePeOrder(input: {
   });
 
   if (!result.redirectUrl) {
-    throw new Error(
-      "PhonePe returned no checkout URL"
-    );
+    throw new Error("PhonePe returned no checkout URL");
   }
 
   console.info(
-    `[PhonePe] Payment created in ${
-      Math.round(performance.now() - start)
-    }ms`
+    `[PhonePe] Payment created in ${Math.round(performance.now() - start)}ms`,
   );
 
   return {
@@ -397,15 +331,13 @@ export async function createPhonePeOrder(input: {
 // --------------------------------------------------
 
 export async function getPhonePeOrderStatus(
-  merchantOrderId: string
+  merchantOrderId: string,
 ): Promise<PhonePeOrderStatus> {
   if (!merchantOrderId) {
     throw new Error("Merchant order ID is required");
   }
 
   return phonePeRequest<PhonePeOrderStatus>(
-    `/checkout/v2/order/${encodeURIComponent(
-      merchantOrderId
-    )}/status`
+    `/checkout/v2/order/${encodeURIComponent(merchantOrderId)}/status`,
   );
 }

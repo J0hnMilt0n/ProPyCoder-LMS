@@ -2073,7 +2073,6 @@ html[data-auth-hint="authenticated"] .site-account-guest {
   padding: 40px 0 65px;
 }
 
-
 .learning-welcome {
   position: relative;
   display: flex;
@@ -2084,12 +2083,7 @@ html[data-auth-hint="authenticated"] .site-account-guest {
   padding: 31px 36px;
   border: 1px solid #e3e8f1;
   border-radius: 5px;
-  background: linear-gradient(
-    105deg,
-    #ffffff 0%,
-    #f7f8fb 66%,
-    #f1f3f8 100%
-  );
+  background: linear-gradient(105deg, #ffffff 0%, #f7f8fb 66%, #f1f3f8 100%);
   color: var(--ink);
   box-shadow: 0 8px 28px rgba(23, 55, 132, 0.055);
 }
@@ -2155,7 +2149,9 @@ html[data-auth-hint="authenticated"] .site-account-guest {
   color: #fff;
   font-size: 12px;
   font-weight: 680;
-  transition: background 0.2s ease, transform 0.2s ease;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
 }
 
 .learning-browse-button:hover {
@@ -2184,12 +2180,7 @@ html[data-auth-hint="authenticated"] .site-account-guest {
 /* Dark theme — charcoal */
 html[data-theme="dark"] .learning-welcome {
   border-color: #292929;
-  background: linear-gradient(
-    105deg,
-    #111111 0%,
-    #181818 66%,
-    #202020 100%
-  );
+  background: linear-gradient(105deg, #111111 0%, #181818 66%, #202020 100%);
   color: #f1f0f2;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
 }
@@ -2220,7 +2211,6 @@ html[data-theme="dark"] .learning-welcome p {
 html[data-theme="dark"] .learning-welcome-art {
   color: rgba(245, 130, 85, 0.2);
 }
-
 
 .learning-stats {
   display: grid;
@@ -10176,7 +10166,6 @@ html[data-theme="dark"] .admin-button-primary:hover {
   align-self: start;
 }
 
-
 /* Mobile admin navigation - horizontal scrolling */
 @media (max-width: 700px) {
   .admin-sidebar {
@@ -10338,7 +10327,9 @@ html[data-theme="dark"] .admin-button-primary:hover {
   background: var(--admin-input-bg, #fff);
   color: var(--admin-text, #0f172a);
   font-size: 13px;
-  transition: border-color 150ms, box-shadow 150ms;
+  transition:
+    border-color 150ms,
+    box-shadow 150ms;
 }
 
 .admin-email-link-content input:focus {
@@ -10365,7 +10356,9 @@ html[data-theme="dark"] .admin-button-primary:hover {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 150ms, opacity 150ms;
+  transition:
+    background 150ms,
+    opacity 150ms;
 }
 
 .admin-email-link-cancel {
@@ -10480,8 +10473,6 @@ html[data-theme="dark"] .certificates-page .catalog-section-heading h2 {
     width: calc(100% - 42px);
   }
 }
-
-
 
 /* =========================================
    Announcements page
@@ -10722,7 +10713,6 @@ html[data-theme="dark"] .announcement-mark-read {
     height: 36px;
   }
 }
-
 
 /* Side-by-side announcement columns */
 .announcements-page .announcements-layout {
@@ -11033,11 +11023,9 @@ html[data-theme="dark"] .announcements-page .announcement-card.is-unread {
 }
 
 .announcement-previous .catalog-empty {
-
   min-height: 0;
   gap: 5px;
   padding: 25px;
-
 }
 @media (min-width: 1024px) {
   .admin-email-fields {

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { REVALIDATE_SECONDS } from "@/lib/config";
+import { logger } from "@/lib/logger";
 
 const upstream = "https://propycoder.pythonanywhere.com";
 
@@ -23,11 +25,14 @@ export async function proxyPyCoderStatic(pathSegments: string[]) {
       headers: {
         "Content-Type":
           response.headers.get("content-type") ?? "application/octet-stream",
-        "Cache-Control": "public, max-age=2592000, s-maxage=2592000",
+        "Cache-Control": `public, max-age=${REVALIDATE_SECONDS}, s-maxage=${REVALIDATE_SECONDS}`,
       },
     });
   } catch (error) {
-    console.error("PyCoder asset proxy error:", error);
+    logger.error("PyCoder asset proxy error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return new NextResponse("Failed to load PyCoder asset", { status: 502 });
   }
 }
@@ -39,7 +44,7 @@ export async function proxyPyCoderPage(request: NextRequest, pathname: string) {
       return NextResponse.redirect(`${upstream}/admin-login`);
     }
 
-            const revalidator = request.nextUrl.searchParams.get("revalidate");
+    const revalidator = request.nextUrl.searchParams.get("revalidate");
     // Drop internal-only query params before forwarding upstream so the lab
     // never sees ?preload=1 in its URL.
     const searchParams = new URLSearchParams(request.nextUrl.search);
@@ -277,12 +282,14 @@ export async function proxyPyCoderPage(request: NextRequest, pathname: string) {
         try {
           var stored = localStorage.getItem('propycoder-theme');
           if (stored === 'light' || stored === 'dark') return stored;
-        } catch (e) {}
+        } catch {
+          // localStorage unavailable (e.g., private browsing)
+        }
         try {
           return window.matchMedia('(prefers-color-scheme: dark)').matches
             ? 'dark'
             : 'light';
-        } catch (e) {
+        } catch {
           return 'light';
         }
       }
@@ -290,7 +297,9 @@ export async function proxyPyCoderPage(request: NextRequest, pathname: string) {
       function applyTheme(theme) {
         try {
           localStorage.setItem('pycoder-theme', theme);
-        } catch (e) {}
+        } catch {
+          // localStorage unavailable
+        }
         var isLight = theme === 'light';
         if (isLight) {
           document.documentElement.classList.add('light');
@@ -309,10 +318,14 @@ export async function proxyPyCoderPage(request: NextRequest, pathname: string) {
         if (window.updateTheme) {
           try {
             isDarkTheme = !isLight;
-          } catch (e) {}
+          } catch {
+            // updateTheme not available or failed
+          }
           try {
             window.updateTheme();
-          } catch (e) {}
+          } catch {
+            // updateTheme call failed
+          }
         }
       }
 
@@ -328,7 +341,7 @@ export async function proxyPyCoderPage(request: NextRequest, pathname: string) {
       });
     })();
     </script>
-  `
+  `,
     );
 
     return new NextResponse(html, {
@@ -340,7 +353,10 @@ export async function proxyPyCoderPage(request: NextRequest, pathname: string) {
       },
     });
   } catch (error) {
-    console.error("PyCoder proxy error:", error);
+    logger.error("PyCoder proxy error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return new NextResponse("Failed to load PyCoder", { status: 502 });
   }
 }

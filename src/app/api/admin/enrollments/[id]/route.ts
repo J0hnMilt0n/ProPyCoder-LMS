@@ -1,6 +1,7 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { invalidateCatalog, invalidateCourse } from "@/lib/course-cache";
+import { clearCourseResourceCache } from "@/lib/use-resource";
 import {
   NS,
   invalidateAdminOverview,
@@ -8,6 +9,7 @@ import {
   invalidateUser,
 } from "@/lib/page-cache";
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 // DELETE remove a student from a course (admin only)
 export async function DELETE(
@@ -44,6 +46,7 @@ export async function DELETE(
     // own dashboard list.
     invalidateCourse(enrollment.course.id);
     invalidateCatalog();
+    clearCourseResourceCache(enrollment.course.id);
     invalidateAdminOverview();
     invalidateHome();
     invalidateUser(NS.enrollments, enrollment.studentId);
@@ -51,7 +54,10 @@ export async function DELETE(
 
     return NextResponse.json({ id: enrollment.id });
   } catch (error) {
-    console.error("Admin enrollment removal error:", error);
+    logger.error("Admin enrollment removal error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to remove enrollment" },
       { status: 500 },

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useConfirm } from "@/components/confirm-dialog";
+import { DEFAULT_POLL_INTERVAL_MS } from "@/lib/config";
 import {
   PROVIDER_LABELS,
   STATUS_LABELS,
@@ -98,7 +99,10 @@ export function LiveClassManager({
 
   // Tick so SCHEDULED rows flip to LIVE/ENDED without a manual refresh.
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 30_000);
+    const timer = setInterval(
+      () => setNow(Date.now()),
+      DEFAULT_POLL_INTERVAL_MS,
+    );
     return () => clearInterval(timer);
   }, []);
 
@@ -217,7 +221,9 @@ export function LiveClassManager({
       onChanged?.();
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Could not save the live class",
+        error instanceof Error
+          ? error.message
+          : "Could not save the live class",
       );
     } finally {
       setIsSaving(false);
@@ -302,7 +308,6 @@ export function LiveClassManager({
     }
   }
 
-
   if (isLoading) {
     return (
       <div className="live-manager is-loading">
@@ -362,7 +367,6 @@ export function LiveClassManager({
           </span>
         </div>
       ) : (
-
         <div className="live-list">
           {sorted.map((row) => {
             const status = statusOf(row);
@@ -513,9 +517,7 @@ export function LiveClassManager({
             <div className="admin-modal-head">
               <div>
                 <div className="admin-eyebrow">
-                  {modal.mode === "edit"
-                    ? "EDIT LIVE CLASS"
-                    : "NEW LIVE CLASS"}
+                  {modal.mode === "edit" ? "EDIT LIVE CLASS" : "NEW LIVE CLASS"}
                 </div>
                 <h2>
                   {modal.mode === "edit"
@@ -623,7 +625,8 @@ export function LiveClassManager({
               </div>
               <div className="instructor-form-row">
                 <label>
-                  Meeting ID <span className="instructor-optional">Optional</span>
+                  Meeting ID{" "}
+                  <span className="instructor-optional">Optional</span>
                   <input
                     value={form.meetingId}
                     maxLength={80}
@@ -706,4 +709,3 @@ export function LiveClassManager({
     </div>
   );
 }
-

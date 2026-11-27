@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
+import { CATALOG_CACHE_CONTROL } from "@/lib/config";
 import { NextResponse } from "next/server";
 import { getBundles } from "@/lib/page-cache";
 import { imageUrl } from "@/lib/image-urls";
+import { logger } from "@/lib/logger";
 
 export const revalidate = 2592000;
 
@@ -52,13 +54,15 @@ export async function GET() {
       { bundles },
       {
         headers: {
-          "Cache-Control":
-            "public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=60",
+          "Cache-Control": CATALOG_CACHE_CONTROL,
         },
       },
     );
   } catch (error) {
-    console.error("Public bundles error:", error);
+    logger.error("Public bundles error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to load bundles" },
       { status: 500 },

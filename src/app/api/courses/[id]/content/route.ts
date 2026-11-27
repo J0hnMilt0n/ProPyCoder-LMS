@@ -1,8 +1,10 @@
 import { authorizeCourseContent } from "@/lib/course-content-auth";
 import { prisma } from "@/lib/prisma";
 import { getCourseModules, invalidateCourse } from "@/lib/course-cache";
+import { clearCourseResourceCache } from "@/lib/use-resource";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 const moduleInput = z.object({
   title: z.string().trim().min(2).max(120),
@@ -34,7 +36,10 @@ export async function GET(
 
     return NextResponse.json({ modules });
   } catch (error) {
-    console.error("Course content fetch error:", error);
+    logger.error("Course content fetch error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to load course content" },
       { status: 500 },
@@ -82,10 +87,14 @@ export async function POST(
     });
 
     invalidateCourse(id);
+    clearCourseResourceCache(id);
 
     return NextResponse.json(newModule, { status: 201 });
   } catch (error) {
-    console.error("Module creation error:", error);
+    logger.error("Module creation error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to create module" },
       { status: 500 },
@@ -134,10 +143,14 @@ export async function PATCH(
     );
 
     invalidateCourse(id);
+    clearCourseResourceCache(id);
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Module reorder error:", error);
+    logger.error("Module reorder error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to reorder modules" },
       { status: 500 },

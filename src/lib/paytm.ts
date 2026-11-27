@@ -1,6 +1,10 @@
-
 import crypto from "crypto";
 import type { PaytmOrderStatus } from "./paytm-types";
+import type {
+  PaytmInitiateResponseBody,
+  PaytmStatusResponseBody,
+} from "@/types/paytm";
+import { logger } from "@/lib/logger";
 
 export type { PaytmOrderStatus };
 
@@ -50,24 +54,19 @@ function getConfig(): PaytmConfig {
     );
   }
 
-  const environment = (
-    process.env.PAYTM_ENVIRONMENT ?? "STAGING"
-  ).trim().toUpperCase();
+  const environment = (process.env.PAYTM_ENVIRONMENT ?? "STAGING")
+    .trim()
+    .toUpperCase();
 
   if (environment !== "STAGING" && environment !== "PRODUCTION") {
-    throw new Error(
-      "PAYTM_ENVIRONMENT must be STAGING or PRODUCTION.",
-    );
+    throw new Error("PAYTM_ENVIRONMENT must be STAGING or PRODUCTION.");
   }
 
   return {
     mid,
     merchantKey,
     website,
-    baseUrl:
-      environment === "PRODUCTION"
-        ? PAYTM_PRODUCTION
-        : PAYTM_STAGING,
+    baseUrl: environment === "PRODUCTION" ? PAYTM_PRODUCTION : PAYTM_STAGING,
   };
 }
 
@@ -89,10 +88,7 @@ function randomSalt(length = 4): string {
  *
  * The payload must be the exact JSON string sent to Paytm.
  */
-function generateSignature(
-  payload: string,
-  merchantKey: string,
-): string {
+function generateSignature(payload: string, merchantKey: string): string {
   const salt = randomSalt(4);
 
   const hash = crypto
@@ -123,33 +119,25 @@ function buildHttpError(
   errText: string,
 ): PaytmApiError {
   let providerCode: string | undefined;
-  let providerMessage: string | undefined =
-    errText || undefined;
+  let providerMessage: string | undefined = errText || undefined;
 
   try {
     const parsed = JSON.parse(errText);
 
-    const info =
-      parsed?.body?.resultInfo ??
-      parsed?.resultInfo;
+    const info = parsed?.body?.resultInfo ?? parsed?.resultInfo;
 
     if (info) {
       providerCode =
-        info.resultCode != null
-          ? String(info.resultCode)
-          : undefined;
+        info.resultCode != null ? String(info.resultCode) : undefined;
 
-      providerMessage =
-        info.resultMsg ?? providerMessage;
+      providerMessage = info.resultMsg ?? providerMessage;
     }
   } catch {
     // Response was not JSON.
   }
 
   return new PaytmApiError(
-    `${label} failed (${status})${
-      errText ? `: ${errText}` : ""
-    }`,
+    `${label} failed (${status})${errText ? `: ${errText}` : ""}`,
     status,
     providerCode ?? String(status),
     providerMessage,
@@ -163,10 +151,7 @@ function buildHttpError(
  * A gateway timeout does not guarantee that Paytm
  * did not process the original request.
  */
-async function postToPaytm(
-  url: string,
-  body: unknown,
-): Promise<Response> {
+async function postToPaytm(url: string, body: unknown): Promise<Response> {
   return fetch(url, {
     method: "POST",
     headers: {
@@ -190,18 +175,12 @@ export async function createPaytmOrder(input: {
   const config = getConfig();
 
   // Validate amount.
-  if (
-    !Number.isFinite(input.amountRupees) ||
-    input.amountRupees <= 0
-  ) {
+  if (!Number.isFinite(input.amountRupees) || input.amountRupees <= 0) {
     throw new Error("Invalid payment amount.");
   }
 
   // Validate order ID.
-  if (
-    !input.paymentId ||
-    !/^[A-Za-z0-9_@-]{1,50}$/.test(input.paymentId)
-  ) {
+  if (!input.paymentId || !/^[A-Za-z0-9_@-]{1,50}$/.test(input.paymentId)) {
     throw new Error("Invalid Paytm order ID.");
   }
 
@@ -247,10 +226,7 @@ export async function createPaytmOrder(input: {
   // Serialize once. Use this exact string for checksum and request.
   const requestBodyString = JSON.stringify(requestBody);
 
-  const signature = generateSignature(
-    requestBodyString,
-    config.merchantKey,
-  );
+  const signature = generateSignature(requestBodyString, config.merchantKey);
 
   const requestPayload = {
     head: {
@@ -265,10 +241,7 @@ export async function createPaytmOrder(input: {
     `&orderId=${encodeURIComponent(input.paymentId)}`;
 
   console.info("[paytm] Initiating payment:", {
-    environment:
-      config.baseUrl === PAYTM_STAGING
-        ? "STAGING"
-        : "PRODUCTION",
+    environment: config.baseUrl === PAYTM_STAGING ? "STAGING" : "PRODUCTION",
     midSuffix: config.mid.slice(-4),
     website: config.website,
     orderId: input.paymentId,
@@ -280,7 +253,10 @@ export async function createPaytmOrder(input: {
   try {
     response = await postToPaytm(url, requestPayload);
   } catch (error) {
-    console.error("[paytm] Initiation network error:", error);
+    logger.error("[paytm] Initiation network error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
 
     throw new PaytmApiError(
       "Unable to reach Paytm. Check the order status before attempting another payment.",
@@ -293,14 +269,10 @@ export async function createPaytmOrder(input: {
   const responseText = await response.text();
 
   if (!response.ok) {
-    throw buildHttpError(
-      "Paytm initiate",
-      response.status,
-      responseText,
-    );
+    throw buildHttpError("Paytm initiate", response.status, responseText);
   }
 
-  let data: any;
+  let data: PaytmInitiateResponseBody;
 
   try {
     data = JSON.parse(responseText);
@@ -324,27 +296,17 @@ export async function createPaytmOrder(input: {
     resultMsg: resultInfo.resultMsg,
     midSuffix: config.mid.slice(-4),
     website: config.website,
-    environment:
-      config.baseUrl === PAYTM_STAGING
-        ? "STAGING"
-        : "PRODUCTION",
+    environment: config.baseUrl === PAYTM_STAGING ? "STAGING" : "PRODUCTION",
     orderId: input.paymentId,
     amount,
     tokenReceived: Boolean(txnToken),
   });
 
-  if (
-    !txnToken ||
-    resultInfo.resultStatus !== "S"
-  ) {
+  if (!txnToken || resultInfo.resultStatus !== "S") {
     throw new PaytmApiError(
-      `Paytm returned no token: ${
-        resultInfo.resultMsg ?? "Unknown error"
-      }`,
+      `Paytm returned no token: ${resultInfo.resultMsg ?? "Unknown error"}`,
       502,
-      resultInfo.resultCode != null
-        ? String(resultInfo.resultCode)
-        : undefined,
+      resultInfo.resultCode != null ? String(resultInfo.resultCode) : undefined,
       resultInfo.resultMsg,
     );
   }
@@ -375,10 +337,7 @@ export async function getPaytmOrderStatus(
 ): Promise<PaytmOrderStatus> {
   const config = getConfig();
 
-  if (
-    !orderId ||
-    !/^[A-Za-z0-9_@-]{1,50}$/.test(orderId)
-  ) {
+  if (!orderId || !/^[A-Za-z0-9_@-]{1,50}$/.test(orderId)) {
     throw new Error("Invalid Paytm order ID.");
   }
 
@@ -389,10 +348,7 @@ export async function getPaytmOrderStatus(
 
   const requestBodyString = JSON.stringify(requestBody);
 
-  const signature = generateSignature(
-    requestBodyString,
-    config.merchantKey,
-  );
+  const signature = generateSignature(requestBodyString, config.merchantKey);
 
   const requestPayload = {
     head: {
@@ -409,14 +365,10 @@ export async function getPaytmOrderStatus(
   const responseText = await response.text();
 
   if (!response.ok) {
-    throw buildHttpError(
-      "Paytm status",
-      response.status,
-      responseText,
-    );
+    throw buildHttpError("Paytm status", response.status, responseText);
   }
 
-  let data: any;
+  let data: PaytmStatusResponseBody;
 
   try {
     data = JSON.parse(responseText);
@@ -429,56 +381,32 @@ export async function getPaytmOrderStatus(
     );
   }
 
-  const responseBody = data?.body ?? {};
-  const resultInfo = responseBody?.resultInfo ?? {};
+  const responseBody = (data?.body ?? {}) as NonNullable<
+    PaytmStatusResponseBody["body"]
+  >;
+  const resultInfo = data?.resultInfo ?? responseBody?.resultInfo ?? {};
 
   return {
-    orderId:
-      responseBody.orderId ??
-      responseBody.ORDERID ??
-      orderId,
+    orderId: responseBody.orderId ?? responseBody.ORDERID ?? orderId,
 
-    txnId:
-      responseBody.txnId ??
-      responseBody.TXNID,
+    txnId: responseBody.txnId ?? responseBody.TXNID,
 
-    txnAmount:
-      responseBody.txnAmount ??
-      responseBody.TXNAMOUNT,
+    txnAmount: responseBody.txnAmount ?? responseBody.TXNAMOUNT,
 
-    txnDate:
-      responseBody.txnDate ??
-      responseBody.TXNDATE,
+    txnDate: responseBody.txnDate ?? responseBody.TXNDATE,
 
-    status:
-      resultInfo.resultStatus ??
-      responseBody.STATUS ??
-      responseBody.status,
+    status: resultInfo.resultStatus ?? responseBody.STATUS,
 
-    responseCode:
-      resultInfo.resultCode ??
-      responseBody.RESPCODE ??
-      responseBody.respCode,
+    responseCode: resultInfo.resultCode ?? responseBody.RESPCODE,
 
-    responseMessage:
-      resultInfo.resultMsg ??
-      responseBody.RESPMSG ??
-      responseBody.respMsg,
+    responseMessage: resultInfo.resultMsg ?? responseBody.RESPMSG,
 
-    bankTxnId:
-      responseBody.bankTxnId ??
-      responseBody.BANKTXNID,
+    bankTxnId: responseBody.bankTxnId ?? responseBody.BANKTXNID,
 
-    bankName:
-      responseBody.bankName ??
-      responseBody.BANKNAME,
+    bankName: responseBody.BANKNAME,
 
-    paymentMode:
-      responseBody.paymentMode ??
-      responseBody.PAYMENTMODE,
+    paymentMode: responseBody.paymentMode ?? responseBody.PAYMENTMODE,
 
-    checksumHash:
-      responseBody.CHECKSUMHASH ??
-      responseBody.checksumHash,
+    checksumHash: responseBody.CHECKSUMHASH ?? responseBody.checksumHash,
   };
 }

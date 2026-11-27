@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -133,11 +132,7 @@ export default function AnnouncementsPage() {
     if (!authenticated && broadcastsRes.error) {
       toast.error("Could not load announcements");
     }
-  }, [
-    authenticated,
-    inboxRes.error,
-    broadcastsRes.error,
-  ]);
+  }, [authenticated, inboxRes.error, broadcastsRes.error]);
 
   return (
     <main className="catalog-page announcements-page">
@@ -158,8 +153,8 @@ export default function AnnouncementsPage() {
               </h1>
 
               <p>
-                Important news, updates, opportunities, and messages
-                from the ProPyCoder team.
+                Important news, updates, opportunities, and messages from the
+                ProPyCoder team.
               </p>
             </div>
 
@@ -216,14 +211,10 @@ export default function AnnouncementsPage() {
                       disabled={marking}
                     >
                       {marking ? (
-                        <LoaderCircle
-                          size={14}
-                          className="animate-spin"
-                        />
+                        <LoaderCircle size={14} className="animate-spin" />
                       ) : (
                         <CheckCheck size={14} />
                       )}
-
                       Mark all read
                     </button>
                   )}
@@ -244,18 +235,14 @@ export default function AnnouncementsPage() {
                           <div className="announcement-card-title">
                             <h3>{item.title}</h3>
 
-                            <span className="announcement-new-label">
-                              NEW
-                            </span>
+                            <span className="announcement-new-label">NEW</span>
                           </div>
 
                           <p>{item.message}</p>
 
                           <div className="announcement-card-meta">
                             <span>
-                              {new Date(
-                                item.createdAt,
-                              ).toLocaleDateString()}
+                              {new Date(item.createdAt).toLocaleDateString()}
                             </span>
 
                             {item.link && (
@@ -277,8 +264,8 @@ export default function AnnouncementsPage() {
                     <CheckCheck size={19} />
 
                     <span>
-                      You're all caught up. New notifications will
-                      appear here.
+                      You&apos;re all caught up. New notifications will appear
+                      here.
                     </span>
                   </div>
                 )}
@@ -287,21 +274,19 @@ export default function AnnouncementsPage() {
 
             {/* Right column: Previous updates */}
             <section className="announcement-previous">
-             {!authenticated && <div className="announcement-section-heading announcement-feed-heading">
-              
-                   <div className="catalog-eyebrow">
+              {!authenticated && (
+                <div className="announcement-section-heading announcement-feed-heading">
+                  <div className="catalog-eyebrow">
                     <Radio size={14} />
-                      PUBLIC UPDATES {visibleItems.length > 0 && (
-                  <span className="announcement-total">
-                    {visibleItems.length}
-                  </span>
-                )}
+                    PUBLIC UPDATES{" "}
+                    {visibleItems.length > 0 && (
+                      <span className="announcement-total">
+                        {visibleItems.length}
+                      </span>
+                    )}
                   </div>
-
-        
-
-                
-              </div>}
+                </div>
+              )}
 
               {visibleItems.length === 0 ? (
                 <div className="catalog-empty">
@@ -319,10 +304,7 @@ export default function AnnouncementsPage() {
                       : "Check back soon. New ProPyCoder updates will appear here."}
                   </p>
 
-                  <Link
-                    href="/courses"
-                    className="auth-submit px-5"
-                  >
+                  <Link href="/courses" className="auth-submit px-5">
                     Explore courses
                     <ArrowRight size={15} />
                   </Link>
@@ -330,10 +312,7 @@ export default function AnnouncementsPage() {
               ) : (
                 <div className="announcement-list">
                   {visibleItems.map((item) => (
-                    <article
-                      key={item.id}
-                      className="announcement-card"
-                    >
+                    <article key={item.id} className="announcement-card">
                       <span className="announcement-icon">
                         <Megaphone size={19} />
                       </span>
@@ -345,9 +324,7 @@ export default function AnnouncementsPage() {
 
                         <div className="announcement-card-meta">
                           <span>
-                            {new Date(
-                              item.createdAt,
-                            ).toLocaleDateString()}
+                            {new Date(item.createdAt).toLocaleDateString()}
                           </span>
 
                           {item.link && (

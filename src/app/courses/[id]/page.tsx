@@ -18,6 +18,11 @@ import { PriceTag } from "@/components/price-tag";
 import { formatINR } from "@/lib/currency";
 import { businessInfo } from "@/lib/business-info";
 import {
+  REQUEST_TIMEOUT_MS,
+  DEFAULT_POLL_INTERVAL_MS,
+  CATALOG_STALE_AFTER_MS,
+} from "@/lib/config";
+import {
   Clock,
   ArrowLeft,
   Users,
@@ -31,10 +36,7 @@ import {
   Video,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import {
-  primeResourceCache,
-  readResourceCache,
-} from "@/lib/use-resource";
+import { primeResourceCache, readResourceCache } from "@/lib/use-resource";
 import {
   PROVIDER_LABELS,
   STATUS_LABELS,
@@ -139,14 +141,18 @@ function getCourseScrollTarget(): CourseScrollTarget {
 
   // Otherwise prefer a scrollable ancestor of the course page.
   let ancestor: HTMLElement | null = page;
-  while (ancestor && ancestor !== document.body && ancestor !== document.documentElement) {
+  while (
+    ancestor &&
+    ancestor !== document.body &&
+    ancestor !== document.documentElement
+  ) {
     if (isScrollableElement(ancestor)) return ancestor;
     ancestor = ancestor.parentElement;
   }
 
   // Some layouts scroll an element inside the page instead of the window.
   const descendants = Array.from(
-    page.querySelectorAll<HTMLElement>("*")
+    page.querySelectorAll<HTMLElement>("*"),
   ).filter(isScrollableElement);
   if (descendants.length > 0) {
     return descendants.reduce((largest, current) => {
@@ -167,7 +173,10 @@ function readCourseScrollPosition(target: CourseScrollTarget): number {
   return isWindowScrollTarget(target) ? window.scrollY : target.scrollTop;
 }
 
-function writeCourseScrollPosition(target: CourseScrollTarget, top: number): void {
+function writeCourseScrollPosition(
+  target: CourseScrollTarget,
+  top: number,
+): void {
   if (isWindowScrollTarget(target)) {
     window.scrollTo({ top, left: 0, behavior: "auto" });
     return;
@@ -192,7 +201,7 @@ interface LiveClassItem {
 // Any single API request slower than this is abandoned instead of holding
 // the page in its loading state (dev-compile stalls, stalled DB
 // connections — the classic "Back from checkout spins forever").
-const REQUEST_TIMEOUT_MS = 15_000;
+// const REQUEST_TIMEOUT_MS = 15_000; // Now imported from config
 
 /**
  * Attach a benign rejection handler up front and return a null-safe
@@ -254,7 +263,10 @@ export default function CourseDetailPage({ params }: Props) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (liveClasses.length === 0) return;
-    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    const timer = window.setInterval(
+      () => setNow(Date.now()),
+      DEFAULT_POLL_INTERVAL_MS,
+    );
     return () => window.clearInterval(timer);
   }, [liveClasses.length]);
 
@@ -266,10 +278,7 @@ export default function CourseDetailPage({ params }: Props) {
 
   // Restore scroll as soon as the course shell is visible; private enrollment
   // checks can finish in the background without hiding the cached page.
-  const contentReady =
-    !isLoading &&
-    !!course &&
-    course.id === courseId;
+  const contentReady = !isLoading && !!course && course.id === courseId;
 
   useLayoutEffect(() => {
     const restore = () => {
@@ -292,9 +301,7 @@ export default function CourseDetailPage({ params }: Props) {
         setModules(cachedAccess.modules);
         setIsEnrolled(cachedAccess.isEnrolled);
         setAccessResolvedCourseId(courseId);
-        setCompletedLessonIds(
-          new Set(cachedAccess.completedLessonIds ?? []),
-        );
+        setCompletedLessonIds(new Set(cachedAccess.completedLessonIds ?? []));
         setCertificateId(cachedAccess.certificateId ?? null);
         const accessible = cachedAccess.modules
           .flatMap((module) => module.lessons)
@@ -371,9 +378,12 @@ export default function CourseDetailPage({ params }: Props) {
     (async () => {
       try {
         let response = sessionUserId
-          ? await fetch(`/api/live-classes?courseId=${encodeURIComponent(courseId)}`, {
-              cache: "no-store",
-            })
+          ? await fetch(
+              `/api/live-classes?courseId=${encodeURIComponent(courseId)}`,
+              {
+                cache: "no-store",
+              },
+            )
           : await fetch("/api/live-classes?scope=public");
         let responseContainsCredentials = Boolean(sessionUserId);
         // A signed-in visitor who hasn't enrolled should still see the public
@@ -391,10 +401,10 @@ export default function CourseDetailPage({ params }: Props) {
         // Keep upcoming + recently-finished sessions only.
         const cutoff = Date.now() - 60 * 60 * 1000;
         const visibleClasses = (result.data ?? []).filter(
-            (item: LiveClassItem) =>
-              item.courseId === courseId &&
-              new Date(item.endsAt).getTime() >= cutoff,
-          ) as LiveClassItem[];
+          (item: LiveClassItem) =>
+            item.courseId === courseId &&
+            new Date(item.endsAt).getTime() >= cutoff,
+        ) as LiveClassItem[];
         if (responseContainsCredentials) {
           // Credential-bearing entries must never be written to shared/public
           // storage. Scope them to the authenticated user and this course.
@@ -464,7 +474,7 @@ export default function CourseDetailPage({ params }: Props) {
         // The gating request failed or timed out: fall through to the
         // finally below, which clears the spinner so the page renders its
         // not-found state instead of spinning forever.
-        setCourseLoadError("We couldn't load this course right now.");
+        setCourseLoadError("We couldn&apos;t load this course right now.");
       } finally {
         // THE spinner gate. `await courseRequest` above is the ONLY request
         // the page waits on — this always runs, so Back-from-checkout can
@@ -519,11 +529,10 @@ export default function CourseDetailPage({ params }: Props) {
           } catch {
             // Storage unavailable.
           }
-          if (
-            current &&
-            accessible.some((l: Lesson) => l.id === current.id)
-          ) {
-            return accessible.find((l: Lesson) => l.id === current.id) ?? current;
+          if (current && accessible.some((l: Lesson) => l.id === current.id)) {
+            return (
+              accessible.find((l: Lesson) => l.id === current.id) ?? current
+            );
           }
           const firstFree = loadedModules
             .flatMap((m: Module) => m.lessons)
@@ -542,58 +551,55 @@ export default function CourseDetailPage({ params }: Props) {
       // (e.g. the inner try never ran, or `setCourse` itself threw).
       // The inner finally normally clears the spinner; this is the last
       // safety net so the page can still render its not-found state.
-      setCourseLoadError("We couldn't load this course right now.");
+      setCourseLoadError("We couldn&apos;t load this course right now.");
       setIsLoading(false);
     }
   }, [courseId]);
 
   useEffect(() => {
-  if (!courseId) return;
+    if (!courseId) return;
 
-  const initialLoadKey = `${courseId}:${cacheUserId ?? "unknown"}`;
+    const initialLoadKey = `${courseId}:${cacheUserId ?? "unknown"}`;
 
-  if (lastInitialLoadKey.current !== initialLoadKey) {
-    lastInitialLoadKey.current = initialLoadKey;
+    if (lastInitialLoadKey.current !== initialLoadKey) {
+      lastInitialLoadKey.current = initialLoadKey;
 
-    if (course?.id === courseId) {
-      setIsLoading(false);
+      if (course?.id === courseId) {
+        setIsLoading(false);
+      }
+
+      void loadCourse();
     }
 
-    void loadCourse();
-  }
+    // Prevent duplicate requests when focus and visibility events
+    // fire almost simultaneously.
+    let lastRevalidationAt = 0;
 
-  // Prevent duplicate requests when focus and visibility events
-  // fire almost simultaneously.
-     let lastRevalidationAt = 0;
+    const revalidate = () => {
+      if (document.visibilityState !== "visible") return;
 
-  const revalidate = () => {
-    if (document.visibilityState !== "visible") return;
+      const now = Date.now();
 
-    const now = Date.now();
+      if (now - lastRevalidationAt < CATALOG_STALE_AFTER_MS) return;
 
-    if (now - lastRevalidationAt < 30_000) return;
+      lastRevalidationAt = now;
+      void loadCourse();
+    };
 
-    lastRevalidationAt = now;
-    void loadCourse();
-  };
+    window.addEventListener("focus", revalidate);
+    window.addEventListener("pageshow", revalidate);
+    document.addEventListener("visibilitychange", revalidate);
 
-  window.addEventListener("focus", revalidate);
-  window.addEventListener("pageshow", revalidate);
-  document.addEventListener("visibilitychange", revalidate);
-
-  return () => {
-    window.removeEventListener("focus", revalidate);
-    window.removeEventListener("pageshow", revalidate);
-    document.removeEventListener("visibilitychange", revalidate);
-  };
+    return () => {
+      window.removeEventListener("focus", revalidate);
+      window.removeEventListener("pageshow", revalidate);
+      document.removeEventListener("visibilitychange", revalidate);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cacheUserId, courseId, loadCourse]);
 
   useEffect(() => {
-    if (
-      accessResolvedCourseId !== courseId ||
-      (isEnrolled && !sessionUserId)
-    ) {
+    if (accessResolvedCourseId !== courseId || (isEnrolled && !sessionUserId)) {
       return;
     }
     primeResourceCache<CachedCourseAccess>(
@@ -618,11 +624,7 @@ export default function CourseDetailPage({ params }: Props) {
   ]);
 
   useEffect(() => {
-    if (
-      accessResolvedCourseId !== courseId ||
-      !sessionUserId ||
-      !isEnrolled
-    ) {
+    if (accessResolvedCourseId !== courseId || !sessionUserId || !isEnrolled) {
       return;
     }
     let cancelled = false;
@@ -644,8 +646,7 @@ export default function CourseDetailPage({ params }: Props) {
           .filter((item) => item.status === "COMPLETED")
           .map((item) => item.lessonId)
           .filter(
-            (lessonId): lessonId is string =>
-              typeof lessonId === "string",
+            (lessonId): lessonId is string => typeof lessonId === "string",
           );
         setCompletedLessonIds(new Set(completedIds));
         setCertificateId(
@@ -714,7 +715,10 @@ export default function CourseDetailPage({ params }: Props) {
     );
     window.addEventListener("scroll", onScroll, { passive: true });
     // Capture phase: nested overflow containers don't bubble scroll events.
-    document.addEventListener("scroll", onScroll, { passive: true, capture: true });
+    document.addEventListener("scroll", onScroll, {
+      passive: true,
+      capture: true,
+    });
     window.addEventListener("pagehide", persist);
     return () => {
       inputEvents.forEach((e) => window.removeEventListener(e, markUserInput));
@@ -749,7 +753,12 @@ export default function CourseDetailPage({ params }: Props) {
         ? document.documentElement.scrollHeight - window.innerHeight
         : t.scrollHeight - t.clientHeight;
 
-    const userEvents = ["wheel", "touchstart", "pointerdown", "keydown"] as const;
+    const userEvents = [
+      "wheel",
+      "touchstart",
+      "pointerdown",
+      "keydown",
+    ] as const;
     const stop = () => {
       if (stopped) return;
       stopped = true;
@@ -785,9 +794,13 @@ export default function CourseDetailPage({ params }: Props) {
       }, 250);
     };
 
-    userEvents.forEach((e) => window.addEventListener(e, stop, { passive: true }));
+    userEvents.forEach((e) =>
+      window.addEventListener(e, stop, { passive: true }),
+    );
     const resizeObserver =
-      typeof ResizeObserver !== "undefined" ? new ResizeObserver(attempt) : null;
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(attempt)
+        : null;
     resizeObserver?.observe(document.body);
     const interval = window.setInterval(attempt, 100);
     window.requestAnimationFrame(attempt);
@@ -916,16 +929,12 @@ export default function CourseDetailPage({ params }: Props) {
       if (nextCertificateId !== certificateId) {
         setCertificateId(nextCertificateId);
       }
-      primeResourceCache<CachedCourseAccess>(
-        accessCacheKey,
-        accessCacheScope,
-        {
-          modules,
-          isEnrolled: true,
-          completedLessonIds: Array.from(nextCompletedLessonIds),
-          certificateId: nextCertificateId,
-        },
-      );
+      primeResourceCache<CachedCourseAccess>(accessCacheKey, accessCacheScope, {
+        modules,
+        isEnrolled: true,
+        completedLessonIds: Array.from(nextCompletedLessonIds),
+        certificateId: nextCertificateId,
+      });
 
       if (typeof progressResult.certificateNumber === "string") {
         return;
@@ -944,9 +953,7 @@ export default function CourseDetailPage({ params }: Props) {
             const certData = await certResponse.json();
             const match = (certData.data ?? []).find(
               (entry: { course: string }) => entry.course === course?.title,
-            ) as
-              | { certificateNumber?: unknown; id?: unknown }
-              | undefined;
+            ) as { certificateNumber?: unknown; id?: unknown } | undefined;
             const certLink =
               typeof match?.certificateNumber === "string" &&
               match.certificateNumber
@@ -1088,7 +1095,7 @@ export default function CourseDetailPage({ params }: Props) {
           <button
             type="button"
             className="course-back-button"
-            onClick={() =>  router.push("/courses")}
+            onClick={() => router.push("/courses")}
             aria-label="Go back"
           >
             <ArrowLeft className="h-4 w-4" /> Back
@@ -1112,14 +1119,15 @@ export default function CourseDetailPage({ params }: Props) {
                   : undefined
               }
             >
-              {
-                !course.image
-                  ? (
-                    <>
-              <span>{course.category}</span>
-              
-              <BookOpen size={44} /> 
-              <strong>LEARN BY BUILDING</strong> </>) :<></> }
+              {!course.image ? (
+                <>
+                  <span>{course.category}</span>
+                  <BookOpen size={44} />
+                  <strong>LEARN BY BUILDING</strong>{" "}
+                </>
+              ) : (
+                <></>
+              )}
             </div>
 
             <div className="course-overview-card">
@@ -1170,100 +1178,100 @@ export default function CourseDetailPage({ params }: Props) {
                     {course.level}
                   </p>
                 </div>
-              </div>            
-          </div>
+              </div>
+            </div>
           </div>
 
           {/* Pricing & enrollment - beside the cover/overview/instructor,
               non-sticky so it scrolls away with the page */}
           <div className="course-detail-sidebar">
             <div className="course-purchase-card">
-                <div className="mb-6">
-                  {course.price > 0 ? (
-                    <div className="mb-2">
-                      <PriceTag
-                        price={course.price}
-                        offerPrice={course.offerPrice ?? null}
-                        size="lg"
-                      />
-                    </div>
-                  ) : (
-                    <div className="text-2xl font-bold text-sky-600 mb-2">
-                      Free
-                    </div>
-                  )}
-                  {course.offerPrice !== null &&
-                    course.offerPrice !== undefined &&
-                    course.offerPrice > 0 &&
-                    course.offerPrice < course.price && (
-                      <p className="text-sm font-medium text-emerald-600">
-                        You save {formatINR(course.price - course.offerPrice)}
-                      </p>
-                    )}
-                </div>
-
-                <button
-                  onClick={handleEnroll}
-                  disabled={isEnrolling || isEnrolled}
-                  className={`w-full py-3 rounded-lg font-semibold text-lg transition flex items-center justify-center gap-2 ${
-                    isEnrolled
-                      ? "bg-sky-600 text-white cursor-not-allowed"
-                      : "bg-blue-600 text-white hover:bg-blue-700"
-                  } ${isEnrolling ? "opacity-50" : ""}`}
-                >
-                  {isEnrolled ? (
-                    <>
-                      <CheckCircle className="h-5 w-5" />
-                      Enrolled
-                    </>
-                  ) : course.price > 0 ? (
-                    <>
-                      <CreditCard className="h-5 w-5" />
-                      Buy now
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="h-5 w-5" />
-                      Enroll Free
-                    </>
-                  )}
-                </button>
-
-                {course.price > 0 && !isEnrolled && (
-                  <p className="text-sm text-gray-500 text-center mt-3">
-                    Pay securely at checkout, then start learning instantly.
-                  </p>
+              <div className="mb-6">
+                {course.price > 0 ? (
+                  <div className="mb-2">
+                    <PriceTag
+                      price={course.price}
+                      offerPrice={course.offerPrice ?? null}
+                      size="lg"
+                    />
+                  </div>
+                ) : (
+                  <div className="text-2xl font-bold text-sky-600 mb-2">
+                    Free
+                  </div>
                 )}
+                {course.offerPrice !== null &&
+                  course.offerPrice !== undefined &&
+                  course.offerPrice > 0 &&
+                  course.offerPrice < course.price && (
+                    <p className="text-sm font-medium text-emerald-600">
+                      You save {formatINR(course.price - course.offerPrice)}
+                    </p>
+                  )}
+              </div>
 
-                <div className="mt-5 space-y-3">
-                  <h4 className="font-semibold text-gray-900">
-                    This course includes:
-                  </h4>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Clock className="h-4 w-4" />
-                    <span>{course.duration} hours total</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <PlayCircle className="h-4 w-4" />
-                    <span>Video lessons</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Award className="h-4 w-4" />
-                    <span>Certificate of completion</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Users className="h-4 w-4" />
-                    <span>Lifetime access</span>
-                  </div>
-                  <div
-    className="course-common-description-toggle"
-    onClick={() => setShowProductDescription(true)}
-  >
-    Read more →
-  </div>
+              <button
+                onClick={handleEnroll}
+                disabled={isEnrolling || isEnrolled}
+                className={`w-full py-3 rounded-lg font-semibold text-lg transition flex items-center justify-center gap-2 ${
+                  isEnrolled
+                    ? "bg-sky-600 text-white cursor-not-allowed"
+                    : "bg-blue-600 text-white hover:bg-blue-700"
+                } ${isEnrolling ? "opacity-50" : ""}`}
+              >
+                {isEnrolled ? (
+                  <>
+                    <CheckCircle className="h-5 w-5" />
+                    Enrolled
+                  </>
+                ) : course.price > 0 ? (
+                  <>
+                    <CreditCard className="h-5 w-5" />
+                    Buy now
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-5 w-5" />
+                    Enroll Free
+                  </>
+                )}
+              </button>
+
+              {course.price > 0 && !isEnrolled && (
+                <p className="text-sm text-gray-500 text-center mt-3">
+                  Pay securely at checkout, then start learning instantly.
+                </p>
+              )}
+
+              <div className="mt-5 space-y-3">
+                <h4 className="font-semibold text-gray-900">
+                  This course includes:
+                </h4>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Clock className="h-4 w-4" />
+                  <span>{course.duration} hours total</span>
                 </div>
-                
-                {/* Instructor */}
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <PlayCircle className="h-4 w-4" />
+                  <span>Video lessons</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Award className="h-4 w-4" />
+                  <span>Certificate of completion</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Users className="h-4 w-4" />
+                  <span>Lifetime access</span>
+                </div>
+                <div
+                  className="course-common-description-toggle"
+                  onClick={() => setShowProductDescription(true)}
+                >
+                  Read more →
+                </div>
+              </div>
+
+              {/* Instructor */}
               <div className="mt-6">
                 <h2 className="text-lg font-bold text-gray-900 mb-3">
                   Instructor
@@ -1295,126 +1303,127 @@ export default function CourseDetailPage({ params }: Props) {
               </div>
             </div>
           </div>
-{/* Live classes - upcoming/running sessions for this course */}
-              {liveClasses.length > 0 && (
-                <div className="course-live">
-                  <div className="course-live-head">
-                    <Radio size={16} />
-                    <h3>Live classes</h3>
-                  </div>
-                  <div className="live-list">
-                    {liveClasses.map((item) => {
-                      const status = effectiveStatus({
-                        status: item.storedStatus ?? item.status,
-                        startsAt: item.startsAt,
-                        endsAt: item.endsAt,
-                      }, new Date(now));
-                      const start = new Date(item.startsAt);
-                      const end = new Date(item.endsAt);
-                      const timeSummary =
-                        status === "SCHEDULED"
-                          ? formatStartsIn(start.getTime(), now)
-                          : status === "LIVE"
-                            ? `Ends at ${end.toLocaleTimeString(undefined, {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}`
-                            : `${start.toLocaleDateString(undefined, {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                              })} · ${start.toLocaleTimeString(undefined, {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })} – ${end.toLocaleTimeString(undefined, {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}`;
-                      const isStaff =
-                        session?.user?.id === course?.instructor.id;
-                      const canJoin =
-                        Boolean(item.meetingUrl) &&
-                        (isEnrolled || isStaff) &&
-                        (status === "SCHEDULED" || status === "LIVE");
-                      return (
-                        <article
-                          key={item.id}
-                          className={`live-row course-live-row is-${status.toLowerCase()}`}
-                        >
-                          <div className="live-row-date">
-                            <span>
-                              {start.toLocaleDateString(undefined, {
-                                month: "short",
-                              })}
-                            </span>
-                            <strong>
-                              {start.toLocaleDateString(undefined, {
-                                day: "numeric",
-                              })}
-                            </strong>
-                            <small>
-                              {start.toLocaleTimeString(undefined, {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </small>
-                          </div>
-                          <div className="live-row-content">
-                            <div className="live-row-main">
-                              <div className="live-row-title">
-                                <h3>{item.title}</h3>
-                                <span
-                                  className={`live-pill is-${status.toLowerCase()}`}
-                                >
-                                  {status === "LIVE" && (
-                                    <span className="live-pill-dot" />
-                                  )}
-                                  {STATUS_LABELS[status]}
-                                </span>
-                              </div>
-                              <p className="live-row-meta">
-                                {PROVIDER_LABELS[item.provider] ?? item.provider}
-                                {" · "}{timeSummary}
-                              </p>
-                              {item.description && (
-                                <p className="live-row-desc">
-                                  {item.description}
-                                </p>
+          {/* Live classes - upcoming/running sessions for this course */}
+          {liveClasses.length > 0 && (
+            <div className="course-live">
+              <div className="course-live-head">
+                <Radio size={16} />
+                <h3>Live classes</h3>
+              </div>
+              <div className="live-list">
+                {liveClasses.map((item) => {
+                  const status = effectiveStatus(
+                    {
+                      status: item.storedStatus ?? item.status,
+                      startsAt: item.startsAt,
+                      endsAt: item.endsAt,
+                    },
+                    new Date(now),
+                  );
+                  const start = new Date(item.startsAt);
+                  const end = new Date(item.endsAt);
+                  const timeSummary =
+                    status === "SCHEDULED"
+                      ? formatStartsIn(start.getTime(), now)
+                      : status === "LIVE"
+                        ? `Ends at ${end.toLocaleTimeString(undefined, {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}`
+                        : `${start.toLocaleDateString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })} · ${start.toLocaleTimeString(undefined, {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })} – ${end.toLocaleTimeString(undefined, {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}`;
+                  const isStaff = session?.user?.id === course?.instructor.id;
+                  const canJoin =
+                    Boolean(item.meetingUrl) &&
+                    (isEnrolled || isStaff) &&
+                    (status === "SCHEDULED" || status === "LIVE");
+                  return (
+                    <article
+                      key={item.id}
+                      className={`live-row course-live-row is-${status.toLowerCase()}`}
+                    >
+                      <div className="live-row-date">
+                        <span>
+                          {start.toLocaleDateString(undefined, {
+                            month: "short",
+                          })}
+                        </span>
+                        <strong>
+                          {start.toLocaleDateString(undefined, {
+                            day: "numeric",
+                          })}
+                        </strong>
+                        <small>
+                          {start.toLocaleTimeString(undefined, {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </small>
+                      </div>
+                      <div className="live-row-content">
+                        <div className="live-row-main">
+                          <div className="live-row-title">
+                            <h3>{item.title}</h3>
+                            <span
+                              className={`live-pill is-${status.toLowerCase()}`}
+                            >
+                              {status === "LIVE" && (
+                                <span className="live-pill-dot" />
                               )}
-                            </div>
-                            {(canJoin ||
-                              status === "SCHEDULED" ||
-                              status === "LIVE") && (
-                              <div className="live-row-actions">
-                                {canJoin ? (
-                                  <a
-                                    className="live-action is-primary"
-                                    href={item.meetingUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                  >
-                                    <Video size={14} /> Join class
-                                  </a>
-                                ) : (
-                                  <span
-                                    className="live-action is-locked"
-                                    aria-disabled="true"
-                                  >
-                                    <Lock size={14} />
-                                    {isEnrolled || isStaff
-                                      ? "Join link unavailable"
-                                      : "Enroll to join"}
-                                  </span>
-                                )}
-                              </div>
+                              {STATUS_LABELS[status]}
+                            </span>
+                          </div>
+                          <p className="live-row-meta">
+                            {PROVIDER_LABELS[item.provider] ?? item.provider}
+                            {" · "}
+                            {timeSummary}
+                          </p>
+                          {item.description && (
+                            <p className="live-row-desc">{item.description}</p>
+                          )}
+                        </div>
+                        {(canJoin ||
+                          status === "SCHEDULED" ||
+                          status === "LIVE") && (
+                          <div className="live-row-actions">
+                            {canJoin ? (
+                              <a
+                                className="live-action is-primary"
+                                href={item.meetingUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <Video size={14} /> Join class
+                              </a>
+                            ) : (
+                              <span
+                                className="live-action is-locked"
+                                aria-disabled="true"
+                              >
+                                <Lock size={14} />
+                                {isEnrolled || isStaff
+                                  ? "Join link unavailable"
+                                  : "Enroll to join"}
+                              </span>
                             )}
                           </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {/* Curriculum (left) + video player (right) - full-width row */}
           <div className="course-learning-grid">
             <div className="course-curriculum">
@@ -1435,110 +1444,109 @@ export default function CourseDetailPage({ params }: Props) {
                   {modules.map((module, moduleIndex) => (
                     <div key={module.id} className="course-module">
                       <div className="course-module-heading">
-                        <h3>
+                        <h3 title={String(module.description)}>
                           Module {moduleIndex + 1}: {module.title}
                         </h3>
+                        {/* <p className="text-xs font-extralight mt-1"> {module.description}</p> */}
                       </div>
                       <div className="course-lesson-list">
                         {module.lessons.map((lesson) => (
                           <Fragment key={lesson.id}>
-                          <button
-                            type="button"
-                            className={`course-lesson-row ${
-                              selectedLesson?.id === lesson.id
-                                ? "is-selected"
-                                : ""
-                            }`}
-                            onClick={() => {
-                              if (isEnrolled || lesson.isFree) {
-                                setSelectedLesson(lesson);
-                              } else {
-                                toast.error(
-                                  "Enroll in the course to access this lesson",
-                                );
-                              }
-                            }}
-                          >
-                            <div className="flex items-center gap-3">
-                              {completedLessonIds.has(lesson.id) ? (
-                                <CheckCircle className="h-5 w-5 text-sky-600" />
-                              ) : isEnrolled || lesson.isFree ? (
-                                !lesson.videoId ? (
-                                  <Video className="h-5 w-5 text-red-600" />
+                            <button
+                              type="button"
+                              className={`course-lesson-row ${
+                                selectedLesson?.id === lesson.id
+                                  ? "is-selected"
+                                  : ""
+                              }`}
+                              onClick={() => {
+                                if (isEnrolled || lesson.isFree) {
+                                  setSelectedLesson(lesson);
+                                } else {
+                                  toast.error(
+                                    "Enroll in the course to access this lesson",
+                                  );
+                                }
+                              }}
+                            >
+                              <div className="flex items-center gap-3">
+                                {completedLessonIds.has(lesson.id) ? (
+                                  <CheckCircle className="h-5 w-5 text-sky-600" />
+                                ) : isEnrolled || lesson.isFree ? (
+                                  !lesson.videoId ? (
+                                    <Video className="h-5 w-5 text-red-600" />
+                                  ) : (
+                                    <PlayCircle className="h-5 w-5 text-red-600" />
+                                  )
                                 ) : (
-                                  <PlayCircle className="h-5 w-5 text-red-600" />
-                                )
-                              ) : (
-                                <Lock className="h-5 w-5 text-gray-400" />
-                              )}
-                              <div>
-                                <p className="font-medium text-gray-900">
-                                  {lesson.title}
-                                </p>
-                                {lesson.duration && (
-                                  <p className="text-sm text-gray-500">
-                                    {lesson.duration} min
-                                  </p>
+                                  <Lock className="h-5 w-5 text-gray-400" />
                                 )}
+                                <div>
+                                  <p className="font-medium text-gray-900">
+                                    {lesson.title}
+                                  </p>
+                                  {lesson.duration && (
+                                    <p className="text-sm text-gray-500">
+                                      {lesson.duration} min
+                                    </p>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                            {lesson.isFree && !isEnrolled && (
-                              <span className="text-xs bg-sky-100 text-sky-800 px-2 py-1 rounded">
-                                Free Preview
-                              </span>
-                            )}
-                          </button>
-                          {/* Mobile: video opens right below the tapped topic */}
-                          {isMobileViewport &&
-                            selectedLesson?.id === lesson.id &&
-                            lessonPlayer && (
-                              <div className="course-lesson-inline-player">
-                                {lessonPlayer}
-                              </div>
-                            )}
+                              {lesson.isFree && !isEnrolled && (
+                                <span className="text-xs bg-sky-100 text-sky-800 px-2 py-1 rounded">
+                                  Free Preview
+                                </span>
+                              )}
+                            </button>
+                            {/* Mobile: video opens right below the tapped topic */}
+                            {isMobileViewport &&
+                              selectedLesson?.id === lesson.id &&
+                              lessonPlayer && (
+                                <div className="course-lesson-inline-player">
+                                  {lessonPlayer}
+                                </div>
+                              )}
                           </Fragment>
                         ))}
                       </div>
                     </div>
                   ))}
                   {/* Certificate - locked until the course is 100% complete */}
-                {
-                  <div className="mt-2">
-                    {certificateId ? (
-                      <Link
-                        href={`/certificates/${certificateId}`}
-                        className="course-certificate-card is-unlocked"
-                      >
-                        <Award className="h-6 w-6 shrink-0" />
-                        <span>
-                          <strong>Certificate earned!</strong>
-                          <small>View and download your certificate</small>
-                        </span>
-                      </Link>
-                    ) : (
-                      <div className="course-certificate-card is-locked">
-                        <Lock className="h-5 w-5 shrink-0" />
-                        <span>
-                          <strong>Certificate</strong>
-                          <small>
-                            {totalLessons > 0 &&
-                            completedLessons >= totalLessons
-                              ? "Unlocking..."
-                              : `Complete all ${totalLessons} lessons to unlock your certificate`}
-                          </small>
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                }
+                  {
+                    <div className="mt-2">
+                      {certificateId ? (
+                        <Link
+                          href={`/certificates/${certificateId}`}
+                          className="course-certificate-card is-unlocked"
+                        >
+                          <Award className="h-6 w-6 shrink-0" />
+                          <span>
+                            <strong>Certificate earned!</strong>
+                            <small>View and download your certificate</small>
+                          </span>
+                        </Link>
+                      ) : (
+                        <div className="course-certificate-card is-locked">
+                          <Lock className="h-5 w-5 shrink-0" />
+                          <span>
+                            <strong>Certificate</strong>
+                            <small>
+                              {totalLessons > 0 &&
+                              completedLessons >= totalLessons
+                                ? "Unlocking..."
+                                : `Complete all ${totalLessons} lessons to unlock your certificate`}
+                            </small>
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  }
                 </div>
-                
               ) : (
                 <p className="text-gray-500 text-center py-8">
                   Course curriculum will be available soon.
                 </p>
               )}
-              
             </div>
 
             {/* Video Player - desktop only; mobile renders the same
@@ -1547,104 +1555,108 @@ export default function CourseDetailPage({ params }: Props) {
           </div>
         </div>
       </main>
-      
 
-{showProductDescription && (
-  <div
-    className="fixed inset-0 z-99999 flex items-center justify-center
+      {showProductDescription && (
+        <div
+          className="fixed inset-0 z-99999 flex items-center justify-center
                bg-black/60 backdrop-blur-sm p-3 sm:p-5"
-    onClick={() => setShowProductDescription(false)}
-  >
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="product-description-title"
-      className="flex flex-col w-full max-w-170 max-h-[85vh]
+          onClick={() => setShowProductDescription(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="product-description-title"
+            className="flex flex-col w-full max-w-170 max-h-[85vh]
                  overflow-hidden rounded-md border border-gray-200
                  bg-white shadow-2xl dark:border-[#383838]
                  dark:bg-[#1e1e1e]"
-      onClick={(e) => e.stopPropagation()}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div
+              className="flex items-center justify-between gap-4
                       border-b border-[#f55a26] px-5 py-2
-                      shrink-0">
+                      shrink-0"
+            >
+              <div>
+                <span
+                  className="block text-[9px] font-bold
+                           tracking-[1px] text-[#f55a26]"
+                >
+                  COURSE OVERVIEW
+                </span>
+              </div>
 
-        <div>
-          <span className="block text-[9px] font-bold
-                           tracking-[1px] text-[#f55a26]">
-            COURSE OVERVIEW
-          </span>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setShowProductDescription(false)}
-          aria-label="Close product description"
-          className="flex shrink-0 items-center
+              <button
+                type="button"
+                onClick={() => setShowProductDescription(false)}
+                aria-label="Close product description"
+                className="flex shrink-0 items-center
                      justify-center rounded
                      text-xl hover:text-gray-500 transition
                       text-[#f55a26]
                       hover:dark:text-gray-400"
-        >
-          &times;
-        </button>
-      </div>
+              >
+                &times;
+              </button>
+            </div>
 
-      {/* Body */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-5
+            {/* Body */}
+            <div
+              className="min-h-0 flex-1 overflow-y-auto px-5
                       [scrollbar-width:thin]
-                      [scrollbar-color:#f55a26_transparent]">
+                      [scrollbar-color:#f55a26_transparent]"
+            >
+              <div
+                className="text-xs font-normal leading-[1.65]
+                        text-[#707070] dark:text-gray-300"
+              >
+                {businessInfo.productsDescription
+                  ?.trim()
+                  .split(/\n\s*\n/)
+                  .filter((paragraph) => paragraph.trim())
+                  .map((paragraph, index) => {
+                    const content = paragraph.trim();
 
-        <div className="text-xs font-normal leading-[1.65]
-                        text-[#707070] dark:text-gray-300">
-          {businessInfo.productsDescription
-            ?.trim()
-            .split(/\n\s*\n/)
-            .filter((paragraph) => paragraph.trim())
-            .map((paragraph, index) => {
-              const content = paragraph.trim();
+                    const isHeading =
+                      content.endsWith(":") || /^\d+\.\s/.test(content);
 
-              const isHeading =
-                content.endsWith(":") ||
-                /^\d+\.\s/.test(content);
+                    return (
+                      <p
+                        key={index}
+                        className={`mb-2 text-xs ${
+                          isHeading
+                            ? "mt-3 mb-1 font-bold text-[#1f1f1f] dark:text-white"
+                            : "font-normal"
+                        }`}
+                      >
+                        {content}
+                      </p>
+                    );
+                  })}
+              </div>
+            </div>
 
-              return (
-                <p
-                  key={index}
-                  className={`mb-2 text-xs ${
-                    isHeading
-                      ? "mt-3 mb-1 font-bold text-[#1f1f1f] dark:text-white"
-                      : "font-normal"
-                  }`}
-                >
-                  {content}
-                </p>
-              );
-            })}
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="flex shrink-0 justify-end border-t
+            {/* Footer */}
+            <div
+              className="flex shrink-0 justify-end border-t
                       border-gray-200 px-5 py-3
-                      dark:border-gray-700">
-        <button
-          type="button"
-          onClick={() => setShowProductDescription(false)}
-          className="rounded border border-[#f55a26]
+                      dark:border-gray-700"
+            >
+              <button
+                type="button"
+                onClick={() => setShowProductDescription(false)}
+                className="rounded border border-[#f55a26]
                      bg-[#f55a26] px-5 py-2 text-xs
                      font-semibold text-white transition
                      hover:border-[#df491b] hover:bg-[#df491b]"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

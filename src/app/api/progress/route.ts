@@ -8,6 +8,7 @@ import {
   invalidateUser,
   userCached,
 } from "@/lib/page-cache";
+import { logger } from "@/lib/logger";
 
 // GET progress for a course
 export async function GET(request: NextRequest) {
@@ -68,7 +69,10 @@ export async function GET(request: NextRequest) {
       certificateNumber: certificate?.certificateNumber ?? null,
     });
   } catch (error) {
-    console.error("Progress fetch error:", error);
+    logger.error("Progress fetch error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to fetch progress" },
       { status: 500 },
@@ -203,7 +207,10 @@ export async function POST(request: NextRequest) {
       certificateNumber: certificate?.certificateNumber ?? null,
     });
   } catch (error) {
-    console.error("Progress update error:", error);
+    logger.error("Progress update error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to update progress" },
       { status: 500 },

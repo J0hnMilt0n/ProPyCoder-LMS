@@ -45,6 +45,10 @@ export function ImageCropModal({
   });
 
   const [isInteracting, setIsInteracting] = useState(false);
+  const [naturalDimensions, setNaturalDimensions] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
 
   // Initialize crop after image loads.
   useEffect(() => {
@@ -56,6 +60,8 @@ export function ImageCropModal({
       const height = img.naturalHeight;
 
       if (!width || !height) return;
+
+      setNaturalDimensions({ width, height });
 
       const w = Math.min(width, height * aspectRatio);
       const h = w / aspectRatio;
@@ -79,9 +85,7 @@ export function ImageCropModal({
     };
   }, [src, aspectRatio]);
 
-  const handlePointerDown = (
-    e: React.PointerEvent<HTMLDivElement>
-  ) => {
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const img = imgRef.current;
     if (!img) return;
 
@@ -105,9 +109,7 @@ export function ImageCropModal({
     setIsInteracting(true);
   };
 
-  const handlePointerMove = (
-    e: React.PointerEvent<HTMLDivElement>
-  ) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const img = imgRef.current;
     const start = pointerStart.current;
 
@@ -133,14 +135,8 @@ export function ImageCropModal({
     if (start.type === "move") {
       setCrop({
         ...original,
-        x: Math.max(
-          0,
-          Math.min(imageWidth - original.w, original.x + dx)
-        ),
-        y: Math.max(
-          0,
-          Math.min(imageHeight - original.h, original.y + dy)
-        ),
+        x: Math.max(0, Math.min(imageWidth - original.w, original.x + dx)),
+        y: Math.max(0, Math.min(imageHeight - original.h, original.y + dy)),
       });
 
       return;
@@ -163,8 +159,7 @@ export function ImageCropModal({
 
     if (type.length === 2) {
       const horizontalChange = widthChange;
-      const verticalChange =
-        (type.includes("s") ? dy : -dy) * aspectRatio;
+      const verticalChange = (type.includes("s") ? dy : -dy) * aspectRatio;
 
       widthChange =
         Math.abs(horizontalChange) >= Math.abs(verticalChange)
@@ -201,19 +196,13 @@ export function ImageCropModal({
         ? imageHeight - anchorY
         : 2 * Math.min(anchorY, imageHeight - anchorY);
 
-    const maxWidth = Math.min(
-      maxWidthFromX,
-      maxHeightFromY * aspectRatio
-    );
+    const maxWidth = Math.min(maxWidthFromX, maxHeightFromY * aspectRatio);
 
-    const minWidth = Math.min(
-      30,
-      maxWidth
-    );
+    const minWidth = Math.min(30, maxWidth);
 
     const newWidth = Math.max(
       minWidth,
-      Math.min(maxWidth, original.w + widthChange)
+      Math.min(maxWidth, original.w + widthChange),
     );
 
     const newHeight = newWidth / aspectRatio;
@@ -238,9 +227,7 @@ export function ImageCropModal({
     });
   };
 
-  const handlePointerUp = (
-    e: React.PointerEvent<HTMLDivElement>
-  ) => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     if (pointerStart.current?.pointerId !== e.pointerId) return;
 
     pointerStart.current = null;
@@ -255,10 +242,7 @@ export function ImageCropModal({
     const img = imgRef.current;
     if (!img || !img.naturalWidth) return;
 
-    const scale = Math.min(
-      1,
-      maxDim / Math.max(crop.w, crop.h)
-    );
+    const scale = Math.min(1, maxDim / Math.max(crop.w, crop.h));
 
     const outW = Math.max(1, Math.round(crop.w * scale));
     const outH = Math.max(1, Math.round(crop.h * scale));
@@ -270,31 +254,12 @@ export function ImageCropModal({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.drawImage(
-      img,
-      crop.x,
-      crop.y,
-      crop.w,
-      crop.h,
-      0,
-      0,
-      outW,
-      outH
-    );
+    ctx.drawImage(img, crop.x, crop.y, crop.w, crop.h, 0, 0, outW, outH);
 
     onApply(canvas.toDataURL("image/jpeg", quality));
   };
 
-  const handles = [
-    "nw",
-    "n",
-    "ne",
-    "e",
-    "se",
-    "s",
-    "sw",
-    "w",
-  ];
+  const handles = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 
   return (
     <div
@@ -372,10 +337,18 @@ export function ImageCropModal({
             onPointerCancel={handlePointerUp}
             style={{
               position: "absolute",
-              left: `${(crop.x / (imgRef.current?.naturalWidth || 1)) * 100}%`,
-              top: `${(crop.y / (imgRef.current?.naturalHeight || 1)) * 100}%`,
-              width: `${(crop.w / (imgRef.current?.naturalWidth || 1)) * 100}%`,
-              height: `${(crop.h / (imgRef.current?.naturalHeight || 1)) * 100}%`,
+              left: naturalDimensions
+                ? `${(crop.x / naturalDimensions.width) * 100}%`
+                : "0%",
+              top: naturalDimensions
+                ? `${(crop.y / naturalDimensions.height) * 100}%`
+                : "0%",
+              width: naturalDimensions
+                ? `${(crop.w / naturalDimensions.width) * 100}%`
+                : "0%",
+              height: naturalDimensions
+                ? `${(crop.h / naturalDimensions.height) * 100}%`
+                : "0%",
               boxSizing: "border-box",
               border: "2px solid #c6532b",
               boxShadow: "0 0 0 9999px rgba(0,0,0,0.48)",
@@ -389,25 +362,25 @@ export function ImageCropModal({
                 key={type}
                 data-handle={type}
                 style={{
-                position: "absolute",
-                width: 12,
-                height: 12,
-                background: "#e95f32",
-                border: "2px solid #fff",
-                borderRadius: 2,
-                boxSizing: "border-box",
-                touchAction: "none",
-                ...(type.includes("n") ? { top: -6 } : {}),
-                ...(type.includes("s") ? { bottom: -6 } : {}),
-                ...(type.includes("e") ? { right: -6 } : {}),
-                ...(type.includes("w") ? { left: -6 } : {}),
-                ...(!type.includes("n") && !type.includes("s")
-                  ? { top: "50%", transform: "translateY(-50%)" }
-                  : {}),
-                ...(!type.includes("e") && !type.includes("w")
-                  ? { left: "50%", transform: "translateX(-50%)" }
-                  : {}),
-              }}
+                  position: "absolute",
+                  width: 12,
+                  height: 12,
+                  background: "#e95f32",
+                  border: "2px solid #fff",
+                  borderRadius: 2,
+                  boxSizing: "border-box",
+                  touchAction: "none",
+                  ...(type.includes("n") ? { top: -6 } : {}),
+                  ...(type.includes("s") ? { bottom: -6 } : {}),
+                  ...(type.includes("e") ? { right: -6 } : {}),
+                  ...(type.includes("w") ? { left: -6 } : {}),
+                  ...(!type.includes("n") && !type.includes("s")
+                    ? { top: "50%", transform: "translateY(-50%)" }
+                    : {}),
+                  ...(!type.includes("e") && !type.includes("w")
+                    ? { left: "50%", transform: "translateX(-50%)" }
+                    : {}),
+                }}
               />
             ))}
           </div>
@@ -421,8 +394,8 @@ export function ImageCropModal({
             textAlign: "center",
           }}
         >
-          Drag the image area to reposition. Drag the corner or edge
-          handles to resize.
+          Drag the image area to reposition. Drag the corner or edge handles to
+          resize.
         </p>
 
         <div

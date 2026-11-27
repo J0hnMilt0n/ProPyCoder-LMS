@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, FormEvent, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Navbar } from "@/components/navbar";
 import { Lock, Loader, ArrowRight, CheckCircle2 } from "lucide-react";
@@ -9,7 +9,6 @@ import toast from "react-hot-toast";
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const token = searchParams.get("token") ?? "";
 
   const [password, setPassword] = useState("");
@@ -36,11 +35,14 @@ function ResetPasswordContent() {
         body: JSON.stringify({ token, password }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Could not reset password.");
+      if (!response.ok)
+        throw new Error(data.error || "Could not reset password.");
       setSuccess(true);
       toast.success("Password reset successfully!");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not reset password.");
+      toast.error(
+        error instanceof Error ? error.message : "Could not reset password.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -86,7 +88,11 @@ function ResetPasswordContent() {
                   <CheckCircle2 size={18} />
                   <span>Password has been reset successfully.</span>
                 </div>
-                <Link className="auth-submit px-2" href="/auth/login" style={{ marginTop: 16, display: "inline-flex" }}>
+                <Link
+                  className="auth-submit px-2"
+                  href="/auth/login"
+                  style={{ marginTop: 16, display: "inline-flex" }}
+                >
                   Continue to sign in <ArrowRight size={16} />
                 </Link>
               </div>
@@ -122,11 +128,19 @@ function ResetPasswordContent() {
                     />
                   </div>
                 </div>
-                <button type="submit" className="auth-submit px-2" disabled={isSubmitting}>
+                <button
+                  type="submit"
+                  className="auth-submit px-2"
+                  disabled={isSubmitting}
+                >
                   {isSubmitting ? (
-                    <><Loader className="h-4 w-4 animate-spin" /> Resetting...</>
+                    <>
+                      <Loader className="h-4 w-4 animate-spin" /> Resetting...
+                    </>
                   ) : (
-                    <>Reset password <ArrowRight size={16} /></>
+                    <>
+                      Reset password <ArrowRight size={16} />
+                    </>
                   )}
                 </button>
               </form>
@@ -140,7 +154,14 @@ function ResetPasswordContent() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={<main className="auth-page"><Navbar /><p className="auth-card-description">Loading…</p></main>}>
+    <Suspense
+      fallback={
+        <main className="auth-page">
+          <Navbar />
+          <p className="auth-card-description">Loading…</p>
+        </main>
+      }
+    >
       <ResetPasswordContent />
     </Suspense>
   );

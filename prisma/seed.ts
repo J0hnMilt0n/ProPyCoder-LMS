@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 async function main() {
   // Create admin user
   const adminPassword = await bcrypt.hash("admin123", 10);
-  const admin = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: "admin@propycoder.com" },
     update: {},
     create: {
@@ -177,7 +177,8 @@ async function main() {
   await prisma.lesson.create({
     data: {
       title: "JavaScript Variables and Data Types",
-      description: "Learn about variables, strings, numbers, and other data types",
+      description:
+        "Learn about variables, strings, numbers, and other data types",
       order: 1,
       moduleId: module3.id,
       videoUrl: "https://www.youtube.com/watch?v=WBPrJSw7yQA",
@@ -203,7 +204,8 @@ async function main() {
   await prisma.lesson.create({
     data: {
       title: "DOM Manipulation",
-      description: "Interacting with the Document Object Model using JavaScript",
+      description:
+        "Interacting with the Document Object Model using JavaScript",
       order: 3,
       moduleId: module3.id,
       videoUrl: "https://www.youtube.com/watch?v=y17RuWkWdn8",

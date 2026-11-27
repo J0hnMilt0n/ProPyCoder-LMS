@@ -7,7 +7,6 @@ import { useSession, signOut } from "next-auth/react";
 import {
   ArrowUpRight,
   BookOpen,
-  ChevronDown,
   FlaskConical,
   LogOut,
   Megaphone,
@@ -57,7 +56,7 @@ export function Navbar() {
     persistAuthHint(false);
     // Wipe per-user resource caches so the next account on this
     // browser never sees the previous user's cached data.
-    // clearResourceCaches();
+    clearResourceCaches();
     setIsOpen(false);
     await signOut({ callbackUrl: "/" });
   };
@@ -131,7 +130,7 @@ export function Navbar() {
             Courses
           </Link>
           <Link href="/bundles" onClick={() => setIsOpen(false)}>
-            Bundles
+            Hub
           </Link>
           <Link href="/live-classes" onClick={() => setIsOpen(false)}>
             Live classes
@@ -250,10 +249,7 @@ export function Navbar() {
           {theme === "light" ? <Moon size={17} /> : <Sun size={17} />}
         </button>
         {status === "loading" && !user && (
-          <span
-            className="site-user-session-skeleton"
-            aria-hidden="true"
-          />
+          <span className="site-user-session-skeleton" aria-hidden="true" />
         )}
         {user && (
           <Link

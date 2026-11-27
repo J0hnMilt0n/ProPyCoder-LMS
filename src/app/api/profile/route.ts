@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/app/api/auth/[...nextauth]/route";
+import {
+  auth,
+  clearSessionProfileCache,
+} from "@/app/api/auth/[...nextauth]/route";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import {
@@ -12,14 +15,13 @@ import {
 } from "@/lib/page-cache";
 import { invalidateCatalog } from "@/lib/course-cache";
 import { imageUrl } from "@/lib/image-urls";
+import { logger } from "@/lib/logger";
 
 const updateSchema = z.object({
   firstName: z.string().trim().min(1).max(60).optional(),
   lastName: z.string().trim().min(1).max(60).optional(),
   // Data URL (uploaded image) or remote URL; empty string or null clears it.
-  avatar: z
-    .union([z.string().trim().max(2_000_000), z.null()])
-    .optional(),
+  avatar: z.union([z.string().trim().max(2_000_000), z.null()]).optional(),
   currentPassword: z.string().optional(),
   newPassword: z.string().min(8, "Use at least 8 characters").optional(),
 });
@@ -59,7 +61,10 @@ export async function GET() {
       avatarUrl: imageUrl(avatar, "avatar", user.id),
     });
   } catch (error) {
-    console.error("Profile fetch error:", error);
+    logger.error("Profile fetch error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to load profile" },
       { status: 500 },
@@ -142,6 +147,7 @@ export async function PATCH(request: NextRequest) {
     // Profile changed — drop this user's cached profile so the next read is
     // fresh (the navbar avatar/name refresh via the session update too).
     invalidateUser(NS.profile, session.user.id);
+    clearSessionProfileCache(session.user.id);
 
     invalidateAdminOverview();
     if (updated.role === "INSTRUCTOR") {
@@ -155,7 +161,10 @@ export async function PATCH(request: NextRequest) {
       avatarUrl: imageUrl(updatedAvatar, "avatar", updated.id),
     });
   } catch (error) {
-    console.error("Profile update error:", error);
+    logger.error("Profile update error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to update profile" },
       { status: 500 },

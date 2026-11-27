@@ -15,7 +15,7 @@ export function ThemeInitScript() {
     <script
       id="propycoder-theme-init"
       dangerouslySetInnerHTML={{
-        __html: `(function(){try{var s=window.localStorage.getItem('propycoder-theme');var t=(s==='light'||s==='dark')?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');var r=document.documentElement;r.dataset.theme=t;r.style.colorScheme=t;var a=window.localStorage.getItem('propycoder-auth-hint');r.dataset.authHint=a==='authenticated'?'authenticated':'unauthenticated';}catch(e){}})();`,
+        __html: `(function(){try{var s=window.localStorage.getItem('propycoder-theme');var t=(s==='light'||s==='dark')?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');var r=document.documentElement;r.dataset.theme=t;r.style.colorScheme=t;var a=window.localStorage.getItem('propycoder-auth-hint');r.dataset.authHint=a==='authenticated'?'authenticated':'unauthenticated';}catch(e){/* localStorage unavailable or matchMedia failed */}})();`,
       }}
     />
   );

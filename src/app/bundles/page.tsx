@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -16,6 +15,7 @@ import toast from "react-hot-toast";
 
 import { Navbar } from "@/components/navbar";
 import { formatINR } from "@/lib/currency";
+import { PURCHASE_REFRESH_INTERVAL_MS } from "@/lib/config";
 import {
   bundleMrpTotal,
   discountPercent,
@@ -56,7 +56,7 @@ interface BundlePricing {
   remainingCount: number;
 }
 
-const PURCHASE_REFRESH_INTERVAL = 30_000;
+const PURCHASE_REFRESH_INTERVAL = PURCHASE_REFRESH_INTERVAL_MS;
 
 const FORCE_PURCHASE_REFRESH_KEY = (userId: string) =>
   `propycoder:force-purchase-refresh:${userId}`;
@@ -78,14 +78,10 @@ export default function BundlesPage() {
     key: "bundles",
     url: "/api/bundles",
     scope: "public",
-    select: (json) =>
-      (json as { bundles: StoreBundle[] }).bundles ?? [],
+    select: (json) => (json as { bundles: StoreBundle[] }).bundles ?? [],
   });
 
-  const bundles = useMemo(
-    () => bundlesRes.data ?? [],
-    [bundlesRes.data],
-  );
+  const bundles = useMemo(() => bundlesRes.data ?? [], [bundlesRes.data]);
 
   const isLoading = bundlesRes.isLoading;
 
@@ -141,8 +137,7 @@ export default function BundlesPage() {
      * Fetch the latest purchase information.
      */
     const refreshPurchasedCourses = async (force = false) => {
-      const forcePending =
-        localStorage.getItem(forceRefreshKey) === "1";
+      const forcePending = localStorage.getItem(forceRefreshKey) === "1";
 
       const shouldForce = force || forcePending;
       const now = Date.now();
@@ -151,10 +146,7 @@ export default function BundlesPage() {
       if (refreshInFlight) return;
 
       // Avoid unnecessary requests within the refresh interval.
-      if (
-        !shouldForce &&
-        now - lastRefreshAt < PURCHASE_REFRESH_INTERVAL
-      ) {
+      if (!shouldForce && now - lastRefreshAt < PURCHASE_REFRESH_INTERVAL) {
         return;
       }
 
@@ -178,8 +170,7 @@ export default function BundlesPage() {
           throw new Error("Failed to refresh bundle purchases");
         }
 
-        const result =
-          (await response.json()) as BundlePurchasesResponse;
+        const result = (await response.json()) as BundlePurchasesResponse;
 
         const purchases = result.purchases ?? {};
 
@@ -193,11 +184,7 @@ export default function BundlesPage() {
           updatedPurchases[bundle.id] = courseIds;
 
           // Update the user-specific resource cache.
-          primeResourceCache(
-            `bundle-purchases:${bundle.id}`,
-            scope,
-            courseIds,
-          );
+          primeResourceCache(`bundle-purchases:${bundle.id}`, scope, courseIds);
         }
 
         // Replace the UI state with the latest server response.
@@ -208,10 +195,7 @@ export default function BundlesPage() {
           localStorage.removeItem(forceRefreshKey);
         }
       } catch (error) {
-        if (
-          error instanceof Error &&
-          error.name === "AbortError"
-        ) {
+        if (error instanceof Error && error.name === "AbortError") {
           return;
         }
 
@@ -248,10 +232,7 @@ export default function BundlesPage() {
     window.addEventListener("focus", handleFocus);
     window.addEventListener("pageshow", handlePageShow);
 
-    document.addEventListener(
-      "visibilitychange",
-      handleVisibilityChange,
-    );
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       active = false;
@@ -261,10 +242,7 @@ export default function BundlesPage() {
       window.removeEventListener("focus", handleFocus);
       window.removeEventListener("pageshow", handlePageShow);
 
-      document.removeEventListener(
-        "visibilitychange",
-        handleVisibilityChange,
-      );
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [bundles, session?.user?.id, status]);
 
@@ -279,17 +257,13 @@ export default function BundlesPage() {
     return bundles.filter((bundle) => {
       const title = (bundle.title ?? "").toLocaleLowerCase();
 
-      const description = (
-        bundle.description ?? ""
-      ).toLocaleLowerCase();
+      const description = (bundle.description ?? "").toLocaleLowerCase();
 
       return (
         title.includes(query) ||
         description.includes(query) ||
         bundle.courses.some((entry) =>
-          (entry.course.title ?? "")
-            .toLocaleLowerCase()
-            .includes(query),
+          (entry.course.title ?? "").toLocaleLowerCase().includes(query),
         )
       );
     });
@@ -298,53 +272,36 @@ export default function BundlesPage() {
   /**
    * CHECK IF A COURSE IS ALREADY PURCHASED
    */
-  function isCoursePurchased(
-    bundleId: string,
-    courseId: string,
-  ) {
-    return (
-      purchasedByBundle[bundleId]?.includes(courseId) ?? false
-    );
+  function isCoursePurchased(bundleId: string, courseId: string) {
+    return purchasedByBundle[bundleId]?.includes(courseId) ?? false;
   }
 
   /**
    * CALCULATE BUNDLE PRICE
    */
-  function calculateBundlePricing(
-    bundle: StoreBundle,
-  ): BundlePricing {
-    const courses = bundle.courses.map(
-      (entry) => entry.course,
-    );
+  function calculateBundlePricing(bundle: StoreBundle): BundlePricing {
+    const courses = bundle.courses.map((entry) => entry.course);
 
     const purchasedCourses = courses.filter((course) =>
       isCoursePurchased(bundle.id, course.id),
     );
 
     const remainingCourses = courses.filter(
-      (course) =>
-        !isCoursePurchased(bundle.id, course.id),
+      (course) => !isCoursePurchased(bundle.id, course.id),
     );
 
     const purchasedValue = purchasedCourses.reduce(
-      (total, course) =>
-        total + effectiveCoursePrice(course),
+      (total, course) => total + effectiveCoursePrice(course),
       0,
     );
 
     const mrp = bundleMrpTotal(courses);
 
-    const finalPrice = Math.max(
-      0,
-      bundle.price - purchasedValue,
-    );
+    const finalPrice = Math.max(0, bundle.price - purchasedValue);
 
     const discount = discountPercent({
       price: mrp,
-      offerPrice:
-        finalPrice > 0 && finalPrice < mrp
-          ? finalPrice
-          : null,
+      offerPrice: finalPrice > 0 && finalPrice < mrp ? finalPrice : null,
     });
 
     return {
@@ -388,9 +345,7 @@ export default function BundlesPage() {
     const pricing = calculateBundlePricing(bundle);
 
     if (pricing.remainingCount === 0) {
-      toast.success(
-        "You already own every course in this bundle.",
-      );
+      toast.success("You already own every course in this bundle.");
       return;
     }
 
@@ -414,18 +369,12 @@ export default function BundlesPage() {
       };
 
       if (!response.ok || !data.checkoutUrl) {
-        throw new Error(
-          data?.error || "Could not start checkout",
-        );
+        throw new Error(data?.error || "Could not start checkout");
       }
 
       router.push(data.checkoutUrl);
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Checkout failed",
-      );
+      toast.error(error instanceof Error ? error.message : "Checkout failed");
     } finally {
       setBuyingId(null);
     }
@@ -450,16 +399,14 @@ export default function BundlesPage() {
           <div className="catalog-hero-row">
             <div>
               <h1>
-                Course <em>bundles.</em>
+                Course <em>Hub.</em>
               </h1>
 
-              <p>
-                Grab 2 or more courses together at a reduced price.
-              </p>
+              <p>Grab 2 or more courses together at a reduced price.</p>
             </div>
 
             <div className="catalog-hero-note">
-              <span>BUNDLE SAVINGS</span>
+              <span>COMBO SAVINGS</span>
               <strong>More courses, one price.</strong>
             </div>
 
@@ -474,17 +421,12 @@ export default function BundlesPage() {
                 <input
                   type="search"
                   value={searchQuery}
-                  onChange={(event) =>
-                    setSearchQuery(event.target.value)
-                  }
-                  placeholder="Search bundles or their courses…"
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search combos or their courses…"
                   aria-label="Search bundles"
                 />
 
-                <button
-                  type="submit"
-                  className="catalog-search-go"
-                >
+                <button type="submit" className="catalog-search-go">
                   Search
                 </button>
               </div>
@@ -496,15 +438,9 @@ export default function BundlesPage() {
       {/* BUNDLE CATALOG */}
       <section className="catalog-content">
         {isLoading ? (
-          <div
-            className="catalog-grid"
-            aria-label="Loading bundles"
-          >
+          <div className="catalog-grid" aria-label="Loading bundles">
             {Array.from({ length: 3 }, (_, index) => (
-              <div
-                className="catalog-skeleton"
-                key={index}
-              >
+              <div className="catalog-skeleton" key={index}>
                 <span />
                 <div />
                 <div />
@@ -517,14 +453,9 @@ export default function BundlesPage() {
 
             <h2>Unable to load bundles.</h2>
 
-            <p>
-              Please check your connection and try again.
-            </p>
+            <p>Please check your connection and try again.</p>
 
-            <button
-              type="button"
-              onClick={bundlesRes.refresh}
-            >
+            <button type="button" onClick={bundlesRes.refresh}>
               Retry
             </button>
           </div>
@@ -534,51 +465,36 @@ export default function BundlesPage() {
 
             <h2>No bundles available right now.</h2>
 
-            <p>
-              Check back soon — bundle deals are on the way.
-            </p>
+            <p>Check back soon — bundle deals are on the way.</p>
           </div>
         ) : (
           <>
             <div className="catalog-toolbar">
               <div className="catalog-results-label">
-                Showing {visibleBundles.length} of{" "}
-                {bundles.length}{" "}
+                Showing {visibleBundles.length} of {bundles.length}{" "}
                 {bundles.length === 1 ? "bundle" : "bundles"}
               </div>
             </div>
 
             <div className="bundle-store">
               {visibleBundles.length === 0 ? (
-                <div
-                  className="catalog-empty"
-                  style={{ gridColumn: "1 / -1" }}
-                >
+                <div className="catalog-empty" style={{ gridColumn: "1 / -1" }}>
                   <Package />
 
                   <h2>No bundles match your search.</h2>
 
-                  <p>
-                    Try a different term or clear the search box.
-                  </p>
+                  <p>Try a different term or clear the search box.</p>
 
-                  <button
-                    type="button"
-                    onClick={clearSearch}
-                  >
+                  <button type="button" onClick={clearSearch}>
                     Clear search
                   </button>
                 </div>
               ) : (
                 visibleBundles.map((bundle) => {
-                  const pricing =
-                    calculateBundlePricing(bundle);
+                  const pricing = calculateBundlePricing(bundle);
 
                   return (
-                    <article
-                      key={bundle.id}
-                      className="bundle-store-card"
-                    >
+                    <article key={bundle.id} className="bundle-store-card">
                       {/* COVER */}
                       <Link
                         href={`/bundles/${bundle.id}`}
@@ -617,23 +533,15 @@ export default function BundlesPage() {
                           {bundle.courses.map((entry) => {
                             const course = entry.course;
 
-                            const purchased =
-                              isCoursePurchased(
-                                bundle.id,
-                                course.id,
-                              );
+                            const purchased = isCoursePurchased(
+                              bundle.id,
+                              course.id,
+                            );
 
                             return (
-                              <li
-                                key={course.id}
-                                className="flex"
-                              >
+                              <li key={course.id} className="flex">
                                 <span
-                                  className={
-                                    purchased
-                                      ? "text-green-700"
-                                      : ""
-                                  }
+                                  className={purchased ? "text-green-700" : ""}
                                 >
                                   · {course.title}
                                 </span>
@@ -669,13 +577,8 @@ export default function BundlesPage() {
                           <button
                             type="button"
                             className="bundle-buy cursor-pointer"
-                            onClick={() =>
-                              void handleBundleAction(bundle)
-                            }
-                            disabled={
-                              buyingId !== null ||
-                              status === "loading"
-                            }
+                            onClick={() => void handleBundleAction(bundle)}
+                            disabled={buyingId !== null || status === "loading"}
                           >
                             {buyingId === bundle.id ? (
                               <LoaderCircle

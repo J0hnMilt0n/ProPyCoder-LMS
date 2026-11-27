@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { invalidateCourse, invalidateCatalog } from "@/lib/course-cache";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,10 +26,19 @@ export async function POST(request: NextRequest) {
 
     invalidateCatalog();
     revalidateTag("catalog", "max");
-    return NextResponse.json({ ok: true, message: "Catalog cache invalidated" });
+    return NextResponse.json({
+      ok: true,
+      message: "Catalog cache invalidated",
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Clear cache error:", message);
-    return NextResponse.json({ error: "Failed to clear cache." }, { status: 500 });
+    logger.error("Clear cache error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: message },
+    });
+    return NextResponse.json(
+      { error: "Failed to clear cache." },
+      { status: 500 },
+    );
   }
 }

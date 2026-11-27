@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CACHE_FRESH_MS } from "@/lib/config";
 
 /**
  * Client-side stale-while-revalidate data hook.
@@ -148,22 +149,24 @@ function fetchResource<T>(url: string, scope: string): Promise<T> {
 
   const request = (async () => {
     const response = await fetch(url, {
-  credentials: "same-origin",
-  cache: "no-store",
-  headers: {
-    "Cache-Control": "no-cache",
-  },
-});
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-cache",
+      },
+    });
     if (!response.ok) throw new Error("Request failed");
     return (await response.json()) as T;
   })();
 
   inFlightRequests.set(requestKey, request);
-  void request.finally(() => {
-    if (inFlightRequests.get(requestKey) === request) {
-      inFlightRequests.delete(requestKey);
-    }
-  }).catch(() => undefined);
+  void request
+    .finally(() => {
+      if (inFlightRequests.get(requestKey) === request) {
+        inFlightRequests.delete(requestKey);
+      }
+    })
+    .catch(() => undefined);
 
   return request;
 }
@@ -195,16 +198,24 @@ export function clearResourceCaches(): void {
 export function clearCourseResourceCache(courseId: string): void {
   const store = storage();
   if (!store) return;
+  const scope = `public:${courseId}`;
   try {
-    // Clear course-modules cache for this course (key: "course-modules", scope: "public:${courseId}")
-    const modulesKey = PREFIX + `course-modules`;
-    store.removeItem(modulesKey);
-    // Clear course-detail cache for this course (key: "course-detail", scope: "public:${courseId}")
-    const detailKey = PREFIX + `course-detail`;
-    store.removeItem(detailKey);
-    // Note: The scope is stored inside the JSON data, so removing by key alone
-    // may not be sufficient for all cases. For complete cache clearing,
-    // consider using clearResourceCaches() or refreshing the page.
+    const doomed: string[] = [];
+    for (let i = 0; i < store.length; i++) {
+      const k = store.key(i);
+      if (!k || !k.startsWith(PREFIX)) continue;
+      try {
+        const raw = store.getItem(k);
+        if (!raw) continue;
+        const parsed = JSON.parse(raw) as { scope?: string };
+        if (parsed.scope === scope) {
+          doomed.push(k);
+        }
+      } catch {
+        // Ignore parse errors.
+      }
+    }
+    for (const k of doomed) store.removeItem(k);
   } catch {
     // Best-effort cleanup.
   }
@@ -260,14 +271,16 @@ export interface UseResourceResult<T> {
   refresh: () => void;
 }
 
-export function useResource<T>(options: UseResourceOptions): UseResourceResult<T> {
+export function useResource<T>(
+  options: UseResourceOptions,
+): UseResourceResult<T> {
   const {
     key,
     url,
     scope,
     enabled = true,
     revalidateOnFocus = true,
-    freshForMs = 30_000,
+    freshForMs = CACHE_FRESH_MS,
     select,
   } = options;
 
@@ -300,9 +313,7 @@ export function useResource<T>(options: UseResourceOptions): UseResourceResult<T
       try {
         const json = await fetchResource<unknown>(url, scope);
         if (requestId !== activeRequestRef.current) return;
-        const next = (selectRef.current
-          ? selectRef.current(json)
-          : json) as T;
+        const next = (selectRef.current ? selectRef.current(json) : json) as T;
         const signature = stable(next);
         // Patch only when the payload actually changed — this is what keeps a
         // background refresh from re-rendering the whole page.

@@ -22,6 +22,7 @@ import {
   effectiveStatus,
 } from "@/lib/live-classes";
 import { useResource } from "@/lib/use-resource";
+import { DEFAULT_POLL_INTERVAL_MS } from "@/lib/config";
 
 interface Enrollment {
   id: string;
@@ -94,7 +95,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (liveClasses.length === 0) return;
-    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    const timer = window.setInterval(
+      () => setNow(Date.now()),
+      DEFAULT_POLL_INTERVAL_MS,
+    );
     return () => window.clearInterval(timer);
   }, [liveClasses.length]);
 
@@ -140,7 +144,7 @@ export default function Dashboard() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={session.user.image}
-                  alt=""
+                  alt={session.user.name ?? "User avatar"}
                   width={48}
                   height={48}
                 />
@@ -193,16 +197,17 @@ export default function Dashboard() {
 
         {liveClasses.length > 0 && (
           <section className="learning-live">
-            <div className="learning-section-label">
-              UPCOMING LIVE CLASSES
-            </div>
+            <div className="learning-section-label">UPCOMING LIVE CLASSES</div>
             <div className="learning-live-list">
               {liveClasses.map((item) => {
-                const status = effectiveStatus({
-                  status: item.storedStatus,
-                  startsAt: item.startsAt,
-                  endsAt: item.endsAt,
-                }, new Date(now));
+                const status = effectiveStatus(
+                  {
+                    status: item.storedStatus,
+                    startsAt: item.startsAt,
+                    endsAt: item.endsAt,
+                  },
+                  new Date(now),
+                );
                 const start = new Date(item.startsAt);
                 const end = new Date(item.endsAt);
                 const timeSummary =
@@ -313,10 +318,7 @@ export default function Dashboard() {
                     : undefined
                 }
               >
-                {
-                  !nextCourse.course.image
-                    ?(
-                <BookOpen size={34} />):<></> }
+                {!nextCourse.course.image ? <BookOpen size={34} /> : <></>}
               </div>
               <div className="learning-continue-copy">
                 <span className="learning-course-kicker">
@@ -355,7 +357,9 @@ export default function Dashboard() {
 
         <section className="learning-courses">
           <div className="learning-list-heading">
-              <div className="learning-section-label flex items-center gap-1">YOUR LIBRARY<span className="">{enrollments.length}</span></div>
+            <div className="learning-section-label flex items-center gap-1">
+              YOUR LIBRARY<span className="">{enrollments.length}</span>
+            </div>
             <label className="learning-search">
               <Search size={16} />
               <input
@@ -410,10 +414,7 @@ export default function Dashboard() {
                         : undefined
                     }
                   >
-                    {
-                      !enrollment.course.image
-                        ?
-                    (<BookOpen size={22} />):<></>}
+                    {!enrollment.course.image ? <BookOpen size={22} /> : <></>}
                   </div>
                   <div className="learning-course-details">
                     <span className="learning-course-kicker">

@@ -3,6 +3,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { cached, invalidate, type CacheOptions } from "@/lib/data-cache";
 import { prisma } from "@/lib/prisma";
 import { imageUrl } from "@/lib/image-urls";
+import { CACHE_FRESH_MS, CACHE_STALE_MS } from "@/lib/config";
 
 /**
  * Course catalog/detail/content change rarely and are read far more often
@@ -16,7 +17,10 @@ import { imageUrl } from "@/lib/image-urls";
  *  2. The in-process cache in front of it — gives instant reads and lets a
  *     stale entry be served immediately while one background refresh runs.
  */
-export const COURSE_CACHE: CacheOptions = { freshMs: 30_000, staleMs: 60_000 };
+export const COURSE_CACHE: CacheOptions = {
+  freshMs: CACHE_FRESH_MS,
+  staleMs: CACHE_STALE_MS,
+};
 
 /** Cache tags used by revalidateTag for on-demand invalidation. */
 export function courseTag(courseId: string): string {
@@ -61,20 +65,20 @@ export function loadCourseDetail(courseId: string) {
 const getPersistentCourseDetail = (courseId: string) =>
   unstable_cache(
     async () => {
-    const course = await loadCourseDetail(courseId);
-    if (!course) return null;
-    return {
-      ...course,
-      image: imageUrl(course.image, "course", course.id),
-      instructor: {
-        ...course.instructor,
-        avatar: imageUrl(
-          course.instructor.avatar,
-          "avatar",
-          course.instructor.id,
-        ),
-      },
-    };
+      const course = await loadCourseDetail(courseId);
+      if (!course) return null;
+      return {
+        ...course,
+        image: imageUrl(course.image, "course", course.id),
+        instructor: {
+          ...course.instructor,
+          avatar: imageUrl(
+            course.instructor.avatar,
+            "avatar",
+            course.instructor.id,
+          ),
+        },
+      };
     },
     ["course", courseId],
     { tags: [courseTag(courseId), CATALOG_TAG] },

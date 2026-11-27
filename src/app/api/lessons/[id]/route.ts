@@ -1,9 +1,11 @@
 import { authorizeCourseContent } from "@/lib/course-content-auth";
 import { prisma } from "@/lib/prisma";
 import { invalidateCourse } from "@/lib/course-cache";
+import { clearCourseResourceCache } from "@/lib/use-resource";
 import { extractYouTubeId } from "@/lib/youtube";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 const lessonUpdateInput = z.object({
   title: z.string().trim().min(2).max(160).optional(),
@@ -59,10 +61,7 @@ export async function PATCH(
       parsed.data.videoEndTime === undefined
         ? lesson.videoEndTime
         : parsed.data.videoEndTime;
-    if (
-      videoEndTime !== null &&
-      videoEndTime <= (videoStartTime ?? 0)
-    ) {
+    if (videoEndTime !== null && videoEndTime <= (videoStartTime ?? 0)) {
       return NextResponse.json(
         { error: "Video end time must be after the start time" },
         { status: 400 },
@@ -99,10 +98,14 @@ export async function PATCH(
     const updated = await prisma.lesson.update({ where: { id }, data });
 
     invalidateCourse(lesson.module.courseId);
+    clearCourseResourceCache(lesson.module.courseId);
 
     return NextResponse.json(updated);
   } catch (error) {
-    console.error("Lesson update error:", error);
+    logger.error("Lesson update error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to update lesson" },
       { status: 500 },
@@ -136,10 +139,14 @@ export async function DELETE(
     await prisma.lesson.delete({ where: { id } });
 
     invalidateCourse(lesson.module.courseId);
+    clearCourseResourceCache(lesson.module.courseId);
 
     return NextResponse.json({ id });
   } catch (error) {
-    console.error("Lesson deletion error:", error);
+    logger.error("Lesson deletion error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to delete lesson" },
       { status: 500 },

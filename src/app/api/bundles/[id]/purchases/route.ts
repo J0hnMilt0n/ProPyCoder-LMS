@@ -1,6 +1,7 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 // Return only this authenticated user's enrollments among a bundle's courses.
 export async function GET(
@@ -31,9 +32,14 @@ export async function GET(
       select: { courseId: true },
     });
 
-    return NextResponse.json({ courseIds: enrollments.map(({ courseId }) => courseId) });
+    return NextResponse.json({
+      courseIds: enrollments.map(({ courseId }) => courseId),
+    });
   } catch (error) {
-    console.error("Bundle purchase status error:", error);
+    logger.error("Bundle purchase status error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to load purchase status" },
       { status: 500 },

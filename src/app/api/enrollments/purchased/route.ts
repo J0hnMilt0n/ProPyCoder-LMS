@@ -2,6 +2,7 @@ import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { NS, userCached } from "@/lib/page-cache";
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 // Minimal per-user ownership read for catalog badges.
 export async function GET() {
@@ -25,7 +26,10 @@ export async function GET() {
 
     return NextResponse.json({ courseIds });
   } catch (error) {
-    console.error("Purchased courses fetch error:", error);
+    logger.error("Purchased courses fetch error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to fetch purchased courses" },
       { status: 500 },

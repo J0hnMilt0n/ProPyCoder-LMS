@@ -2,18 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createHash } from "node:crypto";
 import bcrypt from "bcryptjs";
+import { withRateLimit, authRateLimiters } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
-export async function POST(request: NextRequest) {
+export const POST = withRateLimit(async (request: NextRequest) => {
   try {
     const body = await request.json();
     const token = typeof body.token === "string" ? body.token.trim() : "";
     const password = typeof body.password === "string" ? body.password : "";
 
     if (!token) {
-      return NextResponse.json({ error: "Invalid or expired reset link." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid or expired reset link." },
+        { status: 400 },
+      );
     }
     if (password.length < 8) {
-      return NextResponse.json({ error: "Password must be at least 8 characters." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Password must be at least 8 characters." },
+        { status: 400 },
+      );
     }
 
     const tokenHash = createHash("sha256").update(token).digest("hex");
@@ -27,7 +35,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user) {
-      return NextResponse.json({ error: "Invalid or expired reset link." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid or expired reset link." },
+        { status: 400 },
+      );
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
@@ -46,13 +57,24 @@ export async function POST(request: NextRequest) {
     });
 
     if (result.count !== 1) {
-      return NextResponse.json({ error: "Invalid or expired reset link." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid or expired reset link." },
+        { status: 400 },
+      );
     }
 
-    return NextResponse.json({ message: "Password has been reset successfully." });
+    return NextResponse.json({
+      message: "Password has been reset successfully.",
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Could not reset password:", message);
-    return NextResponse.json({ error: "Could not reset password. Please try again." }, { status: 503 });
+    logger.error("Could not reset password", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: message },
+    });
+    return NextResponse.json(
+      { error: "Could not reset password. Please try again." },
+      { status: 503 },
+    );
   }
-}
+}, authRateLimiters.general);

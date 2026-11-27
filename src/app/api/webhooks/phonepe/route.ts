@@ -2,10 +2,9 @@ import { createHash, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getPhonePeOrderStatus } from "@/lib/phonepe";
 import { completePhonePePaymentFromWebhook } from "@/lib/payment-completion";
+import { logger } from "@/lib/logger";
 
-function verifyWebhookAuthorization(
-  authorization: string | null,
-): boolean {
+function verifyWebhookAuthorization(authorization: string | null): boolean {
   const username = process.env.PHONEPE_WEBHOOK_USERNAME;
   const password = process.env.PHONEPE_WEBHOOK_PASSWORD;
 
@@ -26,19 +25,14 @@ function verifyWebhookAuthorization(
   const supplied = Buffer.from(suppliedHex, "hex");
 
   return (
-    supplied.length === expected.length &&
-    timingSafeEqual(supplied, expected)
+    supplied.length === expected.length && timingSafeEqual(supplied, expected)
   );
 }
 
 export async function POST(request: Request) {
   try {
     // 1. Authenticate PhonePe's callback.
-    if (
-      !verifyWebhookAuthorization(
-        request.headers.get("authorization"),
-      )
-    ) {
+    if (!verifyWebhookAuthorization(request.headers.get("authorization"))) {
       return Response.json(
         { success: false, message: "Unauthorized webhook" },
         { status: 401 },
@@ -52,9 +46,7 @@ export async function POST(request: Request) {
     const merchantOrderId = body?.payload?.merchantOrderId;
 
     if (
-      !["checkout.order.completed", "checkout.order.failed"].includes(
-        event,
-      )
+      !["checkout.order.completed", "checkout.order.failed"].includes(event)
     ) {
       // Ignore unrelated events.
       return Response.json({
@@ -63,10 +55,7 @@ export async function POST(request: Request) {
       });
     }
 
-    if (
-      typeof merchantOrderId !== "string" ||
-      !merchantOrderId.trim()
-    ) {
+    if (typeof merchantOrderId !== "string" || !merchantOrderId.trim()) {
       return Response.json(
         { success: false, message: "Invalid merchantOrderId" },
         { status: 400 },
@@ -112,17 +101,15 @@ export async function POST(request: Request) {
     const provider = await getPhonePeOrderStatus(payment.id);
 
     // Verify amount in paise.
-    const expectedAmount = Math.round(
-      Number(payment.amount) * 100,
-    );
+    const expectedAmount = Math.round(Number(payment.amount) * 100);
 
-    if (
-      Number(provider.amount) !== expectedAmount
-    ) {
-      console.error("PhonePe webhook amount mismatch:", {
-        paymentId: payment.id,
-        expectedAmount,
-        receivedAmount: provider.amount,
+    if (Number(provider.amount) !== expectedAmount) {
+      logger.error("PhonePe webhook amount mismatch", {
+        metadata: {
+          paymentId: payment.id,
+          expectedAmount,
+          receivedAmount: provider.amount,
+        },
       });
 
       return Response.json(
@@ -184,7 +171,10 @@ export async function POST(request: Request) {
       status: "PENDING",
     });
   } catch (error) {
-    console.error("PhonePe webhook error:", error);
+    logger.error("PhonePe webhook error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
 
     // Non-2xx response allows PhonePe to retry delivery.
     return Response.json(

@@ -1,10 +1,12 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { invalidateCatalog, invalidateCourse } from "@/lib/course-cache";
+import { clearCourseResourceCache } from "@/lib/use-resource";
 import { invalidateAdminOverview, invalidateHome } from "@/lib/page-cache";
 import { isValidOffer } from "@/lib/pricing";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 const courseStatuses = ["DRAFT", "PUBLISHED"] as const;
 
@@ -59,7 +61,10 @@ export async function GET(
 
     return NextResponse.json(course);
   } catch (error) {
-    console.error("Admin course fetch error:", error);
+    logger.error("Admin course fetch error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to load course" },
       { status: 500 },
@@ -98,6 +103,7 @@ export async function PATCH(
 
     invalidateCourse(id);
     invalidateCatalog();
+    clearCourseResourceCache(id);
     // Publishing/unpublishing moves the published/draft counts on the admin
     // dashboard and can change the home page's featured list.
     invalidateAdminOverview();
@@ -105,7 +111,10 @@ export async function PATCH(
 
     return NextResponse.json(course);
   } catch (error) {
-    console.error("Admin course update error:", error);
+    logger.error("Admin course update error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to update course" },
       { status: 500 },
@@ -175,6 +184,7 @@ export async function PUT(
 
     invalidateCourse(id);
     invalidateCatalog();
+    clearCourseResourceCache(id);
     invalidateAdminOverview();
     invalidateHome();
 
@@ -187,7 +197,10 @@ export async function PUT(
     ) {
       return NextResponse.json({ error: "Course not found" }, { status: 404 });
     }
-    console.error("Admin course edit error:", error);
+    logger.error("Admin course edit error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to update course" },
       { status: 500 },
@@ -219,12 +232,16 @@ export async function DELETE(
 
     invalidateCourse(id);
     invalidateCatalog();
+    clearCourseResourceCache(id);
     invalidateAdminOverview();
     invalidateHome();
 
     return NextResponse.json({ id: course.id, title: course.title });
   } catch (error) {
-    console.error("Admin course deletion error:", error);
+    logger.error("Admin course deletion error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to delete course" },
       { status: 500 },

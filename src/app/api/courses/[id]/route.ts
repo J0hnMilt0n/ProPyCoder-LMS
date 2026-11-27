@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCourseDetail } from "@/lib/course-cache";
+import { CATALOG_CACHE_CONTROL } from "@/lib/config";
+import { logger } from "@/lib/logger";
 
 export const revalidate = 2592000;
 
@@ -20,12 +22,14 @@ export async function GET(
 
     return NextResponse.json(course, {
       headers: {
-        "Cache-Control":
-          "public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=60",
+        "Cache-Control": CATALOG_CACHE_CONTROL,
       },
     });
   } catch (error) {
-    console.error("Course fetch error:", error);
+    logger.error("Course fetch error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to fetch course" },
       { status: 500 },

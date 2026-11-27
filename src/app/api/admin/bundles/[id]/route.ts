@@ -1,8 +1,10 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { invalidateBundles } from "@/lib/page-cache";
+import { clearCourseResourceCache } from "@/lib/use-resource";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 const bundleUpdate = z.object({
   title: z.string().trim().min(4).max(120).optional(),
@@ -41,10 +43,7 @@ export async function PUT(
       select: { id: true },
     });
     if (!existing) {
-      return NextResponse.json(
-        { error: "Bundle not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Bundle not found" }, { status: 404 });
     }
 
     const { courseIds, ...fields } = parsed.data;
@@ -83,9 +82,7 @@ export async function PUT(
       data: {
         ...(fields.title ? { title: fields.title } : {}),
         ...(fields.description ? { description: fields.description } : {}),
-        ...(fields.image !== undefined
-          ? { image: fields.image || null }
-          : {}),
+        ...(fields.image !== undefined ? { image: fields.image || null } : {}),
         ...(fields.price !== undefined ? { price: fields.price } : {}),
         ...(fields.status ? { status: fields.status } : {}),
       },
@@ -108,9 +105,16 @@ export async function PUT(
       },
     });
     invalidateBundles();
+    // Clear client cache for all courses in the bundle
+    for (const entry of bundle.courses) {
+      clearCourseResourceCache(entry.course.id);
+    }
     return NextResponse.json({ bundle });
   } catch (error) {
-    console.error("Update bundle error:", error);
+    logger.error("Update bundle error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to update bundle" },
       { status: 500 },
@@ -130,19 +134,28 @@ export async function DELETE(
     const { id } = await params;
     const existing = await prisma.bundle.findUnique({
       where: { id },
-      select: { id: true },
+      include: {
+        courses: {
+          select: { courseId: true },
+        },
+      },
     });
     if (!existing) {
-      return NextResponse.json(
-        { error: "Bundle not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Bundle not found" }, { status: 404 });
     }
+    const courseIds = existing.courses.map((c) => c.courseId);
     await prisma.bundle.delete({ where: { id } });
     invalidateBundles();
+    // Clear client cache for all courses that were in the bundle
+    for (const courseId of courseIds) {
+      clearCourseResourceCache(courseId);
+    }
     return NextResponse.json({ ok: true, id });
   } catch (error) {
-    console.error("Delete bundle error:", error);
+    logger.error("Delete bundle error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to delete bundle" },
       { status: 500 },

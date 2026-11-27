@@ -1,24 +1,28 @@
 import { authorizeCourseContent } from "@/lib/course-content-auth";
 import { prisma } from "@/lib/prisma";
 import { invalidateCourse } from "@/lib/course-cache";
+import { clearCourseResourceCache } from "@/lib/use-resource";
 import { extractYouTubeId } from "@/lib/youtube";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
-const lessonInput = z.object({
-  title: z.string().trim().min(2).max(160),
-  description: z.string().trim().max(1000).optional(),
-  videoUrl: z.union([z.string().url(), z.literal("")]).optional(),
-  videoStartTime: z.number().int().min(0).nullable().optional(),
-  videoEndTime: z.number().int().min(0).nullable().optional(),
-  duration: z.number().int().min(0).max(10000).optional(),
-  isFree: z.boolean().optional(),
-}).refine(
-  (data) =>
-    data.videoEndTime == null ||
-    data.videoEndTime > (data.videoStartTime ?? 0),
-  { path: ["videoEndTime"], message: "End time must be after start time" },
-);
+const lessonInput = z
+  .object({
+    title: z.string().trim().min(2).max(160),
+    description: z.string().trim().max(1000).optional(),
+    videoUrl: z.union([z.string().url(), z.literal("")]).optional(),
+    videoStartTime: z.number().int().min(0).nullable().optional(),
+    videoEndTime: z.number().int().min(0).nullable().optional(),
+    duration: z.number().int().min(0).max(10000).optional(),
+    isFree: z.boolean().optional(),
+  })
+  .refine(
+    (data) =>
+      data.videoEndTime == null ||
+      data.videoEndTime > (data.videoStartTime ?? 0),
+    { path: ["videoEndTime"], message: "End time must be after start time" },
+  );
 
 const reorderInput = z.object({
   lessonIds: z.array(z.string().trim().min(1)).min(1),
@@ -78,10 +82,14 @@ export async function POST(
     });
 
     invalidateCourse(moduleRecord.courseId);
+    clearCourseResourceCache(moduleRecord.courseId);
 
     return NextResponse.json(lesson, { status: 201 });
   } catch (error) {
-    console.error("Lesson creation error:", error);
+    logger.error("Lesson creation error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to create lesson" },
       { status: 500 },
@@ -138,10 +146,14 @@ export async function PATCH(
     );
 
     invalidateCourse(moduleRecord.courseId);
+    clearCourseResourceCache(moduleRecord.courseId);
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Lesson reorder error:", error);
+    logger.error("Lesson reorder error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to reorder lessons" },
       { status: 500 },

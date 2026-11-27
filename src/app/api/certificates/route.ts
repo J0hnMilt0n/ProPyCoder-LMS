@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { NS, userCached } from "@/lib/page-cache";
+import { logger } from "@/lib/logger";
 
 // GET the current user's certificates (one per completed course).
 export async function GET() {
@@ -32,7 +33,10 @@ export async function GET() {
 
     return NextResponse.json({ data });
   } catch (error) {
-    console.error("Certificates fetch error:", error);
+    logger.error("Certificates fetch error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to fetch certificates" },
       { status: 500 },

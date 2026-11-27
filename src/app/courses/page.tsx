@@ -1,30 +1,20 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import {
-  ArrowLeft,
-  ArrowRight,
-  BookOpen,
-  Search,
-  Users,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Search, Users } from "lucide-react";
 import toast from "react-hot-toast";
+import {
+  CATALOG_STALE_AFTER_MS,
+  REQUEST_TIMEOUT_MS,
+  PURCHASE_REFRESH_INTERVAL_MS,
+} from "@/lib/config";
 
 import { Navbar } from "@/components/navbar";
 import { InstructorAvatar } from "@/components/instructor-avatar";
 import { PriceTag } from "@/components/price-tag";
-import {
-  primeResourceCache,
-  readResourceCache,
-} from "@/lib/use-resource";
+import { primeResourceCache, readResourceCache } from "@/lib/use-resource";
 
 interface Course {
   id: string;
@@ -73,10 +63,10 @@ const FORCE_PURCHASE_REFRESH_KEY = (userId: string) =>
 const PAGE_SIZE = 9;
 const CATALOG_FETCH_PAGE_SIZE = 50;
 
-const CATALOG_STALE_AFTER = 30_000;
+const CATALOG_STALE_AFTER = CATALOG_STALE_AFTER_MS;
 const REVALIDATION_EVENT_GUARD = 1_500;
-const REQUEST_TIMEOUT = 15_000;
-const PURCHASED_REFRESH_INTERVAL = 30_000;
+const REQUEST_TIMEOUT = REQUEST_TIMEOUT_MS;
+const PURCHASED_REFRESH_INTERVAL = PURCHASE_REFRESH_INTERVAL_MS;
 
 // These timestamps survive client-side navigation while this module
 // remains loaded. The actual catalog is persisted using use-resource.ts.
@@ -95,75 +85,53 @@ const normalize = (value: string | null | undefined) =>
  * This runs only when loading or refreshing the catalog.
  * Searching and filtering never trigger API requests.
  */
-async function fetchAllCourses(
-  signal: AbortSignal,
-): Promise<Course[]> {
+async function fetchAllCourses(signal: AbortSignal): Promise<Course[]> {
   const firstParams = new URLSearchParams({
     page: "1",
     limit: String(CATALOG_FETCH_PAGE_SIZE),
   });
 
-  const firstResponse = await fetch(
-    `/api/courses?${firstParams}`,
-    {
-      cache: "no-store",
-      signal,
-    },
-  );
+  const firstResponse = await fetch(`/api/courses?${firstParams}`, {
+    cache: "no-store",
+    signal,
+  });
 
   if (!firstResponse.ok) {
     throw new Error("Course request failed");
   }
 
-  const firstResult =
-    (await firstResponse.json()) as CoursesApiResponse;
+  const firstResult = (await firstResponse.json()) as CoursesApiResponse;
 
-  const firstPage = Array.isArray(firstResult.data)
-    ? firstResult.data
-    : [];
+  const firstPage = Array.isArray(firstResult.data) ? firstResult.data : [];
 
-  const totalPages = Math.max(
-    1,
-    firstResult.pagination?.pages ?? 1,
-  );
+  const totalPages = Math.max(1, firstResult.pagination?.pages ?? 1);
 
   if (totalPages === 1) {
     return firstPage;
   }
 
   const remainingPages = await Promise.all(
-    Array.from(
-      { length: totalPages - 1 },
-      async (_, index) => {
-        const page = index + 2;
+    Array.from({ length: totalPages - 1 }, async (_, index) => {
+      const page = index + 2;
 
-        const params = new URLSearchParams({
-          page: String(page),
-          limit: String(CATALOG_FETCH_PAGE_SIZE),
-        });
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(CATALOG_FETCH_PAGE_SIZE),
+      });
 
-        const response = await fetch(
-          `/api/courses?${params}`,
-          {
-            cache: "no-store",
-            signal,
-          },
-        );
+      const response = await fetch(`/api/courses?${params}`, {
+        cache: "no-store",
+        signal,
+      });
 
-        if (!response.ok) {
-          throw new Error(
-            `Could not load course page ${page}`,
-          );
-        }
+      if (!response.ok) {
+        throw new Error(`Could not load course page ${page}`);
+      }
 
-        const result =
-          (await response.json()) as CoursesApiResponse;
+      const result = (await response.json()) as CoursesApiResponse;
 
-        return Array.isArray(result.data)
-          ? result.data
-          : [];
-      },
-    ),
+      return Array.isArray(result.data) ? result.data : [];
+    }),
   );
 
   return [...firstPage, ...remainingPages.flat()];
@@ -185,49 +153,32 @@ export default function CoursesPage() {
       return completeCache;
     }
 
-    return (
-      readResourceCache<Course[]>(
-        LEGACY_CACHE_KEY,
-        "public",
-      ) ?? []
-    );
+    return readResourceCache<Course[]>(LEGACY_CACHE_KEY, "public") ?? [];
   });
 
-  const [hasCompleteCatalog, setHasCompleteCatalog] =
-    useState(() => {
-      return Boolean(
-        readResourceCache<Course[]>(
-          CATALOG_CACHE_KEY,
-          "public",
-        ),
-      );
-    });
+  const [hasCompleteCatalog, setHasCompleteCatalog] = useState(() => {
+    return Boolean(readResourceCache<Course[]>(CATALOG_CACHE_KEY, "public"));
+  });
 
   const [isLoading, setIsLoading] = useState(() => {
     return (
-      !readResourceCache<Course[]>(
-        CATALOG_CACHE_KEY,
-        "public",
-      ) &&
-      !readResourceCache<Course[]>(
-        LEGACY_CACHE_KEY,
-        "public",
-      )
+      !readResourceCache<Course[]>(CATALOG_CACHE_KEY, "public") &&
+      !readResourceCache<Course[]>(LEGACY_CACHE_KEY, "public")
     );
   });
 
   const [error, setError] = useState(false);
 
   const [searchInput, setSearchInput] = useState("");
-  const [selectedCategory, setSelectedCategory] =
-    useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedLevel, setSelectedLevel] = useState("");
 
   const [page, setPage] = useState(1);
   const [retry, setRetry] = useState(0);
 
-  const [purchasedCourseIds, setPurchasedCourseIds] =
-    useState<Set<string>>(() => new Set());
+  const [purchasedCourseIds, setPurchasedCourseIds] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   const lastCatalogRevalidationRef = useRef(0);
   const catalogRequestInFlightRef = useRef(false);
@@ -253,45 +204,25 @@ export default function CoursesPage() {
           course.level,
           course.instructor?.firstName,
           course.instructor?.lastName,
-        ].some((value) =>
-          normalize(value).includes(query),
-        );
+        ].some((value) => normalize(value).includes(query));
 
       const matchesCategory =
-        !selectedCategory ||
-        course.category === selectedCategory;
+        !selectedCategory || course.category === selectedCategory;
 
-      const matchesLevel =
-        !selectedLevel ||
-        course.level === selectedLevel;
+      const matchesLevel = !selectedLevel || course.level === selectedLevel;
 
-      return (
-        matchesQuery &&
-        matchesCategory &&
-        matchesLevel
-      );
+      return matchesQuery && matchesCategory && matchesLevel;
     });
-  }, [
-    courses,
-    searchInput,
-    selectedCategory,
-    selectedLevel,
-  ]);
+  }, [courses, searchInput, selectedCategory, selectedLevel]);
 
-  const pageCount = Math.max(
-    1,
-    Math.ceil(visibleCourses.length / PAGE_SIZE),
-  );
+  const pageCount = Math.max(1, Math.ceil(visibleCourses.length / PAGE_SIZE));
 
   const safePage = Math.min(page, pageCount);
 
   const paginatedCourses = useMemo(() => {
     const start = (safePage - 1) * PAGE_SIZE;
 
-    return visibleCourses.slice(
-      start,
-      start + PAGE_SIZE,
-    );
+    return visibleCourses.slice(start, start + PAGE_SIZE);
   }, [visibleCourses, safePage]);
 
   const hasActiveFilters =
@@ -307,19 +238,12 @@ export default function CoursesPage() {
    */
   const loadCatalog = useCallback(
     async (force = false) => {
-      const cached = readResourceCache<Course[]>(
-        CATALOG_CACHE_KEY,
-        "public",
-      );
+      const cached = readResourceCache<Course[]>(CATALOG_CACHE_KEY, "public");
 
       const now = Date.now();
 
       // Use recently fetched catalog without another request.
-      if (
-        !force &&
-        cached &&
-        now - catalogFetchedAt < CATALOG_STALE_AFTER
-      ) {
+      if (!force && cached && now - catalogFetchedAt < CATALOG_STALE_AFTER) {
         setCourses(cached);
         setHasCompleteCatalog(true);
         setIsLoading(false);
@@ -368,18 +292,12 @@ export default function CoursesPage() {
       }, REQUEST_TIMEOUT);
 
       try {
-        catalogRequestPromise = fetchAllCourses(
-          controller.signal,
-        );
+        catalogRequestPromise = fetchAllCourses(controller.signal);
 
         const nextCourses = await catalogRequestPromise;
 
         // Save the complete catalog using the existing cache system.
-        primeResourceCache(
-          CATALOG_CACHE_KEY,
-          "public",
-          nextCourses,
-        );
+        primeResourceCache(CATALOG_CACHE_KEY, "public", nextCourses);
 
         catalogFetchedAt = Date.now();
 
@@ -397,9 +315,7 @@ export default function CoursesPage() {
         } else {
           if (!cached && courses.length === 0) {
             setError(true);
-            toast.error(
-              "Could not load the course catalog",
-            );
+            toast.error("Could not load the course catalog");
           }
         }
       } finally {
@@ -443,35 +359,24 @@ export default function CoursesPage() {
 
       const now = Date.now();
 
-      if (
-        now - lastCatalogRevalidationRef.current <
-        REVALIDATION_EVENT_GUARD
-      ) {
+      if (now - lastCatalogRevalidationRef.current < REVALIDATION_EVENT_GUARD) {
         return;
       }
 
       lastCatalogRevalidationRef.current = now;
 
-      if (
-        now - catalogFetchedAt <
-        CATALOG_STALE_AFTER
-      ) {
+      if (now - catalogFetchedAt < CATALOG_STALE_AFTER) {
         return;
       }
 
-      if (
-        now - catalogAttemptedAt <
-        REVALIDATION_EVENT_GUARD
-      ) {
+      if (now - catalogAttemptedAt < REVALIDATION_EVENT_GUARD) {
         return;
       }
 
       void loadCatalog();
     };
 
-    const handlePageShow = (
-      event: PageTransitionEvent,
-    ) => {
+    const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
         revalidate();
       }
@@ -480,29 +385,17 @@ export default function CoursesPage() {
     window.addEventListener("focus", revalidate);
     window.addEventListener("popstate", revalidate);
 
-    document.addEventListener(
-      "visibilitychange",
-      revalidate,
-    );
+    document.addEventListener("visibilitychange", revalidate);
 
-    window.addEventListener(
-      "pageshow",
-      handlePageShow,
-    );
+    window.addEventListener("pageshow", handlePageShow);
 
     return () => {
       window.removeEventListener("focus", revalidate);
       window.removeEventListener("popstate", revalidate);
 
-      document.removeEventListener(
-        "visibilitychange",
-        revalidate,
-      );
+      document.removeEventListener("visibilitychange", revalidate);
 
-      window.removeEventListener(
-        "pageshow",
-        handlePageShow,
-      );
+      window.removeEventListener("pageshow", handlePageShow);
     };
   }, [loadCatalog]);
 
@@ -536,22 +429,16 @@ export default function CoursesPage() {
     const controller = new AbortController();
     const forceRefreshKey = FORCE_PURCHASE_REFRESH_KEY(userId);
 
-
     // Restore this user's cached purchases immediately.
     const cachedPurchases = readResourceCache<string[]>(
       PURCHASED_COURSES_CACHE_KEY,
       userId,
     );
 
-    setPurchasedCourseIds(
-      new Set(cachedPurchases ?? []),
-    );
+    setPurchasedCourseIds(new Set(cachedPurchases ?? []));
 
-    const refreshPurchasedCourses = async (
-      force = false,
-    ) => {
-      const forcePending =
-      localStorage.getItem(forceRefreshKey) === "1";
+    const refreshPurchasedCourses = async (force = false) => {
+      const forcePending = localStorage.getItem(forceRefreshKey) === "1";
 
       const shouldForce = force || forcePending;
 
@@ -561,11 +448,7 @@ export default function CoursesPage() {
         return;
       }
 
-      if (
-        !shouldForce &&
-        now - lastRefreshAt <
-          PURCHASED_REFRESH_INTERVAL
-      ) {
+      if (!shouldForce && now - lastRefreshAt < PURCHASED_REFRESH_INTERVAL) {
         return;
       }
 
@@ -573,14 +456,11 @@ export default function CoursesPage() {
       lastRefreshAt = now;
 
       try {
-        const response = await fetch(
-          "/api/enrollments/purchased",
-          {
-            credentials: "same-origin",
-            cache: "no-store",
-            signal: controller.signal,
-          },
-        );
+        const response = await fetch("/api/enrollments/purchased", {
+          credentials: "same-origin",
+          cache: "no-store",
+          signal: controller.signal,
+        });
 
         if (!response.ok) {
           return;
@@ -597,27 +477,21 @@ export default function CoursesPage() {
         const courseIds = result.courseIds ?? [];
 
         // Cache only under the authenticated user's ID.
-        primeResourceCache(
-          PURCHASED_COURSES_CACHE_KEY,
-          userId,
-          courseIds,
-        );
+        primeResourceCache(PURCHASED_COURSES_CACHE_KEY, userId, courseIds);
 
         setPurchasedCourseIds((previous) => {
           const next = new Set(courseIds);
 
           const unchanged =
             previous.size === next.size &&
-            [...previous].every((id) =>
-              next.has(id),
-            );
+            [...previous].every((id) => next.has(id));
 
           return unchanged ? previous : next;
         });
         // Clear the flag only after a successful update.
-      if (forcePending) {
-        localStorage.removeItem(forceRefreshKey);
-      }
+        if (forcePending) {
+          localStorage.removeItem(forceRefreshKey);
+        }
       } catch {
         // Keep cached purchases if the API request fails.
       } finally {
@@ -632,9 +506,7 @@ export default function CoursesPage() {
       void refreshPurchasedCourses();
     };
 
-    const handlePageShow = (
-      event: PageTransitionEvent,
-    ) => {
+    const handlePageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
         void refreshPurchasedCourses();
       }
@@ -648,34 +520,19 @@ export default function CoursesPage() {
 
     window.addEventListener("focus", handleFocus);
 
-    window.addEventListener(
-      "pageshow",
-      handlePageShow,
-    );
+    window.addEventListener("pageshow", handlePageShow);
 
-    document.addEventListener(
-      "visibilitychange",
-      handleVisibilityChange,
-    );
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       active = false;
       controller.abort();
 
-      window.removeEventListener(
-        "focus",
-        handleFocus,
-      );
+      window.removeEventListener("focus", handleFocus);
 
-      window.removeEventListener(
-        "pageshow",
-        handlePageShow,
-      );
+      window.removeEventListener("pageshow", handlePageShow);
 
-      document.removeEventListener(
-        "visibilitychange",
-        handleVisibilityChange,
-      );
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [session?.user?.id, status]);
 
@@ -721,25 +578,18 @@ export default function CoursesPage() {
                 Find your next <em>skill.</em>
               </h1>
 
-              <p>
-                Practical courses for the things you
-                want to make next.
-              </p>
+              <p>Practical courses for the things you want to make next.</p>
             </div>
 
             <div className="catalog-hero-note">
               <span>LEARN BY BUILDING</span>
-              <strong>
-                One project at a time.
-              </strong>
+              <strong>One project at a time.</strong>
             </div>
 
             <form
               className="catalog-hero-search"
               role="search"
-              onSubmit={(event) =>
-                event.preventDefault()
-              }
+              onSubmit={(event) => event.preventDefault()}
             >
               <div className="catalog-searchbar">
                 <Search size={17} />
@@ -749,9 +599,7 @@ export default function CoursesPage() {
                   aria-label="Search courses"
                   placeholder="Search Python, web development, data..."
                   value={searchInput}
-                  onChange={(event) =>
-                    updateSearch(event.target.value)
-                  }
+                  onChange={(event) => updateSearch(event.target.value)}
                 />
 
                 {/* {searchInput && (
@@ -767,10 +615,7 @@ export default function CoursesPage() {
                   </button>
                 )} */}
 
-                <button
-                  type="submit"
-                  className="catalog-search-go"
-                >
+                <button type="submit" className="catalog-search-go">
                   Search
                 </button>
               </div>
@@ -781,19 +626,13 @@ export default function CoursesPage() {
 
       <section className="catalog-content">
         <div className="catalog-toolbar">
-          <div
-            className="catalog-results-label"
-            aria-live="polite"
-          >
+          <div className="catalog-results-label" aria-live="polite">
             {isLoading && courses.length === 0
               ? "Finding courses"
-              : !hasCompleteCatalog &&
-                  courses.length > 0
+              : !hasCompleteCatalog && courses.length > 0
                 ? `Showing cached courses`
                 : `Showing ${visibleCourses.length} ${
-                    visibleCourses.length === 1
-                      ? "course"
-                      : "courses"
+                    visibleCourses.length === 1 ? "course" : "courses"
                   }`}
           </div>
 
@@ -803,17 +642,12 @@ export default function CoursesPage() {
 
               <select
                 value={selectedCategory}
-                onChange={(event) =>
-                  updateCategory(event.target.value)
-                }
+                onChange={(event) => updateCategory(event.target.value)}
               >
                 <option value="">All topics</option>
 
                 {categories.map((category) => (
-                  <option
-                    value={category}
-                    key={category}
-                  >
+                  <option value={category} key={category}>
                     {category}
                   </option>
                 ))}
@@ -825,19 +659,13 @@ export default function CoursesPage() {
 
               <select
                 value={selectedLevel}
-                onChange={(event) =>
-                  updateLevel(event.target.value)
-                }
+                onChange={(event) => updateLevel(event.target.value)}
               >
                 <option value="">All levels</option>
 
                 {levels.map((level) => (
-                  <option
-                    value={level}
-                    key={level}
-                  >
-                    {level.charAt(0) +
-                      level.slice(1).toLowerCase()}
+                  <option value={level} key={level}>
+                    {level.charAt(0) + level.slice(1).toLowerCase()}
                   </option>
                 ))}
               </select>
@@ -846,42 +674,24 @@ export default function CoursesPage() {
         </div>
 
         {isLoading && courses.length === 0 ? (
-          <div
-            className="catalog-grid"
-            aria-label="Loading courses"
-          >
-            {Array.from(
-              { length: 6 },
-              (_, index) => (
-                <div
-                  className="catalog-skeleton"
-                  key={index}
-                >
-                  <span />
-                  <div />
-                  <div />
-                </div>
-              ),
-            )}
+          <div className="catalog-grid" aria-label="Loading courses">
+            {Array.from({ length: 6 }, (_, index) => (
+              <div className="catalog-skeleton" key={index}>
+                <span />
+                <div />
+                <div />
+              </div>
+            ))}
           </div>
         ) : error && courses.length === 0 ? (
           <div className="catalog-empty">
             <BookOpen />
 
-            <h2>
-              The catalog is taking a break.
-            </h2>
+            <h2>The catalog is taking a break.</h2>
 
-            <p>
-              Your filters are saved. Try loading
-              the courses again.
-            </p>
+            <p>Your filters are saved. Try loading the courses again.</p>
 
-            <button
-              onClick={() =>
-                setRetry((current) => current + 1)
-              }
-            >
+            <button onClick={() => setRetry((current) => current + 1)}>
               Retry
             </button>
           </div>
@@ -902,184 +712,135 @@ export default function CoursesPage() {
             </p>
 
             {hasActiveFilters && (
-              <button onClick={resetFilters}>
-                Clear filters
-              </button>
+              <button onClick={resetFilters}>Clear filters</button>
             )}
           </div>
         ) : (
           <div className="catalog-grid">
-            {paginatedCourses.map(
-              (course, index) => (
-                <Link
-                  href={`/courses/${course.id}`}
-                  prefetch={false}
-                  key={course.id}
-                  className="catalog-card cursor-pointer"
-                  aria-label={`View course: ${course.title}`}
+            {paginatedCourses.map((course, index) => (
+              <Link
+                href={`/courses/${course.id}`}
+                prefetch={false}
+                key={course.id}
+                className="catalog-card cursor-pointer"
+                aria-label={`View course: ${course.title}`}
+              >
+                <div
+                  className={`catalog-art catalog-art-${index % 3}`}
+                  style={
+                    course.image
+                      ? {
+                          backgroundImage: `url("${course.image}")`,
+                        }
+                      : undefined
+                  }
                 >
-                  <div
-                    className={`catalog-art catalog-art-${
-                      index % 3
-                    }`}
-                    style={
-                      course.image
-                        ? {
-                            backgroundImage: `url("${course.image}")`,
-                          }
-                        : undefined
-                    }
-                  >
-                    {!course.image && (
-                      <>
-                        <span className="catalog-art-category">
-                          {course.category}
-                        </span>
+                  {!course.image && (
+                    <>
+                      <span className="catalog-art-category">
+                        {course.category}
+                      </span>
 
-                        <span className="catalog-art-index">
-                          {String(
-                            (safePage - 1) *
-                              PAGE_SIZE +
-                              index +
-                              1,
-                          ).padStart(2, "0")}
-                        </span>
+                      <span className="catalog-art-index">
+                        {String(
+                          (safePage - 1) * PAGE_SIZE + index + 1,
+                        ).padStart(2, "0")}
+                      </span>
 
-                        <div className="catalog-art-glyph">
-                          <BookOpen
-                            size={39}
-                            strokeWidth={1.3}
-                          />
-                        </div>
-                      </>
-                    )}
+                      <div className="catalog-art-glyph">
+                        <BookOpen size={39} strokeWidth={1.3} />
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="catalog-card-body">
+                  <div className="catalog-card-tags">
+                    <span>{course.level.toLowerCase()}</span>
+
+                    <span>
+                      {course.duration} hour
+                      {course.duration === 1 ? "" : "s"}
+                    </span>
                   </div>
 
-                  <div className="catalog-card-body">
-                    <div className="catalog-card-tags">
-                      <span>
-                        {course.level.toLowerCase()}
-                      </span>
+                  <div className="catalog-card-title">
+                    <h2>{course.title}</h2>
+                  </div>
 
-                      <span>
-                        {course.duration} hour
-                        {course.duration === 1
-                          ? ""
-                          : "s"}
-                      </span>
-                    </div>
+                  <p>{course.description}</p>
 
-                    <div className="catalog-card-title">
-                      <h2>{course.title}</h2>
-                    </div>
+                  <div className="catalog-instructor">
+                    <InstructorAvatar
+                      className="catalog-instructor-avatar"
+                      avatar={course.instructor?.avatar ?? null}
+                      firstName={course.instructor?.firstName ?? ""}
+                      lastName={course.instructor?.lastName ?? ""}
+                    />
 
-                    <p>{course.description}</p>
+                    <span>
+                      {course.instructor?.firstName}{" "}
+                      {course.instructor?.lastName}
+                    </span>
 
-                    <div className="catalog-instructor">
-                      <InstructorAvatar
-                        className="catalog-instructor-avatar"
-                        avatar={
-                          course.instructor?.avatar ??
-                          null
-                        }
-                        firstName={
-                          course.instructor?.firstName ??
-                          ""
-                        }
-                        lastName={
-                          course.instructor?.lastName ??
-                          ""
-                        }
+                    <span className="catalog-student-count">
+                      <Users size={13} />
+                      {course._count?.enrollments ?? 0}
+                    </span>
+                  </div>
+
+                  <div className="catalog-card-footer">
+                    {purchasedCourseIds.has(course.id) ? (
+                      <span className="purchased-pill">Purchased</span>
+                    ) : (
+                      <PriceTag
+                        price={course.price}
+                        offerPrice={course.offerPrice ?? null}
                       />
+                    )}
 
-                      <span>
-                        {course.instructor?.firstName}{" "}
-                        {course.instructor?.lastName}
-                      </span>
-
-                      <span className="catalog-student-count">
-                        <Users size={13} />
-                        {course._count?.enrollments ??
-                          0}
-                      </span>
-                    </div>
-
-                    <div className="catalog-card-footer">
-                      {purchasedCourseIds.has(
-                        course.id,
-                      ) ? (
-                        <span className="purchased-pill">
-                          Purchased
-                        </span>
-                      ) : (
-                        <PriceTag
-                          price={course.price}
-                          offerPrice={
-                            course.offerPrice ?? null
-                          }
-                        />
-                      )}
-
-                      <span className="catalog-card-action">
-                        View course
-                        <ArrowRight size={15} />
-                      </span>
-                    </div>
+                    <span className="catalog-card-action">
+                      View course
+                      <ArrowRight size={15} />
+                    </span>
                   </div>
-                </Link>
-              ),
-            )}
+                </div>
+              </Link>
+            ))}
           </div>
         )}
 
-        {!isLoading &&
-          !error &&
-          pageCount > 1 && (
-            <nav
-              className="catalog-pagination"
-              aria-label="Course pages"
+        {!isLoading && !error && pageCount > 1 && (
+          <nav className="catalog-pagination" aria-label="Course pages">
+            <button
+              disabled={safePage <= 1}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
             >
-              <button
-                disabled={safePage <= 1}
-                onClick={() =>
-                  setPage((current) =>
-                    Math.max(1, current - 1),
-                  )
-                }
-              >
-                <ArrowLeft size={15} />
-                Previous
-              </button>
+              <ArrowLeft size={15} />
+              Previous
+            </button>
 
-              <span>
-                Page <strong>{safePage}</strong> of{" "}
-                {pageCount}
-              </span>
+            <span>
+              Page <strong>{safePage}</strong> of {pageCount}
+            </span>
 
-              <button
-                disabled={safePage >= pageCount}
-                onClick={() =>
-                  setPage((current) =>
-                    Math.min(
-                      pageCount,
-                      current + 1,
-                    ),
-                  )
-                }
-              >
-                Next
-                <ArrowRight size={15} />
-              </button>
-            </nav>
-          )}
+            <button
+              disabled={safePage >= pageCount}
+              onClick={() =>
+                setPage((current) => Math.min(pageCount, current + 1))
+              }
+            >
+              Next
+              <ArrowRight size={15} />
+            </button>
+          </nav>
+        )}
       </section>
 
       <footer className="catalog-footer">
         <span>PROPYCODER LEARNING</span>
 
-        <span>
-          Build the skill. Build the thing.
-        </span>
+        <span>Build the skill. Build the thing.</span>
 
         <Link href="/pycoder">
           Open PyCoder lab

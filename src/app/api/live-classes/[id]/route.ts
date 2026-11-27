@@ -4,6 +4,7 @@ import { serializeLiveClass } from "@/lib/live-classes";
 import { NS, invalidateUser } from "@/lib/page-cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 const liveClassPatch = z.object({
   title: z.string().trim().min(3).max(120).optional(),
@@ -22,11 +23,18 @@ const liveClassInclude = {
   instructor: { select: { id: true, firstName: true, lastName: true } },
 } as const;
 
-async function findAuthorizedLiveClass(id: string, userId: string, role: string) {
+async function findAuthorizedLiveClass(
+  id: string,
+  userId: string,
+  role: string,
+) {
   const existing = await prisma.liveClass.findUnique({ where: { id } });
   if (!existing) return { error: "Live class not found" as const, status: 404 };
   if (role !== "ADMIN" && existing.instructorId !== userId) {
-    return { error: "You can only manage your own live classes" as const, status: 403 };
+    return {
+      error: "You can only manage your own live classes" as const,
+      status: 403,
+    };
   }
   return { liveClass: existing };
 }
@@ -38,7 +46,10 @@ export async function PATCH(
 ) {
   try {
     const session = await auth();
-    if (session?.user?.role !== "INSTRUCTOR" && session?.user?.role !== "ADMIN") {
+    if (
+      session?.user?.role !== "INSTRUCTOR" &&
+      session?.user?.role !== "ADMIN"
+    ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     const { id } = await params;
@@ -49,7 +60,10 @@ export async function PATCH(
       session.user.role ?? "",
     );
     if ("error" in authz) {
-      return NextResponse.json({ error: authz.error }, { status: authz.status });
+      return NextResponse.json(
+        { error: authz.error },
+        { status: authz.status },
+      );
     }
 
     const parsed = liveClassPatch.safeParse(await request.json());
@@ -95,7 +109,10 @@ export async function PATCH(
 
     return NextResponse.json({ data: serializeLiveClass(updated) });
   } catch (error) {
-    console.error("Live class PATCH error:", error);
+    logger.error("Live class PATCH error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Could not update the live class" },
       { status: 500 },
@@ -110,7 +127,10 @@ export async function DELETE(
 ) {
   try {
     const session = await auth();
-    if (session?.user?.role !== "INSTRUCTOR" && session?.user?.role !== "ADMIN") {
+    if (
+      session?.user?.role !== "INSTRUCTOR" &&
+      session?.user?.role !== "ADMIN"
+    ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     const { id } = await params;
@@ -121,14 +141,20 @@ export async function DELETE(
       session.user.role ?? "",
     );
     if ("error" in authz) {
-      return NextResponse.json({ error: authz.error }, { status: authz.status });
+      return NextResponse.json(
+        { error: authz.error },
+        { status: authz.status },
+      );
     }
 
     await prisma.liveClass.delete({ where: { id } });
     invalidateUser(NS.liveClasses, session.user.id);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Live class DELETE error:", error);
+    logger.error("Live class DELETE error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Could not delete the live class" },
       { status: 500 },

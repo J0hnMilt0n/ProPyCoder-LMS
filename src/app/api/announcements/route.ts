@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { getAnnouncements } from "@/lib/page-cache";
+import { CATALOG_CACHE_CONTROL } from "@/lib/config";
+import { logger } from "@/lib/logger";
 
 export const revalidate = 2592000;
 
@@ -29,13 +31,15 @@ export async function GET() {
       { announcements },
       {
         headers: {
-          "Cache-Control":
-            "public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=60",
+          "Cache-Control": CATALOG_CACHE_CONTROL,
         },
       },
     );
   } catch (error) {
-    console.error("Public announcements error:", error);
+    logger.error("Public announcements error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to load announcements" },
       { status: 500 },

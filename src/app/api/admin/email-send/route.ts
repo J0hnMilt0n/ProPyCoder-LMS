@@ -1,10 +1,19 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { generateEmailTemplate, EmailTemplateType } from "@/lib/email-templates";
+import { generateEmailTemplate } from "@/lib/email-templates";
+import { EMAIL_TIMEOUT_MS } from "@/lib/config";
+import { logger } from "@/lib/logger";
 
 const emailSendInput = z.object({
-  templateType: z.enum(["password-reset", "email-verification", "announcement", "instructor-recruitment"]).optional(),
+  templateType: z
+    .enum([
+      "password-reset",
+      "email-verification",
+      "announcement",
+      "instructor-recruitment",
+    ])
+    .optional(),
   data: z.record(z.string(), z.any()).optional(),
   customSubject: z.string().optional(),
   customHtml: z.string().optional(),
@@ -29,7 +38,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { templateType, data, customSubject, customHtml, to, recipient } = parsed.data;
+    const { templateType, data, customSubject, customHtml, to, recipient } =
+      parsed.data;
     const effectiveRecipient = to || recipient!;
     const effectiveTemplateType = templateType || "instructor-recruitment";
     const effectiveData = data || {};
@@ -41,12 +51,16 @@ export async function POST(request: NextRequest) {
     });
 
     const apiKey = process.env.BREVO_API_KEY;
-    const senderEmail = parsed.data.senderEmail || process.env.BREVO_SENDER_EMAIL;
+    const senderEmail =
+      parsed.data.senderEmail || process.env.BREVO_SENDER_EMAIL;
     const senderName = process.env.BREVO_SENDER_NAME?.trim() || "ProPyCoder";
 
     if (!apiKey || !senderEmail) {
       return NextResponse.json(
-        { error: "Email sending is not configured (BREVO_API_KEY / BREVO_SENDER_EMAIL missing)" },
+        {
+          error:
+            "Email sending is not configured (BREVO_API_KEY / BREVO_SENDER_EMAIL missing)",
+        },
         { status: 503 },
       );
     }
@@ -66,7 +80,7 @@ export async function POST(request: NextRequest) {
         htmlContent: email.htmlContent,
       }),
       cache: "no-store",
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(EMAIL_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -75,24 +89,33 @@ export async function POST(request: NextRequest) {
         const payload: unknown = await response.json();
         if (payload && typeof payload === "object") {
           const error = payload as { message?: unknown; code?: unknown };
-          const message = typeof error.message === "string" ? error.message : "";
+          const message =
+            typeof error.message === "string" ? error.message : "";
           const code = typeof error.code === "string" ? error.code : "";
           detail = [code, message].filter(Boolean).join(": ").slice(0, 240);
         }
       } catch {
         // The HTTP status remains useful when Brevo returns a non-JSON response.
       }
-      console.error("Brevo email send request failed", response.status);
-      if (detail) console.error("Brevo response:", detail);
+      logger.error("Brevo email send request failed", {
+        metadata: { status: response.status, detail },
+      });
       return NextResponse.json(
         { error: `Could not send email (Brevo HTTP ${response.status})` },
         { status: 502 },
       );
     }
 
-    return NextResponse.json({ sent: true, recipient: effectiveRecipient, subject: email.subject });
+    return NextResponse.json({
+      sent: true,
+      recipient: effectiveRecipient,
+      subject: email.subject,
+    });
   } catch (error) {
-    console.error("Email send error:", error);
+    logger.error("Email send error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to send email" },
       { status: 500 },

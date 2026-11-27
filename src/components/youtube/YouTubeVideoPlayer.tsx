@@ -1,29 +1,27 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
+import type { YTEvent } from "@/types/youtube";
 
 type YouTubeVideoPlayerProps = {
-  videoId?: string;
-  title: string;
+  videoId: string;
   width?: number;
   height?: number;
 };
 
 const YouTubeVideoPlayer = ({
   videoId,
-  title,
   width = 1280,
   height = 720,
 }: YouTubeVideoPlayerProps) => {
-  const videoRef = useRef<any>(null);
-  const [player, setPlayer] = useState<any>(null);
+  const videoRef = useRef<HTMLDivElement>(null);
   const [isReady, setIsReady] = useState(false);
 
   // Load YouTube IFrame API
   useEffect(() => {
     const initPlayer = () => {
       if (!videoRef.current) return;
-      const player = new (window as any).YT.Player(videoRef.current, {
+      new window.YT!.Player(videoRef.current, {
         height: height,
         width: width,
         videoId: videoId,
@@ -45,22 +43,25 @@ const YouTubeVideoPlayer = ({
           onReady: () => {
             setIsReady(true);
           },
-          onError: (err: any) => {
+          onError: (err: YTEvent) => {
             console.error("YouTube player error:", err);
           },
         },
       });
-      setPlayer(player);
     };
 
-    if ((window as any).YT && (window as any).YT.Player) {
+    if (window.YT && window.YT.Player) {
       initPlayer();
       return;
     }
 
-    (window as any).onYouTubeIframeAPIReady = initPlayer;
+    window.onYouTubeIframeAPIReady = initPlayer;
 
-    if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+    if (
+      !document.querySelector(
+        'script[src="https://www.youtube.com/iframe_api"]',
+      )
+    ) {
       const tag = document.createElement("script");
       tag.src = "https://www.youtube.com/iframe_api";
       const firstScript = document.getElementsByTagName("script")[0];
@@ -77,13 +78,22 @@ const YouTubeVideoPlayer = ({
   }
 
   return (
-    <div className="lvp-youtube-wrapper" style={{ width: "100%", height: "100%" }}>
-      <div className="lvp-player-wrapper" style={{ width: "100%", height: "100%" }}>
-        <div ref={videoRef} id="player" style={{ width: "100%", height: "100%" }} />
+    <div
+      className="lvp-youtube-wrapper"
+      style={{ width: "100%", height: "100%" }}
+    >
+      <div
+        className="lvp-player-wrapper"
+        style={{ width: "100%", height: "100%" }}
+      >
+        <div
+          ref={videoRef}
+          id="player"
+          style={{ width: "100%", height: "100%" }}
+        />
       </div>
     </div>
   );
 };
 
 export default YouTubeVideoPlayer;
-

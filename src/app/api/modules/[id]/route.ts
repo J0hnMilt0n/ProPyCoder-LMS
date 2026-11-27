@@ -1,8 +1,10 @@
 import { authorizeCourseContent } from "@/lib/course-content-auth";
 import { prisma } from "@/lib/prisma";
 import { invalidateCourse } from "@/lib/course-cache";
+import { clearCourseResourceCache } from "@/lib/use-resource";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 const moduleUpdateInput = z.object({
   title: z.string().trim().min(2).max(120).optional(),
@@ -48,7 +50,9 @@ export async function PATCH(
     const updated = await prisma.module.update({
       where: { id },
       data: {
-        ...(parsed.data.title !== undefined ? { title: parsed.data.title } : {}),
+        ...(parsed.data.title !== undefined
+          ? { title: parsed.data.title }
+          : {}),
         ...(parsed.data.description !== undefined
           ? { description: parsed.data.description || null }
           : {}),
@@ -57,10 +61,14 @@ export async function PATCH(
     });
 
     invalidateCourse(moduleRecord.courseId);
+    clearCourseResourceCache(moduleRecord.courseId);
 
     return NextResponse.json(updated);
   } catch (error) {
-    console.error("Module update error:", error);
+    logger.error("Module update error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to update module" },
       { status: 500 },
@@ -91,10 +99,14 @@ export async function DELETE(
     await prisma.module.delete({ where: { id } });
 
     invalidateCourse(moduleRecord.courseId);
+    clearCourseResourceCache(moduleRecord.courseId);
 
     return NextResponse.json({ id });
   } catch (error) {
-    console.error("Module deletion error:", error);
+    logger.error("Module deletion error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to delete module" },
       { status: 500 },

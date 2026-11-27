@@ -1,5 +1,11 @@
 import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { cached, invalidate, type CacheOptions } from "@/lib/data-cache";
+import {
+  CACHE_FRESH_MS,
+  CACHE_STALE_MS,
+  CACHE_FRESH_SHORT_MS,
+  CACHE_STALE_SHORT_MS,
+} from "@/lib/config";
 
 /**
  * App-wide read caching for the pages that load data from the server,
@@ -25,15 +31,24 @@ import { cached, invalidate, type CacheOptions } from "@/lib/data-cache";
  */
 
 /** Global payload windows — writes purge the tag, so a longer fresh window is safe. */
-export const GLOBAL_CACHE: CacheOptions = { freshMs: 30_000, staleMs: 60_000 };
+export const GLOBAL_CACHE: CacheOptions = {
+  freshMs: CACHE_FRESH_MS,
+  staleMs: CACHE_STALE_MS,
+};
 /**
  * Per-user payloads change more dynamically (progress, unread badges) and can
  * be affected by another actor (an admin broadcast), so keep the window short
  * and rely on precise invalidation for correctness.
  */
-export const USER_CACHE: CacheOptions = { freshMs: 15_000, staleMs: 30_000 };
+export const USER_CACHE: CacheOptions = {
+  freshMs: CACHE_FRESH_SHORT_MS,
+  staleMs: CACHE_STALE_SHORT_MS,
+};
 /** Live classes: scheduled events — short window, and status is always recomputed per request. */
-export const LIVE_CACHE: CacheOptions = { freshMs: 15_000, staleMs: 30_000 };
+export const LIVE_CACHE: CacheOptions = {
+  freshMs: CACHE_FRESH_SHORT_MS,
+  staleMs: CACHE_STALE_SHORT_MS,
+};
 
 // ---- persistent (shared) Data Cache tags ----
 export const ADMIN_OVERVIEW_TAG = "admin-overview";
@@ -77,7 +92,12 @@ function globalCached<T>(
 /* ------------------------------ global reads ------------------------------ */
 
 export function getAdminOverview<T>(load: () => Promise<T>): Promise<T> {
-  return globalCached("admin-overview:", ["admin-overview"], ADMIN_OVERVIEW_TAG, load);
+  return globalCached(
+    "admin-overview:",
+    ["admin-overview"],
+    ADMIN_OVERVIEW_TAG,
+    load,
+  );
 }
 
 export function getBundles<T>(load: () => Promise<T>): Promise<T> {
@@ -85,15 +105,30 @@ export function getBundles<T>(load: () => Promise<T>): Promise<T> {
 }
 
 export function getAdminBundles<T>(load: () => Promise<T>): Promise<T> {
-  return globalCached("bundles:admin:", ["bundles", "admin"], BUNDLES_TAG, load);
+  return globalCached(
+    "bundles:admin:",
+    ["bundles", "admin"],
+    BUNDLES_TAG,
+    load,
+  );
 }
 
 export function getBundle<T>(id: string, load: () => Promise<T>): Promise<T> {
-  return globalCached(`bundles:detail:${id}:`, ["bundle", id], BUNDLES_TAG, load);
+  return globalCached(
+    `bundles:detail:${id}:`,
+    ["bundle", id],
+    BUNDLES_TAG,
+    load,
+  );
 }
 
 export function getAnnouncements<T>(load: () => Promise<T>): Promise<T> {
-  return globalCached("announcements:list:", ["announcements"], ANNOUNCEMENTS_TAG, load);
+  return globalCached(
+    "announcements:list:",
+    ["announcements"],
+    ANNOUNCEMENTS_TAG,
+    load,
+  );
 }
 
 export function getHomeData<T>(load: () => Promise<T>): Promise<T> {
@@ -101,8 +136,16 @@ export function getHomeData<T>(load: () => Promise<T>): Promise<T> {
 }
 
 /** Certificates are immutable once issued, so this never needs invalidation. */
-export function getCertificateDetail<T>(id: string, load: () => Promise<T>): Promise<T> {
-  return globalCached(`certificate:${id}:`, ["certificate", id], CERTIFICATE_TAG, load);
+export function getCertificateDetail<T>(
+  id: string,
+  load: () => Promise<T>,
+): Promise<T> {
+  return globalCached(
+    `certificate:${id}:`,
+    ["certificate", id],
+    CERTIFICATE_TAG,
+    load,
+  );
 }
 
 /* ---------------------------- global invalidation -------------------------- */
@@ -110,7 +153,11 @@ export function getCertificateDetail<T>(id: string, load: () => Promise<T>): Pro
 export function invalidateAdminOverview(): void {
   invalidate("admin-overview:");
   purgeTag(ADMIN_OVERVIEW_TAG);
-  try { revalidatePath(`/admin`); } catch { /* ignore */ }
+  try {
+    revalidatePath(`/admin`);
+  } catch {
+    /* ignore */
+  }
 }
 
 export function invalidateBundles(): void {
@@ -121,7 +168,9 @@ export function invalidateBundles(): void {
     revalidatePath(`/bundles`);
     revalidatePath(`/api/bundles/[id]`);
     revalidatePath(`/bundles/[id]`, "page");
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 export function invalidateAnnouncements(): void {
@@ -130,13 +179,19 @@ export function invalidateAnnouncements(): void {
   try {
     revalidatePath(`/api/announcements`);
     revalidatePath(`/`);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 export function invalidateHome(): void {
   invalidate("home:");
   purgeTag(HOME_TAG);
-  try { revalidatePath(`/`); } catch { /* ignore */ }
+  try {
+    revalidatePath(`/`);
+  } catch {
+    /* ignore */
+  }
 }
 
 /* ------------------------------ per-user reads ----------------------------- */

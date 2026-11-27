@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import { CATALOG_CACHE_CONTROL } from "@/lib/config";
 import { NextRequest, NextResponse } from "next/server";
 import { getCertificateDetail } from "@/lib/page-cache";
+import { logger } from "@/lib/logger";
 
 export const revalidate = 2592000;
 
@@ -37,12 +39,14 @@ export async function GET(_request: NextRequest, { params }: Props) {
 
     return NextResponse.json(certificate, {
       headers: {
-        "Cache-Control":
-          "public, max-age=2592000, s-maxage=2592000, stale-while-revalidate=60",
+        "Cache-Control": CATALOG_CACHE_CONTROL,
       },
     });
   } catch (error) {
-    console.error("Certificate fetch error:", error);
+    logger.error("Certificate fetch error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to fetch certificate" },
       { status: 500 },

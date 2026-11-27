@@ -55,6 +55,7 @@ model Course {
   category    String
   level       String   @default("BEGINNER")
   price       Float    @default(0)
+  offerPrice  Float?   // Optional discounted price (must be 0 <= offer <= price)
   image       String?
   status      String   @default("DRAFT")
   instructor  User     @relation("instructor", fields: [instructorId], references: [id], onDelete: Cascade)
@@ -160,10 +161,12 @@ model Payment {
   id              String   @id @default(cuid())
   userId          String
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  courseId        String
-  course          Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId        String?
+  course          Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  bundleId        String?
+  bundle          Bundle?  @relation(fields: [bundleId], references: [id], onDelete: Cascade)
   amount          Float
-  currency        String   @default("USD")
+  currency        String   @default("INR")
   status          String   @default("PENDING") // PENDING, COMPLETED, FAILED, REFUNDED
   paymentMethod   String?  // STRIPE, PAYPAL, etc.
   transactionId   String?  // External transaction ID
@@ -175,7 +178,9 @@ model Payment {
 
   @@index([userId])
   @@index([courseId])
+  @@index([bundleId])
   @@index([status])
+  @@index([userId, status, paymentMethod])
 }
 
 // Quiz model
@@ -300,6 +305,7 @@ model Bundle {
   updatedAt   DateTime       @updatedAt
   createdAt   DateTime       @default(now())
   courses     BundleCourse[]
+  payments    Payment[]
 
   @@index([status])
 }

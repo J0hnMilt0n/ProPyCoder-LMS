@@ -2,10 +2,16 @@ import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { generateEmailTemplate } from "@/lib/email-templates";
+import { logger } from "@/lib/logger";
 
 const emailPreviewInput = z.object({
   templateType: z
-    .enum(["password-reset", "email-verification", "announcement", "instructor-recruitment"])
+    .enum([
+      "password-reset",
+      "email-verification",
+      "announcement",
+      "instructor-recruitment",
+    ])
     .optional(),
   data: z.record(z.string(), z.any()).optional(),
   customSubject: z.string().optional(),
@@ -30,7 +36,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { templateType, data, customSubject, customHtml, senderEmail } = parsed.data;
+    const { templateType, data, customSubject, customHtml } = parsed.data;
     const preview = generateEmailTemplate({
       templateType: templateType || "instructor-recruitment",
       data: data || {},
@@ -39,7 +45,10 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json(preview);
   } catch (error) {
-    console.error("Email preview error:", error);
+    logger.error("Email preview error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to generate email preview" },
       { status: 500 },

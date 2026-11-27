@@ -217,7 +217,7 @@ export function BundleManager({ courses }: Props) {
       <div className="admin-management-heading">
         <div>
           <div className="admin-eyebrow">BUNDLES</div>
-          <h2>Course bundles</h2>
+          <h2>Course Hub</h2>
           <p>
             Package 2+ courses at a reduced price. Deleting a bundle never
             affects the courses inside it.
@@ -349,9 +349,7 @@ export function BundleManager({ courses }: Props) {
             onClick={(event) => event.stopPropagation()}
           >
             <div className="admin-modal-head">
-              <h3>
-                {modal.mode === "edit" ? "Edit bundle" : "Create bundle"}
-              </h3>
+              <h3>{modal.mode === "edit" ? "Edit bundle" : "Create bundle"}</h3>
               <button
                 type="button"
                 onClick={() => setModal(null)}
@@ -361,7 +359,10 @@ export function BundleManager({ courses }: Props) {
                 ×
               </button>
             </div>
-            <form onSubmit={saveBundle} className="instructor-form admin-modal-form">
+            <form
+              onSubmit={saveBundle}
+              className="instructor-form admin-modal-form"
+            >
               <label>
                 Bundle title
                 <input
@@ -532,4 +533,3 @@ export function BundleManager({ courses }: Props) {
     </div>
   );
 }
-

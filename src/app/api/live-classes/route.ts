@@ -4,6 +4,7 @@ import { effectiveStatus, serializeLiveClass } from "@/lib/live-classes";
 import { LIVE_CACHE, NS, invalidateUser, userCached } from "@/lib/page-cache";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 const liveClassInput = z.object({
   courseId: z.string().trim().min(1),
@@ -62,9 +63,15 @@ export async function GET(request: NextRequest) {
         endsAt: row.endsAt.toISOString(),
         status: effectiveStatus(row),
       }));
-      return NextResponse.json({ data }, {
-        headers: { "Cache-Control": "public, max-age=60, s-maxage=60, stale-while-revalidate=300" },
-      });
+      return NextResponse.json(
+        { data },
+        {
+          headers: {
+            "Cache-Control":
+              "public, max-age=60, s-maxage=60, stale-while-revalidate=300",
+          },
+        },
+      );
     }
 
     const session = await auth();
@@ -88,7 +95,10 @@ export async function GET(request: NextRequest) {
         }),
       ]);
       if (!course) {
-        return NextResponse.json({ error: "Course not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "Course not found" },
+          { status: 404 },
+        );
       }
       const allowed =
         role === "ADMIN" ||
@@ -169,7 +179,10 @@ export async function GET(request: NextRequest) {
       { status: 400 },
     );
   } catch (error) {
-    console.error("Live classes GET error:", error);
+    logger.error("Live classes GET error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Could not load live classes" },
       { status: 500 },
@@ -246,7 +259,10 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     );
   } catch (error) {
-    console.error("Live class POST error:", error);
+    logger.error("Live class POST error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Could not schedule the live class" },
       { status: 500 },

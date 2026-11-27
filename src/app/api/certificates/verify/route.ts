@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 // GET /api/certificates/verify?number=PPC-2026-XXXX
 //
@@ -33,7 +34,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(certificate);
   } catch (error) {
-    console.error("Certificate verify error:", error);
+    logger.error("Certificate verify error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to verify certificate" },
       { status: 500 },

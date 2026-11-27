@@ -7,6 +7,7 @@ import {
   invalidateAnnouncements,
   invalidateUserNamespace,
 } from "@/lib/page-cache";
+import { logger } from "@/lib/logger";
 
 // DELETE an announcement broadcast + its inbox copies (admin only)
 export async function DELETE(
@@ -48,7 +49,10 @@ export async function DELETE(
     invalidateUserNamespace(NS.notifications);
     return NextResponse.json({ ok: true, id: deleted.id });
   } catch (error) {
-    console.error("Delete announcement error:", error);
+    logger.error("Delete announcement error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to delete announcement" },
       { status: 500 },

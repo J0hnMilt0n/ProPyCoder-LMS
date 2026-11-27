@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { extractYouTubeId } from "@/lib/youtube";
 import { getCourseModules, invalidateCourse } from "@/lib/course-cache";
+import { clearCourseResourceCache } from "@/lib/use-resource";
+import { logger } from "@/lib/logger";
 
 // GET lessons for a course (only accessible to enrolled users or for free previews)
 export async function GET(request: NextRequest) {
@@ -14,7 +16,7 @@ export async function GET(request: NextRequest) {
     if (!courseId) {
       return NextResponse.json(
         { error: "Course ID is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -52,10 +54,13 @@ export async function GET(request: NextRequest) {
       isEnrolled,
     });
   } catch (error) {
-    console.error("Lessons fetch error:", error);
+    logger.error("Lessons fetch error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to fetch lessons" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -68,12 +73,13 @@ export async function POST(request: NextRequest) {
     if (!session || session.user?.role !== "INSTRUCTOR") {
       return NextResponse.json(
         { error: "Unauthorized - Instructor access required" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     const body = await request.json();
-    const { title, description, moduleId, order, videoUrl, duration, isFree } = body;
+    const { title, description, moduleId, order, videoUrl, duration, isFree } =
+      body;
 
     // Verify instructor owns the course (through module)
     const moduleRecord = await prisma.module.findUnique({
@@ -82,16 +88,13 @@ export async function POST(request: NextRequest) {
     });
 
     if (!moduleRecord) {
-      return NextResponse.json(
-        { error: "Module not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Module not found" }, { status: 404 });
     }
 
     if (moduleRecord.course.instructorId !== session.user.id) {
       return NextResponse.json(
         { error: "You can only add lessons to your own courses" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -112,13 +115,17 @@ export async function POST(request: NextRequest) {
     });
 
     invalidateCourse(moduleRecord.courseId);
+    clearCourseResourceCache(moduleRecord.courseId);
 
     return NextResponse.json(lesson, { status: 201 });
   } catch (error) {
-    console.error("Lesson creation error:", error);
+    logger.error("Lesson creation error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to create lesson" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

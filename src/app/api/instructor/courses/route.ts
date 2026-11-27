@@ -1,6 +1,7 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { invalidateCatalog } from "@/lib/course-cache";
+import { clearCourseResourceCache } from "@/lib/use-resource";
 import {
   NS,
   invalidateAdminOverview,
@@ -12,6 +13,7 @@ import { isValidOffer } from "@/lib/pricing";
 import { MAX_SLUG_LENGTH, SLUG_PATTERN } from "@/lib/slug";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 const courseInput = z.object({
   // Optional author-chosen slug, stored as the course id (permanent).
@@ -70,7 +72,10 @@ export async function GET() {
 
     return NextResponse.json({ data });
   } catch (error) {
-    console.error("Instructor courses fetch error:", error);
+    logger.error("Instructor courses fetch error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to fetch instructor courses" },
       { status: 500 },
@@ -116,6 +121,7 @@ export async function POST(request: NextRequest) {
     });
 
     invalidateCatalog();
+    clearCourseResourceCache(course.id);
     // The instructor's own course list just changed.
     invalidateUser(NS.instructorCourses, session.user.id);
     // New course moves the platform totals on the admin dashboard.
@@ -136,7 +142,10 @@ export async function POST(request: NextRequest) {
         { status: 409 },
       );
     }
-    console.error("Instructor course creation error:", error);
+    logger.error("Instructor course creation error", {
+      cause: error instanceof Error ? error : undefined,
+      metadata: { error: String(error) },
+    });
     return NextResponse.json(
       { error: "Failed to create course" },
       { status: 500 },
