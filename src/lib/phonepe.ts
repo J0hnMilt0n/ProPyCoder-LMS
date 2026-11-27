@@ -478,8 +478,10 @@ export async function createPhonePeOrder(input: {
       paymentFlow: {
         type: "PG_CHECKOUT",
 
+        // PhonePe documents this as the message used for collect requests.
+        // Pass the actual course/bundle name from the payment route.
         message: input.productName?.trim()
-          ? `ProPyCoder - ${input.productName.trim()}`.slice(0, 100)
+          ? `Payment for ${input.productName.trim()}`
           : "ProPyCoder course purchase",
 
         merchantUrls: {

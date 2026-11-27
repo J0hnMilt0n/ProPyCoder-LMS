@@ -208,6 +208,7 @@ export async function POST(request: NextRequest) {
           },
           select: {
             id: true,
+            title: true,
             price: true,
             offerPrice: true,
           },
@@ -334,6 +335,7 @@ export async function POST(request: NextRequest) {
           `/checkout/${payment.id}?phonepe=return`,
           request.url,
         ).toString(),
+        productName: course.title,
       });
       await prisma.payment.update({
         where: { id: payment.id },
@@ -534,6 +536,7 @@ export async function POST(request: NextRequest) {
         `/checkout/${payment.id}?phonepe=return`,
         request.url,
       ).toString(),
+      productName: bundle.title,
     });
 
     await prisma.payment.update({
