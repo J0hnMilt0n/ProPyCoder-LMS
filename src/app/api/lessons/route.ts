@@ -115,8 +115,6 @@ export async function POST(request: NextRequest) {
     });
 
     invalidateCourse(moduleRecord.courseId);
-    clearCourseResourceCache(moduleRecord.courseId);
-
     return NextResponse.json(lesson, { status: 201 });
   } catch (error) {
     logger.error("Lesson creation error", {

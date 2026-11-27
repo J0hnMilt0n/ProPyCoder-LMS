@@ -1,7 +1,6 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { invalidateBundles } from "@/lib/page-cache";
-import { clearCourseResourceCache } from "@/lib/use-resource";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
@@ -105,10 +104,6 @@ export async function PUT(
       },
     });
     invalidateBundles();
-    // Clear client cache for all courses in the bundle
-    for (const entry of bundle.courses) {
-      clearCourseResourceCache(entry.course.id);
-    }
     return NextResponse.json({ bundle });
   } catch (error) {
     logger.error("Update bundle error", {
@@ -146,10 +141,6 @@ export async function DELETE(
     const courseIds = existing.courses.map((c) => c.courseId);
     await prisma.bundle.delete({ where: { id } });
     invalidateBundles();
-    // Clear client cache for all courses that were in the bundle
-    for (const courseId of courseIds) {
-      clearCourseResourceCache(courseId);
-    }
     return NextResponse.json({ ok: true, id });
   } catch (error) {
     logger.error("Delete bundle error", {

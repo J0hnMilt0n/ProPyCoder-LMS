@@ -1,7 +1,6 @@
 import { authorizeCourseContent } from "@/lib/course-content-auth";
 import { prisma } from "@/lib/prisma";
 import { invalidateCourse } from "@/lib/course-cache";
-import { clearCourseResourceCache } from "@/lib/use-resource";
 import { extractYouTubeId } from "@/lib/youtube";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -82,8 +81,6 @@ export async function POST(
     });
 
     invalidateCourse(moduleRecord.courseId);
-    clearCourseResourceCache(moduleRecord.courseId);
-
     return NextResponse.json(lesson, { status: 201 });
   } catch (error) {
     logger.error("Lesson creation error", {
@@ -146,8 +143,6 @@ export async function PATCH(
     );
 
     invalidateCourse(moduleRecord.courseId);
-    clearCourseResourceCache(moduleRecord.courseId);
-
     return NextResponse.json({ ok: true });
   } catch (error) {
     logger.error("Lesson reorder error", {

@@ -1,7 +1,6 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { invalidateCatalog, invalidateCourse } from "@/lib/course-cache";
-import { clearCourseResourceCache } from "@/lib/use-resource";
 import {
   NS,
   invalidateAdminOverview,
@@ -60,7 +59,6 @@ export async function POST(request: NextRequest) {
 
     invalidateCourse(courseId);
     invalidateCatalog();
-    clearCourseResourceCache(courseId);
     invalidateAdminOverview();
     invalidateHome();
     invalidateUser(NS.enrollments, studentId);

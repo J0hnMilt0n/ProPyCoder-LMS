@@ -1,7 +1,6 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { getAdminBundles, invalidateBundles } from "@/lib/page-cache";
-import { clearCourseResourceCache } from "@/lib/use-resource";
 import { MAX_SLUG_LENGTH, SLUG_PATTERN } from "@/lib/slug";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -137,10 +136,6 @@ export async function POST(request: NextRequest) {
       select: bundleSelect,
     });
     invalidateBundles();
-    // Clear client cache for all courses in the bundle
-    for (const courseId of uniqueIds) {
-      clearCourseResourceCache(courseId);
-    }
     return NextResponse.json({ bundle }, { status: 201 });
   } catch (error) {
     // A taken slug surfaces as a unique-constraint violation — report it

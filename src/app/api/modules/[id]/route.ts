@@ -61,8 +61,6 @@ export async function PATCH(
     });
 
     invalidateCourse(moduleRecord.courseId);
-    clearCourseResourceCache(moduleRecord.courseId);
-
     return NextResponse.json(updated);
   } catch (error) {
     logger.error("Module update error", {
@@ -99,8 +97,6 @@ export async function DELETE(
     await prisma.module.delete({ where: { id } });
 
     invalidateCourse(moduleRecord.courseId);
-    clearCourseResourceCache(moduleRecord.courseId);
-
     return NextResponse.json({ id });
   } catch (error) {
     logger.error("Module deletion error", {

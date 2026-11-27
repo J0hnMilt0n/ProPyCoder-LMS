@@ -1,7 +1,6 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { invalidateCatalog, invalidateCourse } from "@/lib/course-cache";
-import { clearCourseResourceCache } from "@/lib/use-resource";
 import { invalidateAdminOverview, invalidateHome } from "@/lib/page-cache";
 import { isValidOffer } from "@/lib/pricing";
 import { NextRequest, NextResponse } from "next/server";
@@ -103,7 +102,6 @@ export async function PATCH(
 
     invalidateCourse(id);
     invalidateCatalog();
-    clearCourseResourceCache(id);
     // Publishing/unpublishing moves the published/draft counts on the admin
     // dashboard and can change the home page's featured list.
     invalidateAdminOverview();
@@ -184,7 +182,6 @@ export async function PUT(
 
     invalidateCourse(id);
     invalidateCatalog();
-    clearCourseResourceCache(id);
     invalidateAdminOverview();
     invalidateHome();
 
@@ -232,7 +229,6 @@ export async function DELETE(
 
     invalidateCourse(id);
     invalidateCatalog();
-    clearCourseResourceCache(id);
     invalidateAdminOverview();
     invalidateHome();
 

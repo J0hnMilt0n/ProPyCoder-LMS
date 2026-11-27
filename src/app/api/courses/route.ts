@@ -5,7 +5,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { CATALOG_TAG, invalidateCatalog } from "@/lib/course-cache";
-import { clearCourseResourceCache } from "@/lib/use-resource";
 import { invalidateAdminOverview, invalidateHome } from "@/lib/page-cache";
 import { imageUrl } from "@/lib/image-urls";
 import { logger } from "@/lib/logger";
@@ -176,7 +175,6 @@ export async function POST(request: NextRequest) {
     });
 
     invalidateCatalog();
-    clearCourseResourceCache(course.id);
     // New course moves the platform totals on the admin dashboard.
     invalidateAdminOverview();
     invalidateHome();

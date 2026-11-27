@@ -1,7 +1,6 @@
 import { authorizeCourseContent } from "@/lib/course-content-auth";
 import { prisma } from "@/lib/prisma";
 import { getCourseModules, invalidateCourse } from "@/lib/course-cache";
-import { clearCourseResourceCache } from "@/lib/use-resource";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
@@ -87,8 +86,6 @@ export async function POST(
     });
 
     invalidateCourse(id);
-    clearCourseResourceCache(id);
-
     return NextResponse.json(newModule, { status: 201 });
   } catch (error) {
     logger.error("Module creation error", {
@@ -143,8 +140,6 @@ export async function PATCH(
     );
 
     invalidateCourse(id);
-    clearCourseResourceCache(id);
-
     return NextResponse.json({ ok: true });
   } catch (error) {
     logger.error("Module reorder error", {

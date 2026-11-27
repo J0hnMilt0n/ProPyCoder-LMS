@@ -1,7 +1,6 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { invalidateCatalog, invalidateCourse } from "@/lib/course-cache";
-import { clearCourseResourceCache } from "@/lib/use-resource";
 import {
   NS,
   invalidateAdminOverview,
@@ -46,7 +45,6 @@ export async function DELETE(
     // own dashboard list.
     invalidateCourse(enrollment.course.id);
     invalidateCatalog();
-    clearCourseResourceCache(enrollment.course.id);
     invalidateAdminOverview();
     invalidateHome();
     invalidateUser(NS.enrollments, enrollment.studentId);

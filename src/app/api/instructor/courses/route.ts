@@ -1,7 +1,6 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { invalidateCatalog } from "@/lib/course-cache";
-import { clearCourseResourceCache } from "@/lib/use-resource";
 import {
   NS,
   invalidateAdminOverview,
@@ -121,7 +120,6 @@ export async function POST(request: NextRequest) {
     });
 
     invalidateCatalog();
-    clearCourseResourceCache(course.id);
     // The instructor's own course list just changed.
     invalidateUser(NS.instructorCourses, session.user.id);
     // New course moves the platform totals on the admin dashboard.

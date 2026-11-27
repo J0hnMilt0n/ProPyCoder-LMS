@@ -98,8 +98,6 @@ export async function PATCH(
     const updated = await prisma.lesson.update({ where: { id }, data });
 
     invalidateCourse(lesson.module.courseId);
-    clearCourseResourceCache(lesson.module.courseId);
-
     return NextResponse.json(updated);
   } catch (error) {
     logger.error("Lesson update error", {
@@ -139,8 +137,6 @@ export async function DELETE(
     await prisma.lesson.delete({ where: { id } });
 
     invalidateCourse(lesson.module.courseId);
-    clearCourseResourceCache(lesson.module.courseId);
-
     return NextResponse.json({ id });
   } catch (error) {
     logger.error("Lesson deletion error", {
