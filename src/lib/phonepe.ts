@@ -1,20 +1,40 @@
 import "server-only";
 import { logger } from "@/lib/logger";
 
-const PHONEPE_SANDBOX = "https://api-preprod.phonepe.com/apis/pg-sandbox";
+// --------------------------------------------------
+// PHONEPE API URLS
+// --------------------------------------------------
 
-const PHONEPE_PRODUCTION = "https://api.phonepe.com/apis/pg";
+const PHONEPE_SANDBOX_API =
+  "https://api-preprod.phonepe.com/apis/pg-sandbox";
+
+const PHONEPE_PRODUCTION_API =
+  "https://api.phonepe.com/apis/pg";
+
+const PHONEPE_SANDBOX_AUTH =
+  "https://api-preprod.phonepe.com/apis/pg-sandbox";
+
+const PHONEPE_PRODUCTION_AUTH =
+  "https://api.phonepe.com/apis/identity-manager";
+
+// --------------------------------------------------
+// TYPES
+// --------------------------------------------------
 
 type PhonePeConfig = {
   clientId: string;
   clientSecret: string;
   clientVersion: string;
   baseUrl: string;
+  authUrl: string;
 };
 
 type TokenResponse = {
   access_token?: string;
   expires_at?: number;
+  token_type?: string;
+  error?: string;
+  error_description?: string;
 };
 
 export type PhonePeOrderStatus = {
@@ -48,11 +68,11 @@ export class PhonePeApiError extends Error {
 type CachedToken = {
   token: string;
   expiresAt: number;
-  cacheKey: string;
 };
 
-let tokenCache: CachedToken | null = null;
-let tokenPromise: Promise<string> | null = null;
+const tokenCache = new Map<string, CachedToken>();
+
+const tokenPromises = new Map<string, Promise<string>>();
 
 // --------------------------------------------------
 // CONFIGURATION
@@ -64,21 +84,37 @@ function getConfig(): PhonePeConfig {
   const clientVersion = process.env.PHONEPE_CLIENT_VERSION;
 
   if (!clientId || !clientSecret || !clientVersion) {
-    throw new Error("PhonePe credentials are not configured");
+    throw new Error(
+      "PhonePe credentials are not configured",
+    );
   }
 
-  const environment = process.env.PHONEPE_ENVIRONMENT ?? "SANDBOX";
+  const environment =
+    process.env.PHONEPE_ENVIRONMENT ?? "SANDBOX";
 
-  if (environment !== "SANDBOX" && environment !== "PRODUCTION") {
-    throw new Error("PHONEPE_ENVIRONMENT must be SANDBOX or PRODUCTION");
+  if (
+    environment !== "SANDBOX" &&
+    environment !== "PRODUCTION"
+  ) {
+    throw new Error(
+      "PHONEPE_ENVIRONMENT must be SANDBOX or PRODUCTION",
+    );
   }
+
+  const production = environment === "PRODUCTION";
 
   return {
     clientId,
     clientSecret,
     clientVersion,
-    baseUrl:
-      environment === "PRODUCTION" ? PHONEPE_PRODUCTION : PHONEPE_SANDBOX,
+
+    baseUrl: production
+      ? PHONEPE_PRODUCTION_API
+      : PHONEPE_SANDBOX_API,
+
+    authUrl: production
+      ? PHONEPE_PRODUCTION_AUTH
+      : PHONEPE_SANDBOX_AUTH,
   };
 }
 
@@ -86,24 +122,35 @@ function getConfig(): PhonePeConfig {
 // ACCESS TOKEN
 // --------------------------------------------------
 
-async function getAccessToken(config: PhonePeConfig): Promise<string> {
-  const cacheKey = `${config.baseUrl}:${config.clientId}:${config.clientVersion}`;
+async function getAccessToken(
+  config: PhonePeConfig,
+): Promise<string> {
+  const cacheKey = [
+    config.authUrl,
+    config.baseUrl,
+    config.clientId,
+    config.clientVersion,
+    config.clientSecret,
+  ].join(":");
 
-  // Return cached token if still valid.
+  // Return cached token if valid.
+  const cached = tokenCache.get(cacheKey);
+
   if (
-    tokenCache &&
-    tokenCache.cacheKey === cacheKey &&
-    tokenCache.expiresAt > Date.now() + 120_000
+    cached &&
+    cached.expiresAt > Date.now() + 120_000
   ) {
-    return tokenCache.token;
+    return cached.token;
   }
 
   // Prevent duplicate token requests.
-  if (tokenPromise) {
-    return tokenPromise;
+  const existingPromise = tokenPromises.get(cacheKey);
+
+  if (existingPromise) {
+    return existingPromise;
   }
 
-  tokenPromise = (async () => {
+  const promise = (async () => {
     const start = performance.now();
 
     try {
@@ -114,30 +161,67 @@ async function getAccessToken(config: PhonePeConfig): Promise<string> {
         grant_type: "client_credentials",
       });
 
-      const response = await fetch(`${config.baseUrl}/v1/oauth/token`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
+      const response = await fetch(
+        `${config.authUrl}/v1/oauth/token`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/x-www-form-urlencoded",
+          },
+
+          body,
+          cache: "no-store",
+          signal: AbortSignal.timeout(10_000),
         },
-        body,
-        cache: "no-store",
-        signal: AbortSignal.timeout(10_000),
-      });
+      );
 
-      if (!response.ok) {
-        const errorText = await response.text();
+      const rawBody = await response.text();
 
-        logger.error("[PhonePe] Authorization failed", {
-          metadata: { status: response.status, errorText },
-        });
+      let data: TokenResponse;
 
-        throw new Error(`PhonePe authorization failed (${response.status})`);
+      try {
+        data = JSON.parse(rawBody) as TokenResponse;
+      } catch {
+        logger.error(
+          "[PhonePe] Invalid authorization response",
+          {
+            metadata: {
+              status: response.status,
+              responseBody: rawBody.slice(0, 1000),
+            },
+          },
+        );
+
+        throw new Error(
+          "PhonePe returned an invalid authorization response",
+        );
       }
 
-      const data = (await response.json()) as TokenResponse;
+      if (!response.ok) {
+        logger.error(
+          "[PhonePe] Authorization failed",
+          {
+            metadata: {
+              status: response.status,
+              error: data,
+            },
+          },
+        );
+
+        throw new PhonePeApiError(
+          `PhonePe authorization failed (${response.status})`,
+          response.status,
+          data.error,
+          data.error_description,
+        );
+      }
 
       if (!data.access_token) {
-        throw new Error("PhonePe returned no access token");
+        throw new Error(
+          "PhonePe returned no access token",
+        );
       }
 
       const expiresAt =
@@ -145,11 +229,10 @@ async function getAccessToken(config: PhonePeConfig): Promise<string> {
           ? data.expires_at * 1000
           : Date.now() + 30 * 60 * 1000;
 
-      tokenCache = {
+      tokenCache.set(cacheKey, {
         token: data.access_token,
         expiresAt,
-        cacheKey,
-      };
+      });
 
       console.info(
         `[PhonePe] Token request completed in ${Math.round(
@@ -159,11 +242,13 @@ async function getAccessToken(config: PhonePeConfig): Promise<string> {
 
       return data.access_token;
     } finally {
-      tokenPromise = null;
+      tokenPromises.delete(cacheKey);
     }
   })();
 
-  return tokenPromise;
+  tokenPromises.set(cacheKey, promise);
+
+  return promise;
 }
 
 // --------------------------------------------------
@@ -184,7 +269,9 @@ async function phonePeRequest<T>(
   const token = await getAccessToken(config);
 
   console.info(
-    `[PhonePe] Token duration: ${Math.round(performance.now() - tokenStart)}ms`,
+    `[PhonePe] Token duration: ${Math.round(
+      performance.now() - tokenStart,
+    )}ms`,
   );
 
   // Make API request.
@@ -193,63 +280,123 @@ async function phonePeRequest<T>(
   let response: Response;
 
   try {
-    response = await fetch(`${config.baseUrl}${path}`, {
-      ...init,
-      headers: {
-        Authorization: `O-Bearer ${token}`,
-        ...(init.body ? { "Content-Type": "application/json" } : {}),
-        ...init.headers,
+    response = await fetch(
+      `${config.baseUrl}${path}`,
+      {
+        ...init,
+
+        headers: {
+          Authorization: `O-Bearer ${token}`,
+
+          ...(init.body
+            ? {
+                "Content-Type": "application/json",
+              }
+            : {}),
+
+          ...init.headers,
+        },
+
+        cache: "no-store",
+
+        signal:
+          init.signal ?? AbortSignal.timeout(10_000),
       },
-      cache: "no-store",
-      signal: init.signal ?? AbortSignal.timeout(10_000),
-    });
+    );
   } catch (error) {
-    logger.error("[PhonePe] Network error", {
-      cause: error instanceof Error ? error : undefined,
-      metadata: { error: String(error) },
-    });
+    logger.error(
+      "[PhonePe] Network error",
+      {
+        cause:
+          error instanceof Error
+            ? error
+            : undefined,
+
+        metadata: {
+          error: String(error),
+        },
+      },
+    );
+
     throw error;
   }
 
   console.info(
-    `[PhonePe] API duration: ${Math.round(performance.now() - apiStart)}ms`,
+    `[PhonePe] API duration: ${Math.round(
+      performance.now() - apiStart,
+    )}ms`,
   );
 
-  // Handle errors.
+  // Read response once.
+  const rawBody = await response.text();
+
+  let result: unknown = null;
+
+  if (rawBody) {
+    try {
+      result = JSON.parse(rawBody);
+    } catch {
+      result = rawBody;
+    }
+  }
+
+  // Handle HTTP errors.
   if (!response.ok) {
-    const errorBody = (await response.json().catch(() => null)) as {
-      code?: unknown;
-      message?: unknown;
-      data?: {
-        message?: unknown;
-      };
-    } | null;
+    const errorBody =
+      result && typeof result === "object"
+        ? (result as {
+            code?: unknown;
+            message?: unknown;
+            data?: {
+              message?: unknown;
+            };
+          })
+        : null;
 
     const providerCode =
-      typeof errorBody?.code === "string" ? errorBody.code : undefined;
+      typeof errorBody?.code === "string"
+        ? errorBody.code
+        : undefined;
 
     const providerMessage =
       typeof errorBody?.message === "string"
         ? errorBody.message
         : typeof errorBody?.data?.message === "string"
           ? errorBody.data.message
-          : undefined;
+          : typeof result === "string"
+            ? result.slice(0, 500)
+            : undefined;
 
-    logger.error("[PhonePe] API error", {
-      metadata: { status: response.status, providerCode, providerMessage },
-    });
+    logger.error(
+      "[PhonePe] API error",
+      {
+        metadata: {
+          status: response.status,
+          providerCode,
+          providerMessage,
+        },
+      },
+    );
 
     throw new PhonePeApiError(
       `PhonePe request failed (${response.status})${
         providerCode ? ` ${providerCode}` : ""
-      }${providerMessage ? `: ${providerMessage}` : ""}`,
+      }${
+        providerMessage
+          ? `: ${providerMessage}`
+          : ""
+      }`,
       response.status,
       providerCode,
       providerMessage,
     );
   }
 
-  const result = (await response.json()) as T;
+  if (typeof result !== "object" || result === null) {
+    throw new Error(
+      "PhonePe returned an invalid API response",
+    );
+  }
 
   console.info(
     `[PhonePe] Total request duration: ${Math.round(
@@ -257,7 +404,7 @@ async function phonePeRequest<T>(
     )}ms`,
   );
 
-  return result;
+  return result as T;
 }
 
 // --------------------------------------------------
@@ -271,41 +418,67 @@ export async function createPhonePeOrder(input: {
 }): Promise<{ redirectUrl: string }> {
   const start = performance.now();
 
-  // Convert rupees to paise.
-  const amount = Math.round(input.amountRupees * 100);
+  // Convert rupees into paise.
+  const amount = Math.round(
+    input.amountRupees * 100,
+  );
 
-  if (!Number.isSafeInteger(amount) || amount < 100) {
-    throw new Error("PhonePe requires an amount of at least ₹1.00");
+  if (
+    !Number.isSafeInteger(amount) ||
+    amount < 100
+  ) {
+    throw new Error(
+      "PhonePe requires an amount of at least ₹1.00",
+    );
   }
 
   // Validate merchant order ID.
-  if (!/^[A-Za-z0-9_-]{1,63}$/.test(input.paymentId)) {
-    throw new Error("Payment ID is not valid as a PhonePe merchantOrderId");
+  if (
+    !/^[A-Za-z0-9_-]{1,63}$/.test(input.paymentId)
+  ) {
+    throw new Error(
+      "Payment ID is not valid as a PhonePe merchantOrderId",
+    );
   }
 
   // Validate redirect URL.
   const redirect = new URL(input.redirectUrl);
 
-  if (redirect.protocol !== "https:" && redirect.hostname !== "localhost") {
-    throw new Error("PhonePe redirect URL must use HTTPS outside localhost");
+  if (
+    redirect.protocol !== "https:" &&
+    redirect.hostname !== "localhost"
+  ) {
+    throw new Error(
+      "PhonePe redirect URL must use HTTPS outside localhost",
+    );
   }
 
-  console.info("[PhonePe] Creating payment:", {
-    orderId: input.paymentId,
-    amount,
-  });
+  console.info(
+    "[PhonePe] Creating payment:",
+    {
+      orderId: input.paymentId,
+      amount,
+    },
+  );
 
   const result = await phonePeRequest<{
+    orderId?: string;
+    state?: string;
     redirectUrl?: string;
   }>("/checkout/v2/pay", {
     method: "POST",
+
     body: JSON.stringify({
       merchantOrderId: input.paymentId,
       amount,
+
       expireAfter: 1200,
+
       paymentFlow: {
         type: "PG_CHECKOUT",
+
         message: "ProPyCoder course purchase",
+
         merchantUrls: {
           redirectUrl: input.redirectUrl,
         },
@@ -314,11 +487,15 @@ export async function createPhonePeOrder(input: {
   });
 
   if (!result.redirectUrl) {
-    throw new Error("PhonePe returned no checkout URL");
+    throw new Error(
+      "PhonePe returned no checkout URL",
+    );
   }
 
   console.info(
-    `[PhonePe] Payment created in ${Math.round(performance.now() - start)}ms`,
+    `[PhonePe] Payment created in ${Math.round(
+      performance.now() - start,
+    )}ms`,
   );
 
   return {
@@ -334,10 +511,14 @@ export async function getPhonePeOrderStatus(
   merchantOrderId: string,
 ): Promise<PhonePeOrderStatus> {
   if (!merchantOrderId) {
-    throw new Error("Merchant order ID is required");
+    throw new Error(
+      "Merchant order ID is required",
+    );
   }
 
   return phonePeRequest<PhonePeOrderStatus>(
-    `/checkout/v2/order/${encodeURIComponent(merchantOrderId)}/status`,
+    `/checkout/v2/order/${encodeURIComponent(
+      merchantOrderId,
+    )}/status`,
   );
 }

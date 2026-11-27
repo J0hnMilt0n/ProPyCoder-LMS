@@ -87,35 +87,40 @@ export const authRateLimiters = {
   // Strict limit for login attempts
   login: rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    maxRequests: 5, // 5 attempts per 15 minutes
+    // maxRequests: 5, // 5 attempts per 15 minutes
+    maxRequests: 999, // 999 attempts per 15 minutes
     keyPrefix: "auth:login",
   }),
 
   // Moderate limit for registration
   register: rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
-    maxRequests: 3, // 3 registrations per hour
+    // maxRequests: 3, // 3 registrations per hour
+    maxRequests: 999, // 999 registrations per hour
     keyPrefix: "auth:register",
   }),
 
   // Moderate limit for password reset
   forgotPassword: rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
-    maxRequests: 3, // 3 requests per hour
+    // maxRequests: 3, // 3 requests per hour
+    maxRequests: 999, // 999 requests per hour
     keyPrefix: "auth:forgot-password",
   }),
 
   // Moderate limit for email verification resend
   resendVerification: rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
-    maxRequests: 3, // 3 resends per hour
+    // maxRequests: 3, // 3 resends per hour
+    maxRequests: 999, // 999 resends per hour
     keyPrefix: "auth:resend-verification",
   }),
 
   // General auth endpoints
   general: rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    maxRequests: 20, // 20 requests per 15 minutes
+    // maxRequests: 20, // 20 requests per 15 minutes
+    maxRequests: 999, // 999 requests per 15 minutes
     keyPrefix: "auth:general",
   }),
 };
