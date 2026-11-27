@@ -472,7 +472,7 @@ export default function BundlesPage() {
             <div className="catalog-toolbar">
               <div className="catalog-results-label">
                 Showing {visibleBundles.length} of {bundles.length}{" "}
-                {bundles.length === 1 ? "bundle" : "bundles"}
+                {bundles.length === 1 ? "combo" : "combos"}
               </div>
             </div>
 
@@ -590,7 +590,7 @@ export default function BundlesPage() {
                             ) : (
                               <>
                                 <ShoppingCart size={14} />
-                                Get bundle
+                                Get combo
                               </>
                             )}
                           </button>

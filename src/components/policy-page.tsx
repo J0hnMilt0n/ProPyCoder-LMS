@@ -18,7 +18,7 @@ const introductions: Record<PolicyKind, string> = {
   privacy:
     "This Privacy Policy explains how ProPyCoder collects, uses, stores, and protects your personal information.",
   refund:
-    "Review the refund and cancellation conditions applicable to digital course and bundle purchases.",
+    "Review the refund and cancellation conditions applicable to digital course and combo purchases.",
   contact:
     "Contact ProPyCoder for assistance with accounts, courses, payments, privacy, or refunds.",
 };
@@ -279,7 +279,7 @@ export function PolicyPage({ kind }: { kind: PolicyKind }) {
 
                 <p>
                   The duration, availability, and access conditions applicable
-                  to a particular course or bundle are described on its product
+                  to a particular course or combos are described on its product
                   page or in the applicable purchase information.
                 </p>
 
@@ -1207,7 +1207,7 @@ export function PolicyPage({ kind }: { kind: PolicyKind }) {
                   <li>
                     <strong>Payment deducted but access not provided:</strong>{" "}
                     Your payment was successfully debited, but the purchased
-                    course or bundle was not delivered and the issue cannot be
+                    course or combo was not delivered and the issue cannot be
                     resolved.
                   </li>
 
@@ -1333,7 +1333,7 @@ export function PolicyPage({ kind }: { kind: PolicyKind }) {
                 <ul>
                   <li>Your order or transaction reference.</li>
                   <li>Your registered email address.</li>
-                  <li>The name of the purchased course or bundle.</li>
+                  <li>The name of the purchased course or combo.</li>
                   <li>The reason for requesting a refund.</li>
                   <li>
                     Relevant screenshots or error messages, if applicable.
