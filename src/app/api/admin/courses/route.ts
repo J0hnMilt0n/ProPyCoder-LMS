@@ -1,7 +1,6 @@
 import { auth } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 import { invalidateCatalog } from "@/lib/course-cache";
-import { clearCourseResourceCache } from "@/lib/use-resource";
 import { invalidateAdminOverview, invalidateHome } from "@/lib/page-cache";
 import { isValidOffer } from "@/lib/pricing";
 import { MAX_SLUG_LENGTH, SLUG_PATTERN } from "@/lib/slug";
@@ -98,7 +97,6 @@ export async function POST(request: NextRequest) {
     });
 
     invalidateCatalog();
-    clearCourseResourceCache(course.id);
     // Course totals on the admin dashboard and the home page counts changed.
     invalidateAdminOverview();
     invalidateHome();
