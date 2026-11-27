@@ -578,9 +578,9 @@ export default function BundleDetailPage() {
           role="status"
           aria-live="polite"
         >
-          {isPhonePeReady
+          {/* {isPhonePeReady
             ? "PhonePe secure checkout is open. Complete or cancel the payment there."
-            : "Loading secure PhonePe checkout..."}
+            : "Loading secure PhonePe checkout..."} */}
         </div>
       )}
 

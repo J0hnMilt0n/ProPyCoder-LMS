@@ -848,12 +848,12 @@ export default function BundlesPage() {
           role="status"
           aria-live="polite"
         >
-          {isPhonePeReady
+          {/* {isPhonePeReady
             ? "PhonePe secure checkout is open. Complete or cancel the payment there."
             : "Loading secure PhonePe checkout..."}
           <button type="button" onClick={closeIframe} className="ml-3 underline">
             Close
-          </button>
+          </button> */}
         </div>
       )}
     </main>
