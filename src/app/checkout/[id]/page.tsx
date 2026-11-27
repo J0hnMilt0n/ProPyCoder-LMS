@@ -39,6 +39,35 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+type PhonePeCallbackResponse = "USER_CANCEL" | "CONCLUDED";
+
+interface PhonePeCheckout {
+  transact: (options: {
+    tokenUrl: string;
+    callback: (response: PhonePeCallbackResponse) => void;
+    type: "IFRAME";
+  }) => void;
+  closePage: () => void;
+}
+
+declare global {
+  interface Window {
+    PhonePeCheckout?: PhonePeCheckout;
+  }
+}
+
+const PHONEPE_SCRIPT_URL =
+  "https://mercury.phonepe.com/web/bundle/checkout.js";
+const VERIFICATION_RETRY_COUNT = 5;
+const VERIFICATION_RETRY_DELAY_MS = 2000;
+
+const FORCE_PURCHASE_REFRESH_KEY = (userId: string) =>
+  `propycoder:force-purchase-refresh:${userId}`;
+
+function wait(milliseconds: number) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
 export default function CheckoutPage({ params }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -48,28 +77,22 @@ export default function CheckoutPage({ params }: Props) {
   const [payment, setPayment] = useState<Payment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPaying, setIsPaying] = useState(false);
+  const [isPhonePeReady, setIsPhonePeReady] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
-  // Prevent repeated verification requests for the same payment.
-  const verificationStartedFor = useRef<string | null>(null);
-
-  const FORCE_PURCHASE_REFRESH_KEY = (userId: string) =>
-    `propycoder:force-purchase-refresh:${userId}`;
+  const verificationInFlight = useRef(false);
+  const returnVerificationStartedFor = useRef<string | null>(null);
+  const hasRedirected = useRef(false);
 
   const isPhonePeReturn = searchParams.get("phonepe") === "return";
-
   const isVerifying = isLoading || isPaying;
 
-  // --------------------------------------------------
-  // GET PAYMENT ID
-  // --------------------------------------------------
-
+  // Resolve the internal Prisma payment ID from the route.
   useEffect(() => {
     let active = true;
 
-    params.then(({ id }) => {
-      if (active) {
-        setPaymentId(id);
-      }
+    void params.then(({ id }) => {
+      if (active) setPaymentId(id);
     });
 
     return () => {
@@ -77,34 +100,31 @@ export default function CheckoutPage({ params }: Props) {
     };
   }, [params]);
 
-  // --------------------------------------------------
-  // REDIRECT AFTER SUCCESS
-  // --------------------------------------------------
-
+  // Redirect only after the server returns a completed payment record.
   const redirectAfterSuccess = useCallback(
     (data: Payment) => {
+      if (hasRedirected.current) return;
+      hasRedirected.current = true;
+
       toast.success("Payment successful! Your access is ready.");
 
-      if (data.bundle) {
-        if (session?.user?.id) {
+      if (session?.user?.id) {
+        try {
           localStorage.setItem(
             FORCE_PURCHASE_REFRESH_KEY(session.user.id),
             "1",
           );
+        } catch (error) {
+          console.warn("[Checkout] Could not set purchase refresh flag", error);
         }
+      }
 
+      if (data.bundle) {
         router.replace(`/bundles/${data.bundle.id}`);
         return;
       }
 
       if (data.course) {
-        if (session?.user?.id) {
-          localStorage.setItem(
-            FORCE_PURCHASE_REFRESH_KEY(session.user.id),
-            "1",
-          );
-        }
-
         router.replace(`/courses/${data.course.id}`);
         return;
       }
@@ -114,47 +134,54 @@ export default function CheckoutPage({ params }: Props) {
     [router, session?.user?.id],
   );
 
-  // --------------------------------------------------
-  // LOAD PAYMENT
-  // --------------------------------------------------
+  // Fetch the payment using its internal database ID. The API performs
+  // the PhonePe status lookup using merchantOrderId on the server.
+  const loadPayment = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!paymentId) return null;
 
-  const loadPayment = useCallback(async () => {
-    if (!paymentId) return;
+      try {
+        const response = await fetch(`/api/payments/${paymentId}/complete`, {
+          method: "GET",
+          cache: "no-store",
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        });
 
-    try {
-      const response = await fetch(`/api/payments/${paymentId}/complete`, {
-        method: "GET",
-        cache: "no-store",
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      });
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          throw new Error(body?.error || "Payment not found");
+        }
 
-      if (!response.ok) {
-        throw new Error("Payment not found");
+        const data = (await response.json()) as Payment;
+        setPayment(data);
+
+        if (data.status === "COMPLETED") {
+          redirectAfterSuccess(data);
+        }
+
+        return data;
+      } catch (error) {
+        console.error("[Checkout] Load payment error:", error);
+
+        if (!options?.silent) {
+          toast.error(
+            error instanceof Error ? error.message : "Failed to load checkout",
+          );
+          router.push("/courses");
+        }
+
+        return null;
+      } finally {
+        setIsLoading(false);
       }
+    },
+    [paymentId, redirectAfterSuccess, router],
+  );
 
-      const data = (await response.json()) as Payment;
-
-      setPayment(data);
-
-      if (data.status === "COMPLETED") {
-        redirectAfterSuccess(data);
-      }
-    } catch (error) {
-      console.error("[Checkout] Load payment error:", error);
-
-      toast.error(
-        error instanceof Error ? error.message : "Failed to load checkout",
-      );
-
-      router.push("/courses");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [paymentId, redirectAfterSuccess, router]);
-
+  // Load the payment after authentication and route parameter resolution.
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.push("/auth/login");
+      router.replace("/auth/login");
       return;
     }
 
@@ -163,10 +190,157 @@ export default function CheckoutPage({ params }: Props) {
     }
   }, [status, paymentId, loadPayment, router]);
 
-  // --------------------------------------------------
-  // VERIFY PHONEPE PAYMENT AFTER RETURN
-  // --------------------------------------------------
+  // Load PhonePe's SDK once. Reuse an already-loaded script if present.
+  useEffect(() => {
+    if (window.PhonePeCheckout) {
+      setIsPhonePeReady(true);
+      return;
+    }
 
+    let script = document.querySelector<HTMLScriptElement>(
+      `script[src="${PHONEPE_SCRIPT_URL}"]`,
+    );
+    const isNewScript = !script;
+
+    if (!script) {
+      script = document.createElement("script");
+      script.src = PHONEPE_SCRIPT_URL;
+      script.async = true;
+    }
+
+    let active = true;
+
+    const handleLoad = () => {
+      if (!active) return;
+      if (window.PhonePeCheckout) {
+        setIsPhonePeReady(true);
+      } else {
+        console.error("[PhonePe] Script loaded without checkout SDK");
+        toast.error("PhonePe checkout could not be initialized.");
+      }
+    };
+
+    const handleError = () => {
+      if (!active) return;
+      setIsPhonePeReady(false);
+      toast.error("Unable to load PhonePe checkout. Please refresh and retry.");
+    };
+
+    script.addEventListener("load", handleLoad);
+    script.addEventListener("error", handleError);
+
+    if (isNewScript) {
+      document.body.appendChild(script);
+    } else if (window.PhonePeCheckout) {
+      handleLoad();
+    }
+
+    return () => {
+      active = false;
+      script?.removeEventListener("load", handleLoad);
+      script?.removeEventListener("error", handleError);
+      // Do not remove the shared SDK script: other pages may use it too.
+    };
+  }, []);
+
+  // Ask the server to verify the payment. Retry only while PhonePe explicitly
+  // reports that it has not confirmed the payment yet.
+  const verifyPayment = useCallback(
+    async (source: "return" | "callback" | "manual") => {
+      if (!paymentId || verificationInFlight.current) return;
+
+      verificationInFlight.current = true;
+      setIsPaying(true);
+
+      if (source !== "manual") {
+        toast.loading("Verifying your PhonePe payment...", {
+          id: "phonepe-verification",
+        });
+      }
+
+      try {
+        for (let attempt = 0; attempt < VERIFICATION_RETRY_COUNT; attempt += 1) {
+          const response = await fetch(`/api/payments/${paymentId}/complete`, {
+            method: "POST",
+            cache: "no-store",
+            signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+          });
+
+          const result = await response.json().catch(() => null);
+
+          if (response.ok || result?.alreadyCompleted) {
+            const refreshedPayment = await loadPayment({ silent: true });
+
+            if (refreshedPayment?.status === "COMPLETED") {
+              toast.dismiss("phonepe-verification");
+              return;
+            }
+
+            // POST confirmed completion but GET may briefly lag. Try again.
+            if (attempt < VERIFICATION_RETRY_COUNT - 1) {
+              await wait(VERIFICATION_RETRY_DELAY_MS);
+              continue;
+            }
+
+            break;
+          }
+
+          const isStillPending =
+            response.status === 409 &&
+            result?.error === "PhonePe has not confirmed this payment";
+
+          if (isStillPending && attempt < VERIFICATION_RETRY_COUNT - 1) {
+            await wait(VERIFICATION_RETRY_DELAY_MS);
+            continue;
+          }
+
+          // A provider-confirmed failure, amount mismatch, or other error
+          // should not be retried as though it were a pending transaction.
+          await loadPayment({ silent: true });
+
+          toast.dismiss("phonepe-verification");
+          toast.error(
+            result?.error ||
+              "Payment is not confirmed yet. You can check its status again.",
+          );
+          return;
+        }
+
+        await loadPayment({ silent: true });
+        toast.dismiss("phonepe-verification");
+        toast("PhonePe has not confirmed the payment yet. Please check again shortly.");
+      } catch (error) {
+        console.error("[Checkout] Payment verification error:", error);
+        toast.dismiss("phonepe-verification");
+        toast.error("Could not verify payment. Please check again shortly.");
+        await loadPayment({ silent: true });
+      } finally {
+        verificationInFlight.current = false;
+        setIsPaying(false);
+      }
+    },
+    [paymentId, loadPayment],
+  );
+
+  // PhonePe callback. CONCLUDED means the checkout flow ended, not necessarily
+  // that payment succeeded; always verify with the server before granting access.
+  const handlePhonePeCallback = useCallback(
+    (response: PhonePeCallbackResponse) => {
+      setIsCheckoutOpen(false);
+
+      if (response === "USER_CANCEL") {
+        toast.error("Payment was cancelled. You can try again.");
+        return;
+      }
+
+      if (response === "CONCLUDED") {
+        void verifyPayment("callback");
+      }
+    },
+    [verifyPayment],
+  );
+
+  // Verify automatically when PhonePe redirects back to this checkout URL.
   useEffect(() => {
     if (
       !isPhonePeReturn ||
@@ -178,77 +352,22 @@ export default function CheckoutPage({ params }: Props) {
       return;
     }
 
-    // Do not verify the same payment repeatedly.
-    if (verificationStartedFor.current === payment.id) {
-      return;
-    }
+    if (returnVerificationStartedFor.current === payment.id) return;
 
-    verificationStartedFor.current = payment.id;
-
-    let cancelled = false;
-
-    const verifyPayment = async () => {
-      setIsPaying(true);
-
-      try {
-        const response = await fetch(`/api/payments/${payment.id}/complete`, {
-          method: "POST",
-          cache: "no-store",
-          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-        });
-
-        const data = await response.json().catch(() => null);
-
-        if (cancelled) return;
-
-        if (response.ok) {
-          redirectAfterSuccess(payment);
-          return;
-        }
-
-        toast(
-          data?.error ||
-            "Payment is not confirmed yet. Please try again shortly.",
-        );
-
-        await loadPayment();
-      } catch (error) {
-        if (!cancelled) {
-          console.error("[Checkout] Verification error:", error);
-
-          toast.error(
-            "Could not verify payment yet. Please check again shortly.",
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setIsPaying(false);
-        }
-      }
-    };
-
-    void verifyPayment();
-
-    return () => {
-      cancelled = true;
-    };
+    returnVerificationStartedFor.current = payment.id;
+    void verifyPayment("return");
   }, [
     isPhonePeReturn,
     status,
     payment,
     isPaying,
-    redirectAfterSuccess,
-    loadPayment,
+    verifyPayment,
   ]);
 
-  // --------------------------------------------------
-  // CONTINUE TO EXISTING PHONEPE CHECKOUT
-  // --------------------------------------------------
-
-  const continueToPhonePe = () => {
-    if (!payment || payment.status !== "PENDING" || isPaying) {
-      return;
-    }
+  // Invoke the PhonePe SDK directly from the user's click handler so browser
+  // user-activation requirements are preserved. Do not create a second iframe.
+  const continueToPhonePe = useCallback(() => {
+    if (!payment || payment.status !== "PENDING" || isPaying) return;
 
     if (!payment.checkoutUrl) {
       toast.error(
@@ -257,13 +376,30 @@ export default function CheckoutPage({ params }: Props) {
       return;
     }
 
-    window.location.assign(payment.checkoutUrl);
-  };
+    if (!isPhonePeReady || !window.PhonePeCheckout) {
+      toast.error("PhonePe checkout is still loading. Please try again.");
+      return;
+    }
 
-  // --------------------------------------------------
+    try {
+      setIsCheckoutOpen(true);
+      window.PhonePeCheckout.transact({
+        tokenUrl: payment.checkoutUrl,
+        callback: handlePhonePeCallback,
+        type: "IFRAME",
+      });
+    } catch (error) {
+      console.error("[PhonePe] Could not open checkout:", error);
+      setIsCheckoutOpen(false);
+      toast.error("Unable to open PhonePe checkout. Please try again.");
+    }
+  }, [payment, isPaying, isPhonePeReady, handlePhonePeCallback]);
+
+  const checkPaymentStatus = useCallback(() => {
+    void verifyPayment("manual");
+  }, [verifyPayment]);
+
   // LOADING / VERIFICATION SCREEN
-  // --------------------------------------------------
-
   if (isVerifying || status === "loading") {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-[#08080a]">
@@ -288,7 +424,6 @@ export default function CheckoutPage({ params }: Props) {
               <p className="text-sm font-semibold text-[#e95f32]">
                 Please don&apos;t close or refresh this page.
               </p>
-
               <p className="mt-1 text-xs text-gray-600 dark:text-[#a7a5ae]">
                 Avoid pressing the browser Back button until verification is
                 complete.
@@ -305,19 +440,15 @@ export default function CheckoutPage({ params }: Props) {
     );
   }
 
-  // --------------------------------------------------
   // CHECKOUT NOT FOUND
-  // --------------------------------------------------
-  else if (!payment) {
+  if (!payment) {
     return (
       <div className="min-h-screen bg-gray-50 check-out-page">
         <Navbar />
-
         <div className="mx-auto max-w-xl px-4 py-20 text-center">
           <p className="text-gray-600 dark:text-[#a7a5ae]">
             Checkout not found.
           </p>
-
           <button
             onClick={() => router.push("/courses")}
             className="mt-4 font-semibold text-[#e95f32]"
@@ -329,14 +460,11 @@ export default function CheckoutPage({ params }: Props) {
     );
   }
 
-  // --------------------------------------------------
   // PAYMENT FAILED / REFUNDED
-  // --------------------------------------------------
-  else if (payment.status === "FAILED" || payment.status === "REFUNDED") {
+  if (payment.status === "FAILED" || payment.status === "REFUNDED") {
     return (
       <div className="min-h-screen bg-gray-50 check-out-page dark:bg-[#08080a]">
         <Navbar />
-
         <main className="mx-auto max-w-xl px-4 py-20 text-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             {payment.status === "REFUNDED"
@@ -369,146 +497,155 @@ export default function CheckoutPage({ params }: Props) {
     );
   }
 
-  // --------------------------------------------------
-  // CHECKOUT PAGE
-  // --------------------------------------------------
-  else {
-    const title = payment.bundle?.title ?? payment.course?.title ?? "Order";
+  const title = payment.bundle?.title ?? payment.course?.title ?? "Order";
 
-    return (
-      <div className="min-h-screen bg-gray-50 check-out-page dark:bg-[#08080a]">
-        <Navbar />
+  return (
+    <div className="min-h-screen bg-gray-50 check-out-page dark:bg-[#08080a]">
+      <Navbar />
 
-        <main className="mx-auto max-w-5xl px-4 py-10">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="mb-6 inline-flex items-center gap-2 text-sm text-gray-500 dark:text-[#a7a5ae]"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </button>
+      <main className="mx-auto max-w-5xl px-4 py-10">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="mb-6 inline-flex items-center gap-2 text-sm text-gray-500 dark:text-[#a7a5ae]"
+          disabled={isPaying || isCheckoutOpen}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </button>
 
-          <h1 className="mb-6 text-2xl font-bold text-gray-900 dark:text-[#f1f0f2]">
-            Checkout
-          </h1>
+        <h1 className="mb-6 text-2xl font-bold text-gray-900 dark:text-[#f1f0f2]">
+          Checkout
+        </h1>
 
-          <div className="grid gap-6 md:grid-cols-[1fr_380px]">
-            <section className="rounded-xl border border-gray-200 bg-white p-6 dark:border-[#232329] dark:bg-[#0c0c0e]">
-              <div className="flex items-center gap-3">
-                <Smartphone className="h-6 w-6 text-[#e95f32]" />
-
-                <div>
-                  <h2 className="font-semibold text-gray-900 dark:text-[#f1f0f2]">
-                    Secure PhonePe checkout
-                  </h2>
-
-                  <p className="text-sm text-gray-600 dark:text-[#a7a5ae]">
-                    UPI, cards and net banking are handled securely by PhonePe.
-                  </p>
-                </div>
+        <div className="grid gap-6 md:grid-cols-[1fr_380px]">
+          <section className="rounded-xl border border-gray-200 bg-white p-6 dark:border-[#232329] dark:bg-[#0c0c0e]">
+            <div className="flex items-center gap-3">
+              <Smartphone className="h-6 w-6 text-[#e95f32]" />
+              <div>
+                <h2 className="font-semibold text-gray-900 dark:text-[#f1f0f2]">
+                  Secure PhonePe checkout
+                </h2>
+                <p className="text-sm text-gray-600 dark:text-[#a7a5ae]">
+                  UPI, cards and net banking are handled securely by PhonePe.
+                </p>
               </div>
+            </div>
 
-              {isPhonePeReturn && payment.status === "PENDING" && (
-                <p className="mt-4 text-sm text-amber-700 dark:text-amber-400">
-                  Your payment has not yet been confirmed. You can reopen the
-                  existing PhonePe checkout below.
-                </p>
-              )}
+            {isPhonePeReturn && payment.status === "PENDING" && (
+              <p className="mt-4 text-sm text-amber-700 dark:text-amber-400">
+                Your payment has not yet been confirmed. You can check its
+                status or reopen the existing PhonePe checkout below.
+              </p>
+            )}
 
-              {!payment.checkoutUrl && payment.status === "PENDING" && (
-                <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
-                  The saved checkout session is unavailable. Please contact
-                  support before attempting another payment.
-                </p>
-              )}
+            {!payment.checkoutUrl && payment.status === "PENDING" && (
+              <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+                The saved checkout session is unavailable. Please contact
+                support before attempting another payment.
+              </p>
+            )}
 
+            <button
+              type="button"
+              onClick={continueToPhonePe}
+              disabled={
+                isPaying ||
+                isCheckoutOpen ||
+                payment.status !== "PENDING" ||
+                !payment.checkoutUrl ||
+                !isPhonePeReady
+              }
+              className="mt-6 w-full rounded-lg bg-[#e95f32] px-4 py-3 font-semibold text-white hover:bg-[#d9532a] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isPaying
+                ? "Verifying payment…"
+                : isCheckoutOpen
+                  ? "PhonePe checkout is open…"
+                  : !isPhonePeReady
+                    ? "Loading PhonePe…"
+                    : payment.status === "PENDING"
+                      ? "Continue to PhonePe"
+                      : "Payment completed"}
+            </button>
+
+            {payment.status === "PENDING" && !isCheckoutOpen && (
               <button
                 type="button"
-                onClick={continueToPhonePe}
-                disabled={
-                  isPaying ||
-                  payment.status !== "PENDING" ||
-                  !payment.checkoutUrl
-                }
-                className="mt-6 w-full rounded-lg bg-[#e95f32] px-4 py-3 font-semibold text-white hover:bg-[#d9532a] disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={checkPaymentStatus}
+                disabled={isPaying}
+                className="mt-3 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-[#35353d] dark:text-gray-200 dark:hover:bg-[#17171b]"
               >
-                {isPaying
-                  ? "Verifying payment…"
-                  : payment.status === "PENDING"
-                    ? "Continue to PhonePe"
-                    : "Payment completed"}
+                Check payment status
               </button>
+            )}
 
-              <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-gray-400">
-                <ShieldCheck className="h-4 w-4" />
-                Payment verified securely with PhonePe.
-              </p>
-            </section>
+            <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-gray-400">
+              <ShieldCheck className="h-4 w-4" />
+              Payment verified securely with PhonePe.
+            </p>
+          </section>
 
-            {/* ORDER SUMMARY */}
+          {/* ORDER SUMMARY */}
+          <aside className="h-fit rounded-xl border border-gray-200 bg-white p-6 dark:border-[#232329] dark:bg-[#0c0c0e]">
+            <div className="mb-5 flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-[#e95f32]" />
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-[#f1f0f2]">
+                Order summary
+              </h2>
+            </div>
 
-            <aside className="h-fit rounded-xl border border-gray-200 bg-white p-6 dark:border-[#232329] dark:bg-[#0c0c0e]">
-              <div className="mb-5 flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-[#e95f32]" />
+            {(payment.bundle?.image || payment.course?.image) && (
+              <Image
+                src={payment.bundle?.image ?? payment.course?.image ?? ""}
+                alt={title}
+                className="mb-4 h-32 w-full rounded-lg object-cover"
+                width={400}
+                height={128}
+              />
+            )}
 
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-[#f1f0f2]">
-                  Order summary
-                </h2>
+            <h3 className="font-semibold text-gray-900 dark:text-[#f1f0f2]">
+              {title}
+            </h3>
+
+            {payment.bundle && (
+              <div className="my-3 space-y-1">
+                {payment.bundle.courses.map(({ course }) => (
+                  <p
+                    key={course.id}
+                    className="text-sm text-gray-600 dark:text-[#a7a5ae]"
+                  >
+                    · {course.title}
+                  </p>
+                ))}
               </div>
+            )}
 
-              {(payment.bundle?.image || payment.course?.image) && (
-                <Image
-                  src={payment.bundle?.image ?? payment.course?.image ?? ""}
-                  alt={title}
-                  className="mb-4 h-32 w-full rounded-lg object-cover"
-                  width={400}
-                  height={128}
-                />
-              )}
-
-              <h3 className="font-semibold text-gray-900 dark:text-[#f1f0f2]">
-                {title}
-              </h3>
-
-              {payment.bundle && (
-                <div className="my-3 space-y-1">
-                  {payment.bundle.courses.map(({ course }) => (
-                    <p
-                      key={course.id}
-                      className="text-sm text-gray-600 dark:text-[#a7a5ae]"
-                    >
-                      · {course.title}
-                    </p>
-                  ))}
-                </div>
-              )}
-
-              {payment.course?.category && (
-                <p className="mb-4 text-sm text-gray-500">
-                  {payment.course.category}
-                </p>
-              )}
-
-              <dl className="border-t border-gray-100 pt-4 dark:border-[#232329]">
-                <div className="flex justify-between font-semibold text-gray-900 dark:text-[#f1f0f2]">
-                  <dt>Total due today</dt>
-                  <dd>{formatINR(payment.amount, 2)}</dd>
-                </div>
-              </dl>
-
-              <p className="mt-5 text-xs leading-relaxed text-gray-400">
-                You&apos;ll complete your secure payment on PhonePe. Access is
-                unlocked only after PhonePe confirms the payment.
+            {payment.course?.category && (
+              <p className="mb-4 text-sm text-gray-500">
+                {payment.course.category}
               </p>
+            )}
 
-              <span className="sr-only">
-                <Lock />
-              </span>
-            </aside>
-          </div>
-        </main>
-      </div>
-    );
-  }
+            <dl className="border-t border-gray-100 pt-4 dark:border-[#232329]">
+              <div className="flex justify-between font-semibold text-gray-900 dark:text-[#f1f0f2]">
+                <dt>Total due today</dt>
+                <dd>{formatINR(payment.amount, 2)}</dd>
+              </div>
+            </dl>
+
+            <p className="mt-5 text-xs leading-relaxed text-gray-400">
+              You&apos;ll complete your secure payment on PhonePe. Access is
+              unlocked only after PhonePe confirms the payment.
+            </p>
+
+            <span className="sr-only">
+              <Lock />
+            </span>
+          </aside>
+        </div>
+      </main>
+    </div>
+  );
 }

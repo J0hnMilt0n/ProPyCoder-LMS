@@ -11,6 +11,7 @@ import { logger } from "@/lib/logger";
 
 type ExistingPayment = {
   id: string;
+  merchantOrderId: string | null;
   courseId: string | null;
   bundleId: string | null;
   amount: number;
@@ -18,6 +19,29 @@ type ExistingPayment = {
   checkoutUrl: string | null;
   createdAt: Date;
 };
+
+/**
+ * Generates a sequential, base-36 PhonePe merchant order ID.
+ * Example: PROPYCODER-PYTHON-1, PROPYCODER-PYTHON-2, ... PROPYCODER-PYTHON-A
+ * The PostgreSQL upsert increments atomically, including under concurrent requests.
+ */
+async function generateMerchantOrderId(prefix: string): Promise<string> {
+  const rows = await prisma.$queryRaw<{ value: number }[]>`
+    INSERT INTO "MerchantOrderCounter" ("prefix", "value", "updatedAt")
+    VALUES (${prefix}, 1, NOW())
+    ON CONFLICT ("prefix")
+    DO UPDATE SET
+      "value" = "MerchantOrderCounter"."value" + 1,
+      "updatedAt" = NOW()
+    RETURNING "value"
+  `;
+
+  if (!rows.length) {
+    throw new Error("Failed to generate merchant order ID");
+  }
+
+  return `${prefix}-${Number(rows[0].value).toString(36).toUpperCase()}`;
+}
 
 async function verifyExistingCheckout(payment: ExistingPayment) {
   if (!payment.checkoutUrl) {
@@ -29,7 +53,9 @@ async function verifyExistingCheckout(payment: ExistingPayment) {
     return { action: "CREATE" as const };
   }
 
-  const provider = await getPhonePeOrderStatus(payment.id);
+  const provider = await getPhonePeOrderStatus(
+    payment.merchantOrderId ?? payment.id,
+  );
   const state = provider.state?.toUpperCase();
 
   // Never expire a successfully completed payment.
@@ -267,6 +293,7 @@ export async function POST(request: NextRequest) {
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
+          merchantOrderId: true,
           courseId: true,
           bundleId: true,
           amount: true,
@@ -299,11 +326,21 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Create payment record.
+      // Create payment record with merchantOrderId.
       const createStart = performance.now();
+
+      const courseSlug = course.title
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 40);
+      const merchantOrderId = await generateMerchantOrderId(
+        `PROPYCODER-${courseSlug}`,
+      );
 
       const payment = await prisma.payment.create({
         data: {
+          merchantOrderId,
           userId,
           courseId,
           amount: effectiveAmount,
@@ -313,6 +350,7 @@ export async function POST(request: NextRequest) {
         },
         select: {
           id: true,
+          merchantOrderId: true,
           courseId: true,
           amount: true,
           status: true,
@@ -329,7 +367,7 @@ export async function POST(request: NextRequest) {
       const phonePeStart = performance.now();
 
       const checkout = await createPhonePeOrder({
-        paymentId: payment.id,
+        paymentId: payment.merchantOrderId!,
         amountRupees: payment.amount,
         redirectUrl: new URL(
           `/checkout/${payment.id}?phonepe=return`,
@@ -470,6 +508,7 @@ export async function POST(request: NextRequest) {
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
+        merchantOrderId: true,
         courseId: true,
         bundleId: true,
         amount: true,
@@ -502,11 +541,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create payment record.
+    // Create payment record with merchantOrderId.
     const createStart = performance.now();
+
+    const bundleSlug = bundle.title
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 40);
+    const merchantOrderId = await generateMerchantOrderId(
+      `PROPYCODER-${bundleSlug}`,
+    );
 
     const payment = await prisma.payment.create({
       data: {
+        merchantOrderId,
         userId,
         bundleId: bundle.id,
         amount,
@@ -516,6 +565,7 @@ export async function POST(request: NextRequest) {
       },
       select: {
         id: true,
+        merchantOrderId: true,
         bundleId: true,
         amount: true,
         status: true,
@@ -530,7 +580,7 @@ export async function POST(request: NextRequest) {
     const phonePeStart = performance.now();
 
     const checkout = await createPhonePeOrder({
-      paymentId: payment.id,
+      paymentId: payment.merchantOrderId!,
       amountRupees: payment.amount,
       redirectUrl: new URL(
         `/checkout/${payment.id}?phonepe=return`,

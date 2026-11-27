@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import dynamic from "next/dynamic";
+import Script from "next/script";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -112,6 +113,16 @@ interface CourseDetail {
 
 interface Props {
   params: Promise<{ id: string }>;
+}
+
+// PhonePe Checkout types
+interface PhonePeCheckout {
+  transact: (options: {
+    tokenUrl: string;
+    callback: (response: "USER_CANCEL" | "CONCLUDED") => void | Promise<void>;
+    type: "IFRAME";
+  }) => void;
+  closePage: () => void;
 }
 
 // Detect the real scrolling surface each time; the page may become scrollable
@@ -236,7 +247,7 @@ function formatStartsIn(startTime: number, now: number): string {
 
 export default function CourseDetailPage({ params }: Props) {
   const { id: courseId } = use(params);
-  const { data: session, status, update: updateSession } = useSession();
+  const { data: session, status } = useSession();
   const sessionUserId = session?.user?.id ?? null;
   const authUserHint = status === "loading" ? readAuthUserHint() : null;
   const cacheUserId = sessionUserId ?? authUserHint;
@@ -244,6 +255,9 @@ export default function CourseDetailPage({ params }: Props) {
   const accessCacheScope = cacheUserId ? `user:${cacheUserId}` : "public";
   const router = useRouter();
   const [course, setCourse] = useState<CourseDetail | null>(null);
+  const courseRef = useRef<CourseDetail | null>(course);
+  courseRef.current = course;
+
   const [modules, setModules] = useState<Module[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [courseLoadError, setCourseLoadError] = useState<string | null>(null);
@@ -261,6 +275,15 @@ export default function CourseDetailPage({ params }: Props) {
   const [certificateId, setCertificateId] = useState<string | null>(null);
   const [liveClasses, setLiveClasses] = useState<LiveClassItem[]>([]);
   const [now, setNow] = useState(() => Date.now());
+
+  // PhonePe iframe state
+  const [showIframe, setShowIframe] = useState(false);
+  const [iframeTokenUrl, setIframeTokenUrl] = useState("");
+  const [activePaymentId, setActivePaymentId] = useState<string | null>(null);
+  const [isPhonePeReady, setIsPhonePeReady] = useState(false);
+  const phonePeStartedRef = useRef(false);
+  const phonePeHistoryEntryRef = useRef(false);
+  const isClosingPhonePeFromPopStateRef = useRef(false);
   useEffect(() => {
     if (liveClasses.length === 0) return;
     const timer = window.setInterval(
@@ -292,6 +315,12 @@ export default function CourseDetailPage({ params }: Props) {
       );
       if (cachedCourse) {
         setCourse({ ...cachedCourse, modules: cachedCourse.modules ?? [] });
+        setIsLoading(false);
+      } else if (courseRef.current?.id === courseId) {
+        // Browser Back/Forward can fire pageshow after the course is already
+        // rendered. If the cache entry has expired or is unavailable, keep
+        // the in-memory course instead of clearing the page and showing a
+        // blank loading screen.
         setIsLoading(false);
       } else {
         setCourse(null);
@@ -421,6 +450,12 @@ export default function CourseDetailPage({ params }: Props) {
       cancelled = true;
     };
   }, [courseId, sessionUserId]);
+
+  // PhonePe checkout SDK is loaded early with next/script in the page JSX.
+
+  // --------------------------------------------------
+  // LOAD COURSE DATA
+  // --------------------------------------------------
 
   const loadCourse = useCallback(async () => {
     setCourseLoadError(null);
@@ -555,6 +590,235 @@ export default function CourseDetailPage({ params }: Props) {
       setIsLoading(false);
     }
   }, [courseId]);
+
+  // --------------------------------------------------
+  // HANDLE PHONEPE IFRAME CALLBACK
+  // --------------------------------------------------
+
+  const handlePhonePeCallback = useCallback(
+    async (response: "USER_CANCEL" | "CONCLUDED") => {
+      // PhonePe's callback only tells us that the checkout UI concluded.
+      // It is NOT proof that the payment succeeded.
+      if (response === "USER_CANCEL") {
+        const shouldGoBack = phonePeHistoryEntryRef.current;
+        phonePeHistoryEntryRef.current = false;
+        setShowIframe(false);
+        setIframeTokenUrl("");
+        setActivePaymentId(null);
+        toast.error("Payment was cancelled. You can try again.");
+        if (shouldGoBack) {
+          isClosingPhonePeFromPopStateRef.current = true;
+          window.history.back();
+        }
+        return;
+      }
+
+      if (response !== "CONCLUDED") return;
+
+      if (!activePaymentId) {
+        setShowIframe(false);
+        setIframeTokenUrl("");
+        toast.error(
+          "We couldn't identify this payment. Please check your payment history before trying again.",
+        );
+        return;
+      }
+
+      toast.loading("Verifying your payment with PhonePe...", {
+        id: "phonepe-payment-verification",
+      });
+
+      let verified = false;
+      let lastError = "PhonePe has not confirmed this payment yet.";
+
+      // The provider can take a short time to publish the final order state.
+      // Retry only verification for this existing payment; never create a
+      // second payment/order from the callback.
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        try {
+          const verification = await fetch(
+            `/api/payments/${encodeURIComponent(activePaymentId)}/complete`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              cache: "no-store",
+              signal: AbortSignal.timeout(15_000),
+            },
+          );
+
+          const result = await verification.json().catch(() => null);
+
+          // This endpoint returns HTTP 200 only after it has checked the
+          // provider state, amount and completed the database enrollment.
+          if (verification.ok) {
+            verified = true;
+            break;
+          }
+
+          lastError =
+            result?.error ||
+            "PhonePe has not confirmed this payment yet.";
+
+          // 409 means the order is still pending or not yet confirmed.
+          // Other errors (unauthorized, invalid order, amount mismatch, etc.)
+          // should not be retried as if they were temporary.
+          if (verification.status !== 409) break;
+        } catch (error) {
+          lastError =
+            error instanceof Error
+              ? error.message
+              : "Unable to contact the payment verification service.";
+        }
+
+        if (attempt < 5) {
+          await new Promise((resolve) => window.setTimeout(resolve, 1500));
+        }
+      }
+
+      const shouldGoBack = phonePeHistoryEntryRef.current;
+      phonePeHistoryEntryRef.current = false;
+      setShowIframe(false);
+      setIframeTokenUrl("");
+      setActivePaymentId(null);
+      if (shouldGoBack) {
+        isClosingPhonePeFromPopStateRef.current = true;
+        window.history.back();
+      }
+
+      if (verified) {
+        toast.success("Payment successful! Your course access is ready.", {
+          id: "phonepe-payment-verification",
+        });
+        await loadCourse();
+        router.refresh();
+      } else {
+        toast.error(
+          `${lastError} If money was debited, do not pay again; check your payment status or contact support.`,
+          { id: "phonepe-payment-verification", duration: 7000 },
+        );
+        // Refresh access/status once. This does not assume payment succeeded.
+        await loadCourse();
+      }
+    },
+    [activePaymentId, loadCourse, router],
+  );
+
+  // --------------------------------------------------
+  // PHONEPE CHECKOUT BROWSER-BACK HANDLING
+  // --------------------------------------------------
+
+  const closePhonePeCheckout = useCallback(
+    (showCancelledToast: boolean) => {
+      if (window.PhonePeCheckout) {
+        try {
+          window.PhonePeCheckout.closePage();
+        } catch (error) {
+          console.warn("[PhonePe] closePage failed", error);
+        }
+      }
+
+      phonePeStartedRef.current = false;
+      setShowIframe(false);
+      setIframeTokenUrl("");
+      setActivePaymentId(null);
+
+      if (showCancelledToast) {
+        toast("Payment window closed. If you completed payment, check its status before trying again.", {
+          icon: "ℹ️",
+          duration: 5000,
+        });
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!showIframe) return;
+
+    // Create a same-URL history entry while checkout is open. The first
+    // browser Back action consumes this entry and closes PhonePe instead
+    // of navigating away from the course page.
+    if (!phonePeHistoryEntryRef.current) {
+      window.history.pushState(
+        { ...(window.history.state ?? {}), phonePeCheckout: true },
+        "",
+        window.location.href,
+      );
+      phonePeHistoryEntryRef.current = true;
+    }
+
+    const handlePopState = () => {
+      // A Back action triggered by our own close operation only removes the
+      // temporary checkout history entry; it must not be treated as a second
+      // user cancellation.
+      if (isClosingPhonePeFromPopStateRef.current) {
+        isClosingPhonePeFromPopStateRef.current = false;
+        return;
+      }
+
+      phonePeHistoryEntryRef.current = false;
+      closePhonePeCheckout(true);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [showIframe, closePhonePeCheckout]);
+
+  // --------------------------------------------------
+  // INVOKE PHONEPE TRANSACT WHEN IFRAME OPENS
+  // --------------------------------------------------
+
+  useEffect(() => {
+    if (!showIframe || !iframeTokenUrl || !isPhonePeReady) return;
+    if (!window.PhonePeCheckout || phonePeStartedRef.current) return;
+
+    phonePeStartedRef.current = true;
+    try {
+      window.PhonePeCheckout.transact({
+        tokenUrl: iframeTokenUrl,
+        callback: handlePhonePeCallback,
+        type: "IFRAME",
+      });
+    } catch (error) {
+      phonePeStartedRef.current = false;
+      console.error("[PhonePe] Failed to open checkout", error);
+      toast.error("Unable to open PhonePe checkout. Please try again.");
+      setShowIframe(false);
+      setIframeTokenUrl("");
+      setActivePaymentId(null);
+    }
+
+    return () => {
+      // Do not call closePage() from effect cleanup. React runs cleanup when
+      // dependencies change and after the SDK callback has already started
+      // closing its cross-origin checkout. Calling closePage() again here can
+      // race the SDK teardown. Explicit close actions are handled separately.
+      phonePeStartedRef.current = false;
+    };
+  }, [
+    showIframe,
+    iframeTokenUrl,
+    isPhonePeReady,
+    handlePhonePeCallback,
+  ]);
+
+  // --------------------------------------------------
+  // CLOSE IFRAME MANUALLY
+  // --------------------------------------------------
+
+  const closeIframe = useCallback(() => {
+    const shouldGoBack =
+      phonePeHistoryEntryRef.current &&
+      !isClosingPhonePeFromPopStateRef.current;
+
+    phonePeHistoryEntryRef.current = false;
+    closePhonePeCheckout(false);
+
+    if (shouldGoBack) {
+      isClosingPhonePeFromPopStateRef.current = true;
+      window.history.back();
+    }
+  }, [closePhonePeCheckout]);
 
   useEffect(() => {
     if (!courseId) return;
@@ -809,23 +1073,43 @@ export default function CourseDetailPage({ params }: Props) {
   }, [courseId, contentReady]);
 
   const handleEnroll = async () => {
-    if (status === "unauthenticated") {
-      router.push("/auth/login");
+    if (status === "loading") {
+      toast("Your account information is still loading. Please wait a moment and try again.", {
+        icon: "⏳",
+        duration: 4000,
+      });
+      return;
+    }
+
+    if (status !== "authenticated" || !session?.user) {
+      toast.error(
+        "Your account is not ready yet. Please wait for it to finish loading, then try again.",
+        { duration: 4500 },
+      );
       return;
     }
 
     setIsEnrolling(true);
     try {
-      const currentSession =
-        status === "loading" ? await updateSession() : session;
+      const currentSession = session;
       if (!currentSession?.user) {
-        router.push("/auth/login");
+        toast.error(
+          "Your account session is still being loaded. Please wait a moment and try again.",
+          { duration: 4500 },
+        );
         return;
       }
 
-      // Free courses enroll directly; paid courses go through the payment
-      // API, which sends the user to checkout and creates the enrollment
-      // once the order completes.
+      // Free courses enroll directly. For paid courses, make sure the
+      // checkout SDK is ready BEFORE creating a payment record/order.
+      if (course?.price !== 0 && (!isPhonePeReady || !window.PhonePeCheckout)) {
+        toast("Secure checkout is still loading. Please wait a moment and try again.", {
+          icon: "⏳",
+          duration: 4000,
+        });
+        return;
+      }
+
       if (course?.price === 0) {
         const response = await fetch("/api/enrollments", {
           method: "POST",
@@ -859,12 +1143,19 @@ export default function CourseDetailPage({ params }: Props) {
 
       if (response.ok) {
         if (payload.checkoutUrl) {
-          // Client-side navigation (same as the bundles page): the checkout
-          // mounts in the running app with the session already in memory, so
-          // it renders after ONE payment fetch. `window.location.href` burned
-          // the whole SPA + Router Cache on a full reload, making the
-          // checkout slow and Back-from-checkout a full document reload.
-          router.push(payload.checkoutUrl);
+          if (typeof payload.id !== "string" || !payload.id) {
+            toast.error(
+              "The payment was created, but its reference is missing. Please check payment history before trying again.",
+            );
+            return;
+          }
+
+          // Keep the internal Prisma Payment.id for our authenticated
+          // verification endpoint. PhonePe merchantOrderId is provider-only.
+          setActivePaymentId(payload.id);
+          phonePeStartedRef.current = false;
+          setIframeTokenUrl(payload.checkoutUrl);
+          setShowIframe(true);
           return;
         }
         // No gateway configured (e.g. free course) - we are already enrolled.
@@ -879,8 +1170,13 @@ export default function CourseDetailPage({ params }: Props) {
         }
         toast.error(payload.error || "Failed to start checkout");
       }
-    } catch {
-      toast.error("An error occurred while starting checkout");
+    } catch (error) {
+      console.error("[Course enrollment] Failed to start enrollment/payment", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "An error occurred while starting checkout",
+      );
     } finally {
       setIsEnrolling(false);
     }
@@ -1088,6 +1384,24 @@ export default function CourseDetailPage({ params }: Props) {
 
   return (
     <div className="course-detail-page">
+      <Script
+        src="https://mercury.phonepe.com/web/bundle/checkout.js"
+        strategy="afterInteractive"
+        onReady={() => {
+          const ready = Boolean(window.PhonePeCheckout);
+          setIsPhonePeReady(ready);
+          if (ready) {
+            console.info("[PhonePe] Checkout SDK ready");
+          } else {
+            console.error("[PhonePe] Script loaded but checkout SDK is unavailable");
+          }
+        }}
+        onError={() => {
+          setIsPhonePeReady(false);
+          console.error("[PhonePe] Failed to load checkout SDK");
+          toast.error("Unable to load PhonePe checkout. Please refresh and try again.");
+        }}
+      />
       <Navbar />
 
       <main className="course-detail-shell">
@@ -1211,6 +1525,7 @@ export default function CourseDetailPage({ params }: Props) {
               </div>
 
               <button
+                type="button"
                 onClick={handleEnroll}
                 disabled={isEnrolling || isEnrolled}
                 className={`w-full py-3 rounded-lg font-semibold text-lg transition flex items-center justify-center gap-2 ${
@@ -1655,6 +1970,20 @@ export default function CourseDetailPage({ params }: Props) {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* PhonePe Checkout SDK owns and renders its checkout UI.
+          Do not render a second iframe with checkoutUrl here. */}
+      {showIframe && (
+        <div
+          className="fixed left-1/2 top-[max(12px,env(safe-area-inset-top))] z-[100000] w-[min(92vw,420px)] -translate-x-1/2 rounded-lg bg-gray-900/95 px-3 py-2 text-center text-xs text-white shadow-xl sm:text-sm"
+          role="status"
+          aria-live="polite"
+        >
+          {isPhonePeReady
+            ? "PhonePe secure checkout is open. Complete or cancel the payment there."
+            : "Loading secure PhonePe checkout..."}
         </div>
       )}
     </div>

@@ -161,29 +161,37 @@ model Progress {
 // Payment/Transaction model — a payment is for EITHER a single course
 // OR a bundle (exactly one of courseId / bundleId is set).
 model Payment {
-  id            String      @id @default(cuid())
-  userId        String
-  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  courseId      String?
-  course        Course?     @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  bundleId      String?
-  bundle        Bundle?     @relation(fields: [bundleId], references: [id], onDelete: Cascade)
-  amount        Float
-  currency      String      @default("INR")
-  status        String      @default("PENDING") // PENDING, COMPLETED, FAILED, REFUNDED
-  paymentMethod String? // STRIPE, PAYPAL, etc.
-  transactionId String? // External transaction ID
-  checkoutUrl   String?
-  enrollmentId  String?     @unique // Link to enrollment created after payment (course-only)
-  enrollment    Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id              String      @id @default(cuid())
+  merchantOrderId String?     @unique // PhonePe merchant order ID (e.g., PROPYCODER-PYTHON-FULLSTACK-1)
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId        String?
+  course          Course?     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  bundleId        String?
+  bundle          Bundle?     @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  amount          Float
+  currency        String      @default("INR")
+  status          String      @default("PENDING") // PENDING, COMPLETED, FAILED, REFUNDED
+  paymentMethod   String?     // STRIPE, PAYPAL, etc.
+  transactionId   String?     // External transaction ID
+  checkoutUrl     String?
+  enrollmentId    String?     @unique // Link to enrollment created after payment (course-only)
+  enrollment      Enrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   @@index([userId])
   @@index([courseId])
   @@index([bundleId])
   @@index([status])
   @@index([userId, status, paymentMethod])
+  @@index([merchantOrderId])
+}
+
+model MerchantOrderCounter {
+  prefix    String   @id
+  value     Int      @default(0)
+  updatedAt DateTime @updatedAt
 }
 
 // Bundle model — 2+ courses sold together at a reduced bundle price.

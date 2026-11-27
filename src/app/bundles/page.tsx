@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Script from "next/script";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -26,6 +27,21 @@ import {
   readResourceCache,
   useResource,
 } from "@/lib/use-resource";
+
+interface PhonePeCheckout {
+  transact: (options: {
+    tokenUrl: string;
+    callback: (response: "USER_CANCEL" | "CONCLUDED") => void | Promise<void>;
+    type: "IFRAME";
+  }) => void;
+  closePage: () => void;
+}
+
+declare global {
+  interface Window {
+    PhonePeCheckout?: PhonePeCheckout;
+  }
+}
 
 interface BundleCourse {
   id: string;
@@ -68,6 +84,15 @@ export default function BundlesPage() {
   const [buyingId, setBuyingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Match the PhonePe SDK flow used on /courses/[id]. The SDK owns its iframe.
+  const [isPhonePeReady, setIsPhonePeReady] = useState(false);
+  const [showIframe, setShowIframe] = useState(false);
+  const [iframeTokenUrl, setIframeTokenUrl] = useState("");
+  const [activePaymentId, setActivePaymentId] = useState<string | null>(null);
+  const phonePeStartedRef = useRef(false);
+  const phonePeHistoryEntryRef = useRef(false);
+  const isClosingPhonePeFromPopStateRef = useRef(false);
+
   // Purchased course IDs grouped by bundle ID.
   const [purchasedByBundle, setPurchasedByBundle] = useState<
     Record<string, string[]>
@@ -84,6 +109,183 @@ export default function BundlesPage() {
   const bundles = useMemo(() => bundlesRes.data ?? [], [bundlesRes.data]);
 
   const isLoading = bundlesRes.isLoading;
+
+  const closePhonePeCheckout = useCallback((showCancelledToast: boolean) => {
+    if (window.PhonePeCheckout) {
+      try {
+        window.PhonePeCheckout.closePage();
+      } catch (error) {
+        console.warn("[PhonePe] closePage failed", error);
+      }
+    }
+
+    phonePeStartedRef.current = false;
+    setShowIframe(false);
+    setIframeTokenUrl("");
+    setActivePaymentId(null);
+
+    if (showCancelledToast) {
+      toast("Payment window closed. If you completed payment, check its status before trying again.", {
+        icon: "ℹ️",
+        duration: 5000,
+      });
+    }
+  }, []);
+
+  const handlePhonePeCallback = useCallback(
+    async (response: "USER_CANCEL" | "CONCLUDED") => {
+      if (response === "USER_CANCEL") {
+        const shouldGoBack = phonePeHistoryEntryRef.current;
+        phonePeHistoryEntryRef.current = false;
+        setShowIframe(false);
+        setIframeTokenUrl("");
+        setActivePaymentId(null);
+        phonePeStartedRef.current = false;
+        toast.error("Payment was cancelled. You can try again.");
+        if (shouldGoBack) {
+          isClosingPhonePeFromPopStateRef.current = true;
+          window.history.back();
+        }
+        return;
+      }
+
+      if (response !== "CONCLUDED") return;
+
+      if (!activePaymentId) {
+        setShowIframe(false);
+        setIframeTokenUrl("");
+        toast.error("We couldn't identify this payment. Please check your payment history before trying again.");
+        return;
+      }
+
+      toast.loading("Verifying your payment with PhonePe...", {
+        id: "phonepe-payment-verification",
+      });
+
+      let verified = false;
+      let lastError = "PhonePe has not confirmed this payment yet.";
+
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        try {
+          const verification = await fetch(
+            `/api/payments/${encodeURIComponent(activePaymentId)}/complete`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              cache: "no-store",
+              signal: AbortSignal.timeout(15_000),
+            },
+          );
+          const result = await verification.json().catch(() => null);
+          if (verification.ok) {
+            verified = true;
+            break;
+          }
+          lastError = result?.error || "PhonePe has not confirmed this payment yet.";
+          if (verification.status !== 409) break;
+        } catch (error) {
+          lastError = error instanceof Error ? error.message : "Unable to contact the payment verification service.";
+        }
+
+        if (attempt < 5) {
+          await new Promise((resolve) => window.setTimeout(resolve, 1500));
+        }
+      }
+
+      const shouldGoBack = phonePeHistoryEntryRef.current;
+      phonePeHistoryEntryRef.current = false;
+      setShowIframe(false);
+      setIframeTokenUrl("");
+      setActivePaymentId(null);
+      phonePeStartedRef.current = false;
+      if (shouldGoBack) {
+        isClosingPhonePeFromPopStateRef.current = true;
+        window.history.back();
+      }
+
+      if (verified) {
+        const userId = session?.user?.id;
+        if (userId) {
+          localStorage.setItem(FORCE_PURCHASE_REFRESH_KEY(userId), "1");
+        }
+        toast.success("Payment successful! Updating your bundle access...", {
+          id: "phonepe-payment-verification",
+        });
+        // Reload the catalog so the user-scoped purchase data is fetched fresh.
+        window.location.reload();
+      } else {
+        toast.error(
+          `${lastError} If money was debited, do not pay again; check your payment status or contact support.`,
+          { id: "phonepe-payment-verification", duration: 7000 },
+        );
+        setBuyingId(null);
+      }
+    },
+    [activePaymentId, session?.user?.id],
+  );
+
+  // Browser Back closes the PhonePe checkout before leaving the bundle catalog.
+  useEffect(() => {
+    if (!showIframe) return;
+
+    if (!phonePeHistoryEntryRef.current) {
+      window.history.pushState(
+        { ...(window.history.state ?? {}), phonePeCheckout: true },
+        "",
+        window.location.href,
+      );
+      phonePeHistoryEntryRef.current = true;
+    }
+
+    const handlePopState = () => {
+      if (isClosingPhonePeFromPopStateRef.current) {
+        isClosingPhonePeFromPopStateRef.current = false;
+        return;
+      }
+      phonePeHistoryEntryRef.current = false;
+      closePhonePeCheckout(true);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [showIframe, closePhonePeCheckout]);
+
+  // Invoke the SDK only once for each checkout token.
+  useEffect(() => {
+    if (!showIframe || !iframeTokenUrl || !isPhonePeReady) return;
+    if (!window.PhonePeCheckout || phonePeStartedRef.current) return;
+
+    phonePeStartedRef.current = true;
+    try {
+      window.PhonePeCheckout.transact({
+        tokenUrl: iframeTokenUrl,
+        callback: handlePhonePeCallback,
+        type: "IFRAME",
+      });
+    } catch (error) {
+      phonePeStartedRef.current = false;
+      console.error("[PhonePe] Failed to open checkout", error);
+      toast.error("Unable to open PhonePe checkout. Please try again.");
+      setShowIframe(false);
+      setIframeTokenUrl("");
+      setActivePaymentId(null);
+    }
+
+    return () => {
+      // Do not close the cross-origin SDK iframe during React effect cleanup.
+      phonePeStartedRef.current = false;
+    };
+  }, [showIframe, iframeTokenUrl, isPhonePeReady, handlePhonePeCallback]);
+
+  const closeIframe = useCallback(() => {
+    const shouldGoBack = phonePeHistoryEntryRef.current && !isClosingPhonePeFromPopStateRef.current;
+    phonePeHistoryEntryRef.current = false;
+    closePhonePeCheckout(true);
+    if (shouldGoBack) {
+      isClosingPhonePeFromPopStateRef.current = true;
+      window.history.back();
+    }
+  }, [closePhonePeCheckout]);
 
   /**
    * LOAD PURCHASED COURSES
@@ -342,6 +544,11 @@ export default function BundlesPage() {
 
     if (buyingId !== null) return;
 
+    if (!isPhonePeReady || !window.PhonePeCheckout) {
+      toast.error("PhonePe checkout is still loading. Please try again shortly.");
+      return;
+    }
+
     const pricing = calculateBundlePricing(bundle);
 
     if (pricing.remainingCount === 0) {
@@ -364,15 +571,21 @@ export default function BundlesPage() {
       });
 
       const data = (await response.json()) as {
+        id?: string;
         error?: string;
         checkoutUrl?: string;
       };
 
-      if (!response.ok || !data.checkoutUrl) {
+      if (!response.ok || !data.id || !data.checkoutUrl) {
         throw new Error(data?.error || "Could not start checkout");
       }
 
-      router.push(data.checkoutUrl);
+      // Keep the internal Prisma payment ID for /api/payments/[id]/complete.
+      // PhonePe's merchantOrderId is used only by the server.
+      setActivePaymentId(data.id);
+      phonePeStartedRef.current = false;
+      setIframeTokenUrl(data.checkoutUrl);
+      setShowIframe(true);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Checkout failed");
     } finally {
@@ -386,6 +599,15 @@ export default function BundlesPage() {
 
   return (
     <main className="catalog-page">
+      <Script
+        src="https://mercury.phonepe.com/web/bundle/checkout.js"
+        strategy="afterInteractive"
+        onReady={() => setIsPhonePeReady(Boolean(window.PhonePeCheckout))}
+        onError={() => {
+          setIsPhonePeReady(false);
+          toast.error("Unable to load PhonePe checkout. Please refresh and try again.");
+        }}
+      />
       <Navbar />
 
       {/* HERO */}
@@ -578,7 +800,7 @@ export default function BundlesPage() {
                             type="button"
                             className="bundle-buy cursor-pointer"
                             onClick={() => void handleBundleAction(bundle)}
-                            disabled={buyingId !== null || status === "loading"}
+                            disabled={buyingId !== null || status === "loading" || !isPhonePeReady}
                           >
                             {buyingId === bundle.id ? (
                               <LoaderCircle
@@ -587,6 +809,8 @@ export default function BundlesPage() {
                               />
                             ) : pricing.remainingCount === 0 ? (
                               "All purchased"
+                            ) : !isPhonePeReady ? (
+                              "Loading payment..."
                             ) : (
                               <>
                                 <ShoppingCart size={14} />
@@ -616,6 +840,22 @@ export default function BundlesPage() {
           <ArrowRight size={14} />
         </Link>
       </footer>
+
+      {/* PhonePe Checkout SDK owns and renders its checkout UI. Do not add a second iframe. */}
+      {showIframe && (
+        <div
+          className="fixed left-1/2 top-[max(12px,env(safe-area-inset-top))] z-[100000] w-[min(92vw,420px)] -translate-x-1/2 rounded-lg bg-gray-900/95 px-3 py-2 text-center text-xs text-white shadow-xl sm:text-sm"
+          role="status"
+          aria-live="polite"
+        >
+          {isPhonePeReady
+            ? "PhonePe secure checkout is open. Complete or cancel the payment there."
+            : "Loading secure PhonePe checkout..."}
+          <button type="button" onClick={closeIframe} className="ml-3 underline">
+            Close
+          </button>
+        </div>
+      )}
     </main>
   );
 }
