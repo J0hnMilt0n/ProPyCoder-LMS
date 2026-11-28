@@ -1078,24 +1078,29 @@ export default function CourseDetailPage({ params }: Props) {
       return;
     }
 
-    if (status !== "authenticated" || !session?.user) {
-      toast.error(
-        "Your account is not ready yet. Please wait for it to finish loading, then try again.",
-        { duration: 4500 },
-      );
+    // if (status !== "authenticated" || !session?.user) {
+    //   toast.error(
+    //     "Your account is not ready yet. Please wait for it to finish loading, then try again.",
+    //     { duration: 4500 },
+    //   );
+    //   return;
+    // }
+
+    if (status === "unauthenticated") {
+      router.push("/auth/login");
       return;
     }
 
     setIsEnrolling(true);
     try {
-      const currentSession = session;
-      if (!currentSession?.user) {
-        toast.error(
-          "Your account session is still being loaded. Please wait a moment and try again.",
-          { duration: 4500 },
-        );
-        return;
-      }
+      // const currentSession = session;
+      // if (!currentSession?.user) {
+      //   toast.error(
+      //     "Your account session is still being loaded. Please wait a moment and try again.",
+      //     { duration: 4500 },
+      //   );
+      //   return;
+      // }
 
       // Free courses enroll directly. For paid courses, make sure the
       // checkout SDK is ready BEFORE creating a payment record/order.
